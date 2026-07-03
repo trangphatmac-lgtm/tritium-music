@@ -68,10 +68,18 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     IconWidget playPauseButton = new IconWidget("G", FontManager.music40, 0, 0, 24, 24);
     IconWidget prev = new IconWidget("E", FontManager.music40, 0, 0, 32, 32);
     IconWidget next = new IconWidget("H", FontManager.music40, 0, 0, 32, 32);
+    IconWidget translationButton = new IconWidget("译", FontManager.pf25bold, 0, 0, 44, 44);
 
     private final Music music;
     public MusicLyricsPanel(Music music) {
         this.music = music;
+        translationButton.setOnClickCallback((x, y, i) -> {
+            if (i == 0) {
+                this.toggleTranslation();
+            }
+
+            return true;
+        });
         updateLyricPositionsImmediate(NCMScreen.getInstance().getPanelWidth() * getLyricWidthFactor());
     }
 
@@ -278,7 +286,38 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         this.renderBackground(posX, posY, width, height, alpha);
         this.renderControlsPart(mouseX, mouseY, posX, posY, width, height, alpha);
         this.renderLyrics(mouseX, mouseY, posX, posY, width, height, dWheel, alpha);
+        this.renderTranslationButton(mouseX, mouseY, posX, posY, width, height, alpha);
         api.getGLStateManager().popMatrix();
+    }
+
+    private void renderTranslationButton(double mouseX, double mouseY, double posX, double posY, double width, double height, float alpha) {
+        boolean available = CloudMusic.hasTransLyrics || CloudMusic.hasRomanization;
+        boolean enabled = TritiumMusicExtension.getInstance().musicLyrics.showTranslation.getValue();
+
+        double buttonSize = 44;
+        translationButton
+                .setBounds(posX + width - 96, posY + height - 94, buttonSize, buttonSize)
+                .setAlpha(available ? alpha : alpha * .35f)
+                .setColor(enabled && available ? Color.WHITE : new Color(170, 170, 170));
+
+        translationButton.renderWidget(mouseX, mouseY, 0);
+    }
+
+    private void toggleTranslation() {
+        boolean enabled = TritiumMusicExtension.getInstance().musicLyrics.showTranslation.getValue();
+        TritiumMusicExtension.getInstance().musicLyrics.showTranslation.setValue(!enabled);
+
+        synchronized (CloudMusic.lyrics) {
+            CloudMusic.lyrics.forEach(LyricLine::markDirty);
+        }
+
+        if (CloudMusic.player != null) {
+            float progress = CloudMusic.player.getCurrentTimeMillis();
+            MusicLyricsWidget.resetProgress(progress);
+            updateLyricPositionsImmediate(NCMScreen.getInstance().getPanelWidth() * getLyricWidthFactor(), progress);
+        } else {
+            updateLyricPositionsImmediate(NCMScreen.getInstance().getPanelWidth() * getLyricWidthFactor());
+        }
     }
 
     private void renderLyrics(double mouseX, double mouseY, double posX, double posY, double width, double height, int dWheel, float alpha) {
@@ -539,11 +578,12 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
                 renderY -= FontManager.pf65bold.getHeight() * .85 + 4;
             }
 
-            if (lyric.translationText != null) {
+            String secondaryLyrics = CloudMusic.getSecondaryLyrics(lyric);
+            if (!secondaryLyrics.isEmpty()) {
                 double translationX = lyricRenderOffsetX + lyric.reboundAnimation;
                 double translationY = renderY + FontManager.pf65bold.getHeight() * .85 + 8;
 
-                String[] strings = FontManager.pf34bold.fitWidth(lyric.translationText, lyricsWidth);
+                String[] strings = FontManager.pf34bold.fitWidth(secondaryLyrics, lyricsWidth);
                 for (String string : strings) {
                     FontManager.pf34bold.drawString(string, translationX, translationY, hexColor(1, 1, 1, alpha * .75f * ((lyric.alpha * .6f) + .4f)));
                     translationY += FontManager.pf34bold.getHeight() + 4;
@@ -839,6 +879,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         playPauseButton.onMouseClickReceived(mouseX, mouseY, mouseButton);
         prev.onMouseClickReceived(mouseX, mouseY, mouseButton);
         next.onMouseClickReceived(mouseX, mouseY, mouseButton);
+        translationButton.onMouseClickReceived(mouseX, mouseY, mouseButton);
     }
 
     private String formatDuration(float totalMillis) {

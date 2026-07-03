@@ -1,6 +1,7 @@
 package tritium.screens.ncm.panels;
 
 import org.lwjgl.input.Mouse;
+import tritium.TritiumMusicExtension;
 import tritium.management.FontManager;
 import tritium.ncm.music.AudioPlayer;
 import tritium.ncm.music.CloudMusic;
@@ -239,6 +240,73 @@ public class ControlsBar extends NCMPanel {
                         .setPosition(
                                 playingCover.getRelativeX() + playingCover.getWidth() + 4,
                                 lblMusicArtist.getRelativeY() + lblMusicArtist.getHeight() * .5 + 2
+                        ));
+
+        double volumeBarWidth = 250;
+        double volumeBarHeight = 5;
+        double volumeBarYOffset = 8;
+
+        LabelWidget lblVolumeMin = new LabelWidget("I", FontManager.music40);
+        this.addChild(lblVolumeMin);
+
+        lblVolumeMin
+                .setClickable(false)
+                .setBeforeRenderCallback(() -> lblVolumeMin
+                        .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT))
+                        .setPosition(
+                                this.getWidth() - volumeBarWidth - FontManager.music40.getStringWidthD("J") - FontManager.music40.getStringWidthD("I") - 28,
+                                this.getHeight() * .5 + volumeBarYOffset - FontManager.music40.getHeight() * .5 - .5
+                        ));
+
+        RoundedRectWidget volumeBarBg = new RoundedRectWidget() {
+            @Override
+            public void onRender(double mouseX, double mouseY) {
+                super.onRender(mouseX, mouseY);
+
+                if (this.testHovered(mouseX, mouseY, 2) && Mouse.isButtonDown(0)) {
+                    double xDelta = Math.max(0, Math.min(this.getWidth(), mouseX - this.getX()));
+                    double percent = xDelta / this.getWidth();
+                    TritiumMusicExtension.getInstance().musicInfo.volume.setValue(percent);
+                }
+            }
+        };
+
+        this.addChild(volumeBarBg);
+
+        volumeBarBg
+                .setColor(new Color(255, 255, 255, 128))
+                .setRadius(1.5)
+                .setShouldOverrideMouseCursor(true)
+                .setBeforeRenderCallback(() -> volumeBarBg
+                        .setBounds(volumeBarWidth, volumeBarHeight)
+                        .setPosition(
+                                lblVolumeMin.getRelativeX() + FontManager.music40.getStringWidthD("I") + 2,
+                                this.getHeight() * .5 + volumeBarYOffset - volumeBarHeight * .5
+                        ));
+
+        RoundedRectWidget volumeBar = new RoundedRectWidget();
+
+        volumeBarBg.addChild(volumeBar);
+        volumeBar
+                .setColor(Color.WHITE)
+                .setClickable(false)
+                .setBeforeRenderCallback(() -> {
+                    volumeBar.setMargin(0);
+                    volumeBar
+                            .setWidth(volumeBarBg.getWidth() * TritiumMusicExtension.getInstance().musicInfo.volume.getValue())
+                            .setRadius(1.5);
+                });
+
+        LabelWidget lblVolumeMax = new LabelWidget("J", FontManager.music40);
+        this.addChild(lblVolumeMax);
+
+        lblVolumeMax
+                .setClickable(false)
+                .setBeforeRenderCallback(() -> lblVolumeMax
+                        .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT))
+                        .setPosition(
+                                volumeBarBg.getRelativeX() + volumeBarBg.getWidth() + 4,
+                                lblVolumeMin.getRelativeY()
                         ));
     }
 

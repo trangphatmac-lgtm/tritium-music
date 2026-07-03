@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import tritium.management.FontManager;
+import tritium.ncm.music.CloudMusic;
 import tritium.rendering.animation.spring.SpringAnimation;
 import tritium.rendering.animation.spring.SpringParams;
 import tritium.rendering.font.CFontRenderer;
@@ -122,13 +123,14 @@ public class LyricLine {
             this.height = length * fr.getHeight() * .85 + length * 4;
         }
 
-        if (translationText != null) {
-            if (!fr.areGlyphsLoaded(translationText)) {
+        String secondaryLyrics = CloudMusic.getSecondaryLyrics(this);
+        if (!secondaryLyrics.isEmpty()) {
+            if (!fr.areGlyphsLoaded(secondaryLyrics)) {
                 canSetComputed = false;
             }
 
             CFontRenderer frTranslation = FontManager.pf34bold;
-            String[] strings = frTranslation.fitWidth(translationText, width);
+            String[] strings = frTranslation.fitWidth(secondaryLyrics, width);
             height += frTranslation.getHeight() * strings.length + 4 * (strings.length - 1) + 8;
         }
 
