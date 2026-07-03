@@ -316,6 +316,10 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static String getSecondaryLyrics(LyricLine lyricLine) {
+        if (!TritiumMusicExtension.getInstance().musicLyrics.showTranslation.getValue()) {
+            return "";
+        }
+
         if (hasTransLyrics) {
             return getTranslationOrRomanizationText(lyricLine);
         }

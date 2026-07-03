@@ -242,9 +242,9 @@ public class ControlsBar extends NCMPanel {
                                 lblMusicArtist.getRelativeY() + lblMusicArtist.getHeight() * .5 + 2
                         ));
 
-        double volumeBarWidth = 250;
+        double volumeBarWidth = 125;
         double volumeBarHeight = 5;
-        double volumeBarYOffset = 8;
+        double volumeRightPadding = 16;
 
         LabelWidget lblVolumeMin = new LabelWidget("I", FontManager.music40);
         this.addChild(lblVolumeMin);
@@ -254,19 +254,29 @@ public class ControlsBar extends NCMPanel {
                 .setBeforeRenderCallback(() -> lblVolumeMin
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT))
                         .setPosition(
-                                this.getWidth() - volumeBarWidth - FontManager.music40.getStringWidthD("J") - FontManager.music40.getStringWidthD("I") - 28,
-                                this.getHeight() * .5 + volumeBarYOffset - FontManager.music40.getHeight() * .5 - .5
+                                this.getWidth() - volumeRightPadding - FontManager.music40.getStringWidthD("J") - 4 - volumeBarWidth - FontManager.music40.getStringWidthD("I") - 2,
+                                this.getHeight() * .5 - FontManager.music40.getHeight() * .5 - .5
                         ));
 
         RoundedRectWidget volumeBarBg = new RoundedRectWidget() {
             @Override
             public void onRender(double mouseX, double mouseY) {
-                super.onRender(mouseX, mouseY);
+                double volume = TritiumMusicExtension.getInstance().musicInfo.volume.getValue();
+                volume = Math.max(0, Math.min(1, volume));
+
+                this.roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 1.5, 1, 1, 1, this.getAlpha() * .5f);
+                double filledWidth = this.getWidth() * volume;
+                if (filledWidth > 0) {
+                    this.roundedRect(this.getX(), this.getY(), filledWidth, this.getHeight(), 1.5, 1, 1, 1, this.getAlpha());
+                }
 
                 if (this.testHovered(mouseX, mouseY, 2) && Mouse.isButtonDown(0)) {
                     double xDelta = Math.max(0, Math.min(this.getWidth(), mouseX - this.getX()));
                     double percent = xDelta / this.getWidth();
                     TritiumMusicExtension.getInstance().musicInfo.volume.setValue(percent);
+                    if (CloudMusic.player != null) {
+                        CloudMusic.player.setVolume((float) percent);
+                    }
                 }
             }
         };
@@ -274,28 +284,15 @@ public class ControlsBar extends NCMPanel {
         this.addChild(volumeBarBg);
 
         volumeBarBg
-                .setColor(new Color(255, 255, 255, 128))
+                .setColor(Color.WHITE)
                 .setRadius(1.5)
                 .setShouldOverrideMouseCursor(true)
                 .setBeforeRenderCallback(() -> volumeBarBg
                         .setBounds(volumeBarWidth, volumeBarHeight)
                         .setPosition(
                                 lblVolumeMin.getRelativeX() + FontManager.music40.getStringWidthD("I") + 2,
-                                this.getHeight() * .5 + volumeBarYOffset - volumeBarHeight * .5
+                                this.getHeight() * .5 - volumeBarHeight * .5
                         ));
-
-        RoundedRectWidget volumeBar = new RoundedRectWidget();
-
-        volumeBarBg.addChild(volumeBar);
-        volumeBar
-                .setColor(Color.WHITE)
-                .setClickable(false)
-                .setBeforeRenderCallback(() -> {
-                    volumeBar.setMargin(0);
-                    volumeBar
-                            .setWidth(volumeBarBg.getWidth() * TritiumMusicExtension.getInstance().musicInfo.volume.getValue())
-                            .setRadius(1.5);
-                });
 
         LabelWidget lblVolumeMax = new LabelWidget("J", FontManager.music40);
         this.addChild(lblVolumeMax);
@@ -305,7 +302,7 @@ public class ControlsBar extends NCMPanel {
                 .setBeforeRenderCallback(() -> lblVolumeMax
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT))
                         .setPosition(
-                                volumeBarBg.getRelativeX() + volumeBarBg.getWidth() + 4,
+                                this.getWidth() - volumeRightPadding - FontManager.music40.getStringWidthD("J"),
                                 lblVolumeMin.getRelativeY()
                         ));
     }

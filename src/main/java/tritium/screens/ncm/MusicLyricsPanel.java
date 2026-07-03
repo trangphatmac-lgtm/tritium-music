@@ -68,7 +68,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     IconWidget playPauseButton = new IconWidget("G", FontManager.music40, 0, 0, 24, 24);
     IconWidget prev = new IconWidget("E", FontManager.music40, 0, 0, 32, 32);
     IconWidget next = new IconWidget("H", FontManager.music40, 0, 0, 32, 32);
-    IconWidget translationButton = new IconWidget("译", FontManager.pf25bold, 0, 0, 44, 44);
+    IconWidget translationButton = new IconWidget("译", FontManager.pf20bold, 0, 0, 32, 32);
 
     private final Music music;
     public MusicLyricsPanel(Music music) {
@@ -294,9 +294,10 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         boolean available = CloudMusic.hasTransLyrics || CloudMusic.hasRomanization;
         boolean enabled = TritiumMusicExtension.getInstance().musicLyrics.showTranslation.getValue();
 
-        double buttonSize = 44;
+        double buttonSize = 32;
+        double buttonRightPadding = 20;
         translationButton
-                .setBounds(posX + width - 96, posY + height - 94, buttonSize, buttonSize)
+                .setBounds(posX + width - buttonRightPadding - buttonSize, posY + height - 88, buttonSize, buttonSize)
                 .setAlpha(available ? alpha : alpha * .35f)
                 .setColor(enabled && available ? Color.WHITE : new Color(170, 170, 170));
 
