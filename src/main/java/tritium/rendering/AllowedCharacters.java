@@ -1,6 +1,6 @@
 package tritium.rendering;
 
-public class ChatAllowedCharacters {
+public class AllowedCharacters {
     /**
      * Array of the special characters that are allowed in any text drawing of Minecraft.
      */

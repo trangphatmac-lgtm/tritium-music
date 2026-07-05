@@ -8,12 +8,11 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import tritium.interfaces.SharedConstants;
 import tritium.management.FontManager;
-import tritium.rendering.ChatAllowedCharacters;
+import tritium.rendering.AllowedCharacters;
 import tritium.rendering.StencilClipManager;
 import tritium.rendering.animation.Interpolations;
 import tritium.rendering.font.CFontRenderer;
 import tritium.rendering.rendersystem.RenderSystem;
-import tritium.settings.ClientSettings;
 import tritium.utils.KeyboardUtils;
 import tritium.utils.timing.Timer;
 
@@ -106,7 +105,7 @@ public class TextField implements SharedConstants {
     }
 
     public void writeText(String input) {
-        String filtered = ChatAllowedCharacters.filterAllowedCharacters(input);
+        String filtered = AllowedCharacters.filterAllowedCharacters(input);
         int selStart = Math.min(cursorPosition, selectionEnd);
         int selEnd = Math.max(cursorPosition, selectionEnd);
         int availableSpace = maxStringLength - text.length() - (selEnd - selStart);
@@ -328,7 +327,7 @@ public class TextField implements SharedConstants {
                 yield true;
             }
             default -> {
-                if (ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
+                if (AllowedCharacters.isAllowedCharacter(typedChar)) {
                     if (isEnabled) {
                         writeText(Character.toString(typedChar));
                     }

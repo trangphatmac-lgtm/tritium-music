@@ -382,7 +382,6 @@ public class CFontRenderer implements Closeable, SharedConstants {
                     {
                         GL11.glTexCoord2f(glyph.u0, glyph.v0);
                         GL11.glVertex2f(x0, y0);
-
                         GL11.glTexCoord2f(glyph.u0, glyph.v1);
                         GL11.glVertex2f(x0, y1);
 
