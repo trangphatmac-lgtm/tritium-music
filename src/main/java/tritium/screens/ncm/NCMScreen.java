@@ -1,0 +1,454 @@
+package tritium.screens.ncm;
+
+import lombok.Getter;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
+import tritium.desktop.DesktopScreen;
+import tritium.interfaces.SharedConstants;
+import tritium.interfaces.SharedRenderingConstants;
+import tritium.management.FontManager;
+import tritium.ncm.OptionsUtil;
+import tritium.ncm.music.CloudMusic;
+import tritium.rendering.Rect;
+import tritium.rendering.StencilClipManager;
+import tritium.rendering.animation.Interpolations;
+import tritium.rendering.rendersystem.RenderSystem;
+import tritium.rendering.ui.container.Panel;
+import tritium.rendering.ui.widgets.RectWidget;
+import tritium.screens.ncm.panels.ControlsBar;
+import tritium.screens.ncm.panels.HomePanel;
+import tritium.screens.ncm.panels.NavigateBar;
+import tritium.utils.cursor.CursorUtils;
+import tritium.utils.other.multithreading.MultiThreadingUtil;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author IzumiiKonata
+ * Date: 2025/10/16 19:47
+ */
+public class NCMScreen extends DesktopScreen implements SharedConstants, SharedRenderingConstants {
+
+    @Getter
+    private static NCMScreen instance = new NCMScreen();
+
+    float alpha = 0f;
+    boolean closing = false;
+
+    Panel basePanel = new Panel();
+
+    @Getter
+    NavigateBar playlistsPanel;
+
+    RectWidget currentPanelBg = new RectWidget();
+
+    float prevAnimatingPanelAlpha = 0f;
+    NCMPanel prevAnimatingPanel = null;
+    NCMPanel currentPanel = null;
+    float curPanelAlphaAnimation = 0f;
+
+    @Getter
+    ControlsBar controlsBar;
+
+    public MusicLyricsPanel musicLyricsPanel = null;
+
+    /**
+     * 表示是否需要重新布局, 当用户信息和用户歌单加载完设置为 true,
+     * 然后会自动进行重新布局并设为 false
+     */
+    private boolean dirty = true;
+
+    public NCMScreen() {
+
+    }
+
+    @Override
+    public void initGui() {
+        alpha = 1f;
+        closing = false;
+
+        this.checkDirty();
+
+        if (this.musicLyricsPanel != null)
+            this.musicLyricsPanel.onInit();
+
+        Keyboard.enableRepeatEvents(true);
+        CursorUtils.setCursor(CursorUtils.ARROW);
+    }
+
+    public void markDirty() {
+        this.dirty = true;
+    }
+
+    public void checkDirty() {
+        if (this.dirty) {
+            this.dirty = false;
+            this.layout();
+
+            // only when logged in
+            if (CloudMusic.profile != null)
+                this.setCurrentPanel(new HomePanel());
+        }
+    }
+
+    @Override
+    public void onGuiClosed() {
+        Keyboard.enableRepeatEvents(false);
+    }
+
+    public void layout() {
+        this.basePanel.getChildren().clear();
+
+        RectWidget bg = new RectWidget();
+        this.basePanel.addChild(bg);
+
+        this.basePanel.setBeforeRenderCallback(() -> this.basePanel.center());
+
+        this.playlistsPanel = new NavigateBar();
+        this.basePanel.addChild(this.playlistsPanel);
+
+        this.basePanel.addChild(this.currentPanelBg);
+
+        this.currentPanelBg.setBeforeRenderCallback(() -> {
+            this.currentPanelBg.setBounds(playlistsPanel.getWidth(), 0, this.currentPanelBg.getParentWidth() - playlistsPanel.getWidth(), this.getPanelHeight() * 0.93);
+            this.currentPanelBg.setColor(getColor(ColorType.GENERIC_BACKGROUND));
+        });
+
+        this.controlsBar = new ControlsBar();
+        this.controlsBar.onInit();
+    }
+
+    public double getSpacing() {
+        return 0.0;
+    }
+
+    public double getPanelWidth() {
+        return RenderSystem.getWidth() - this.getSpacing() * 2;
+    }
+
+    public double getPanelHeight() {
+        return RenderSystem.getHeight() - this.getSpacing() * 2;
+    }
+
+    @Override
+    public void drawScreen(int mX, int mY) {
+        if (closing && alpha <= 0.02f)
+            api.displayScreen(null);
+
+        alpha = closing ? Interpolations.interpolate(alpha, 0f, 0.4f) : 1f;
+
+        CursorUtils.resetOverride();
+
+//        Shaders.GAUSSIAN_BLUR_SHADER.run(Collections.singletonList(() -> {
+//            Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), hexColor(1, 1, 1, alpha));
+//        }));
+
+        this.checkDirty();
+
+        int dWheel = Mouse.getDWheel();
+
+        RenderSystem.FIXED_SCALE = false;
+        api.getGLStateManager().pushMatrix();
+        double mouseX = mX;
+        double mouseY = mY;
+
+        Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), getColor(ColorType.GENERIC_BACKGROUND));
+
+        boolean loggedIn = CloudMusic.profile != null;
+        if (!loggedIn) {
+            renderLoginGate(mouseX, mouseY);
+            this.renderDownloadingPanel();
+            api.getGLStateManager().popMatrix();
+            RenderSystem.FIXED_SCALE = false;
+            CursorUtils.setOverride();
+            api.getGLStateManager().enableTexture2D();
+            return;
+        }
+
+        this.basePanel.setBounds(this.getPanelWidth(), this.getPanelHeight());
+
+        if (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha <= .9f) {
+            this.basePanel.setAlpha(alpha);
+            this.basePanel.renderWidget(mouseX, mouseY, dWheel);
+
+            float alphaInterpolateSpeed = 0.4f;
+            if (this.prevAnimatingPanel != null) {
+                this.prevAnimatingPanel.setAlpha(this.prevAnimatingPanelAlpha = Interpolations.interpolate(this.prevAnimatingPanelAlpha, 0f, alphaInterpolateSpeed));
+                this.prevAnimatingPanel.setBounds(this.currentPanelBg.getX(), this.currentPanelBg.getY(), this.currentPanelBg.getWidth(), this.currentPanelBg.getHeight());
+
+                api.getGLStateManager().pushMatrix();
+                this.scaleAtPos(this.currentPanelBg.getX() + this.currentPanelBg.getWidth() * .5, this.currentPanelBg.getY() + this.currentPanelBg.getHeight() * .5, 0.9 + (this.prevAnimatingPanel.getAlpha() * 0.1));
+                this.prevAnimatingPanel.renderWidget(mouseX, mouseY, dWheel);
+                api.getGLStateManager().popMatrix();
+
+                if (this.prevAnimatingPanelAlpha <= 0.02f)
+                    this.prevAnimatingPanel = null;
+            } else if (this.currentPanel != null) {
+                curPanelAlphaAnimation = Interpolations.interpolate(curPanelAlphaAnimation, 1f, alphaInterpolateSpeed);
+                this.currentPanel.setAlpha(Math.min(this.basePanel.getAlpha(), curPanelAlphaAnimation));
+                this.currentPanel.setBounds(this.currentPanelBg.getX(), this.currentPanelBg.getY(), this.currentPanelBg.getWidth(), this.currentPanelBg.getHeight());
+
+                StencilClipManager.beginClip(() -> Rect.draw(this.currentPanelBg.getX(), this.currentPanelBg.getY(), this.currentPanelBg.getWidth(), this.currentPanelBg.getHeight(), -1));
+
+                api.getGLStateManager().pushMatrix();
+                this.scaleAtPos(this.currentPanelBg.getX() + this.currentPanelBg.getWidth() * .5, this.currentPanelBg.getY() + this.currentPanelBg.getHeight() * .5, 1.1 - (curPanelAlphaAnimation * 0.1));
+
+                this.currentPanel.renderWidget(mouseX, mouseY, dWheel);
+                api.getGLStateManager().popMatrix();
+
+                StencilClipManager.endClip();
+            }
+
+            this.controlsBar.setAlpha(alpha);
+            this.controlsBar.setBounds(this.currentPanelBg.getX(), this.currentPanelBg.getY() + this.currentPanelBg.getHeight(), this.currentPanelBg.getWidth(), this.getPanelHeight() - this.currentPanelBg.getHeight());
+            this.controlsBar.renderWidget(mouseX, mouseY, dWheel);
+        }
+
+        if (this.musicLyricsPanel != null) {
+            StencilClipManager.beginClip(() -> Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), -1));
+            Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), getColor(ColorType.GENERIC_BACKGROUND) | ((int) (this.musicLyricsPanel.alpha * 255)) << 24);
+            this.musicLyricsPanel.onRender(mouseX, mouseY, basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), dWheel);
+            StencilClipManager.endClip();
+
+            if (this.musicLyricsPanel.shouldClose())
+                this.musicLyricsPanel = null;
+        }
+
+        this.renderDownloadingPanel();
+
+        api.getGLStateManager().popMatrix();
+        RenderSystem.FIXED_SCALE = false;
+        CursorUtils.setOverride();
+        api.getGLStateManager().enableTexture2D();
+
+    }
+
+    private void renderLoginGate(double mouseX, double mouseY) {
+        if (CloudMusic.loadingSession) {
+            renderSessionLoading();
+            if (System.currentTimeMillis() - CloudMusic.loadingSessionStartedAt <= 8000L) {
+                return;
+            }
+        }
+
+        if (this.loginRenderer == null) {
+            this.loginRenderer = new LoginRenderer();
+        }
+
+        this.loginRenderer.render(mouseX, mouseY, 0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), 1f);
+
+        if (this.loginRenderer.canClose() && !OptionsUtil.getCookie().isEmpty()) {
+            this.loginRenderer = null;
+            MultiThreadingUtil.runAsync(() -> {
+                CloudMusic.loadingSession = true;
+                CloudMusic.loadingSessionStartedAt = System.currentTimeMillis();
+                CloudMusic.sessionStatusText = "正在加载用户信息";
+                try {
+                    CloudMusic.loadNCM(OptionsUtil.getCookie());
+                } finally {
+                    CloudMusic.loadingSession = false;
+                    CloudMusic.loadingSessionStartedAt = 0L;
+                    CloudMusic.sessionStatusText = "";
+                }
+
+                MultiThreadingUtil.runOnMainThread(() -> {
+                    this.layout();
+
+                    if (CloudMusic.profile != null)
+                        this.setCurrentPanel(new HomePanel());
+                });
+            });
+        }
+    }
+
+    private void renderSessionLoading() {
+        double centerX = RenderSystem.getWidth() * .5;
+        double centerY = RenderSystem.getHeight() * .5;
+        double cardWidth = Math.min(360, RenderSystem.getWidth() * .4);
+        double cardHeight = 112;
+        double cardX = centerX - cardWidth * .5;
+        double cardY = centerY - cardHeight * .5;
+
+        Rect.draw(cardX, cardY, cardWidth, cardHeight, hexColor(34, 34, 34, 230));
+        Rect.draw(cardX, cardY, 4, cardHeight, hexColor(195, 2, 24, 255));
+
+        long elapsed = Math.max(0L, System.currentTimeMillis() - CloudMusic.loadingSessionStartedAt);
+        double progress = ((elapsed % 1800L) / 1800.0);
+        double barWidth = cardWidth - 48;
+        Rect.draw(cardX + 24, cardY + cardHeight - 28, barWidth, 4, hexColor(70, 70, 70, 255));
+        Rect.draw(cardX + 24, cardY + cardHeight - 28, Math.max(24, barWidth * progress), 4, hexColor(195, 2, 24, 255));
+
+        FontManager.pf25bold.drawCenteredString("正在加载登录状态", centerX, centerY - FontManager.pf25bold.getHeight(), hexColor(1, 1, 1, alpha));
+        if (!CloudMusic.sessionStatusText.isBlank()) {
+            FontManager.pf18.drawCenteredString(CloudMusic.sessionStatusText, centerX, centerY + 10, hexColor(180, 180, 180, alpha));
+        }
+    }
+
+    public boolean downloading = false;
+    public double downloadProgress = 0;
+    public String downloadSpeed = "0 b/s";
+    float downloadPanelAlpha = 0.0f;
+
+    private void renderDownloadingPanel() {
+//        this.downloading = true;
+        this.downloadPanelAlpha = Interpolations.interpolate(this.downloadPanelAlpha, this.downloading ? 1f : 0f, 0.3f);
+
+        if (this.downloadPanelAlpha <= 0.02f)
+            return;
+
+        double downloadPanelWidth = 240;
+        double downloadPanelHeight = 60;
+        double progressBarWidth = downloadPanelWidth - 16;
+        double progressBarHeight = 8;
+
+        double offsetY = 8 + -(8 + downloadPanelHeight) * (1 - downloadPanelAlpha);
+        Rect.draw(RenderSystem.getWidth() * .5 - downloadPanelWidth * .5, offsetY, downloadPanelWidth, downloadPanelHeight, RenderSystem.reAlpha(0x202020, downloadPanelAlpha * alpha));
+        FontManager.pf34bold.drawCenteredString("Downloading...", RenderSystem.getWidth() * .5, offsetY + 8, hexColor(1, 1, 1, downloadPanelAlpha * alpha));
+        FontManager.pf25bold.drawCenteredString(String.valueOf(downloadSpeed), RenderSystem.getWidth() * .5, offsetY + 8 + FontManager.pf34bold.getHeight(), hexColor(1, 1, 1, downloadPanelAlpha * alpha));
+        roundedRect(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, hexColor(1, 1, 1, .5f * downloadPanelAlpha * alpha));
+
+        StencilClipManager.beginClip(() -> Rect.draw(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth * downloadProgress, progressBarHeight, -1));
+        roundedRect(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, hexColor(1, 1, 1, downloadPanelAlpha * alpha));
+        StencilClipManager.endClip();
+    }
+
+    public LoginRenderer loginRenderer = null;
+
+    int currentActionPointer = 0;
+    List<Runnable> actions = new ArrayList<>();
+
+    public void setCurrentPanel(NCMPanel panel) {
+        this.innerSetCurrentPanel(panel, true);
+
+        if (panel != null) {
+            Runnable action = () -> this.innerSetCurrentPanel(panel, false);
+
+            if (actions.isEmpty()) {
+                currentActionPointer = 0;
+                actions.add(action);
+            } else {
+                ++ currentActionPointer;
+
+                while (actions.size() > currentActionPointer + 1)
+                    actions.removeLast();
+
+                if (currentActionPointer < actions.size()) {
+                    actions.set(currentActionPointer, action);
+                } else {
+                    actions.add(action);
+                }
+            }
+        }
+    }
+
+    private void innerSetCurrentPanel(NCMPanel panel, boolean shouldCallInit) {
+        this.prevAnimatingPanel = this.currentPanel;
+        this.prevAnimatingPanelAlpha = 1.0f;
+        this.currentPanel = panel;
+        if (panel != null) {
+            if (shouldCallInit)
+                this.currentPanel.onInit();
+            this.currentPanel.setAlpha(0);
+            this.curPanelAlphaAnimation = 0f;
+        }
+    }
+
+    @Override
+    public void keyTyped(char typedChar, int keyCode) {
+        if (this.loginRenderer != null && this.loginRenderer.keyTyped(typedChar, keyCode)) {
+            return;
+        }
+
+        if (this.basePanel.onKeyTypedReceived(typedChar, keyCode)) {
+            return;
+        }
+
+        if (this.currentPanel != null && this.currentPanel.onKeyTypedReceived(typedChar, keyCode)) {
+            return;
+        }
+
+        if (keyCode == Keyboard.KEY_ESCAPE) {
+
+            if (this.musicLyricsPanel != null)
+                this.musicLyricsPanel.close();
+            else
+                closing = true;
+
+        }
+
+        if (keyCode == Keyboard.KEY_SPACE && CloudMusic.currentlyPlaying != null && CloudMusic.player != null && !CloudMusic.player.isFinished()) {
+            if (CloudMusic.player.isPausing())
+                CloudMusic.player.unpause();
+            else
+                CloudMusic.player.pause();
+        }
+
+    }
+
+    @Override
+    public void mouseClicked(int mX, int mY, int mouseButton) {
+
+        double mouseX = mX;
+        double mouseY = mY;
+
+        if (this.loginRenderer != null && this.loginRenderer.mouseClicked(mouseX, mouseY, mouseButton)) {
+            return;
+        }
+
+        if (musicLyricsPanel == null) {
+            this.basePanel.onMouseClickReceived(mouseX, mouseY, mouseButton);
+
+            if (this.currentPanel != null)
+                this.currentPanel.onMouseClickReceived(mouseX, mouseY, mouseButton);
+
+            this.controlsBar.onMouseClickReceived(mouseX, mouseY, mouseButton);
+
+            // forward
+            if (mouseButton == 4) {
+
+                // is last
+                if (currentActionPointer >= actions.size() - 1) {
+                    currentActionPointer = actions.size() - 1;
+                } else {
+                    currentActionPointer ++;
+                    actions.get(currentActionPointer).run();
+                }
+
+            }
+            // go back
+            else if (mouseButton == 3) {
+                if (currentActionPointer > 0) {
+                    -- currentActionPointer;
+                    actions.get(currentActionPointer).run();
+                }
+            }
+
+        } else {
+            this.musicLyricsPanel.mouseClicked(mouseX, mouseY, mouseButton);
+        }
+
+    }
+
+    public enum ColorType {
+
+        GENERIC_BACKGROUND,
+        ELEMENT_BACKGROUND,
+        ELEMENT_HOVER,
+        PRIMARY_TEXT,
+        SECONDARY_TEXT
+
+    }
+
+    public static int getColor(ColorType type) {
+
+        return switch (type) {
+            case GENERIC_BACKGROUND -> 0x1E1E1E;
+            case ELEMENT_BACKGROUND -> 0x232323;
+            case ELEMENT_HOVER -> 0x353535;
+            case PRIMARY_TEXT -> 0xFFFFFF;
+            case SECONDARY_TEXT -> 0x6B6B6B;
+        };
+
+    }
+}

@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+set -eu
+
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+case "$(uname -s 2>/dev/null || true)" in
+  Darwin)
+    exec java -XstartOnFirstThread -jar "$APP_DIR/lib/tritium-music.jar" "$@"
+    ;;
+  *)
+    exec java -jar "$APP_DIR/lib/tritium-music.jar" "$@"
+    ;;
+esac
