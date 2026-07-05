@@ -54,6 +54,7 @@ public class RenderSystem implements SharedConstants {
 
     private static int scaleFactor = 1, width, height, framebufferWidth, framebufferHeight;
     private static float pixelScaleFactor = 1.0f;
+    private static float uiScaleFactor = 1.0f;
 
     public static double getScaleMultiplier() {
         return getScaleFactor() * 0.5;
@@ -70,9 +71,62 @@ public class RenderSystem implements SharedConstants {
             framebufferWidth = Display.getWidth();
             framebufferHeight = Display.getHeight();
             pixelScaleFactor = Math.max(1.0f, Display.getPixelScaleFactor());
-            width = Math.max(1, Math.round(framebufferWidth / pixelScaleFactor));
-            height = Math.max(1, Math.round(framebufferHeight / pixelScaleFactor));
+            uiScaleFactor = resolveUiScaleFactor(framebufferWidth, framebufferHeight, pixelScaleFactor);
+            scaleFactor = Math.max(1, Math.round(uiScaleFactor));
+            width = Math.max(1, Math.round(framebufferWidth / uiScaleFactor));
+            height = Math.max(1, Math.round(framebufferHeight / uiScaleFactor));
         }
+    }
+
+    private static float resolveUiScaleFactor(int framebufferWidth, int framebufferHeight, float nativePixelScaleFactor) {
+        String configuredScale = firstNonBlank(System.getProperty("tritium.uiScale"), System.getenv("TRITIUM_UI_SCALE"));
+        if (configuredScale != null && !"auto".equalsIgnoreCase(configuredScale)) {
+            try {
+                return clampScale(Float.parseFloat(configuredScale));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return Math.max(nativePixelScaleFactor, inferScaleFromFramebuffer(framebufferWidth, framebufferHeight));
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        if (first != null && !first.trim().isEmpty()) {
+            return first.trim();
+        }
+
+        if (second != null && !second.trim().isEmpty()) {
+            return second.trim();
+        }
+
+        return null;
+    }
+
+    static float inferScaleFromFramebuffer(int framebufferWidth, int framebufferHeight) {
+        int max = Math.max(framebufferWidth, framebufferHeight);
+        int min = Math.min(framebufferWidth, framebufferHeight);
+        float magicnum = 2.0f;
+        //if (max >= 3840 && min >= 1800) {
+        return magicnum;
+        //}
+
+        //if (max >= 3000 && min >= 1600) {
+        //    return 3.0f;
+        //}
+
+        //if (max >= 2400 && min >= 1300) {
+        //    return 2.0f;
+        //}
+
+        //return 1.0f;
+    }
+
+    private static float clampScale(float scale) {
+        if (Float.isNaN(scale) || Float.isInfinite(scale)) {
+            return 1.0f;
+        }
+
+        return Math.max(1.0f, Math.min(8.0f, scale));
     }
 
     public static int getFramebufferWidth() {
@@ -90,12 +144,17 @@ public class RenderSystem implements SharedConstants {
         return pixelScaleFactor;
     }
 
+    public static float getUiScaleFactor() {
+        updateDisplayMetrics();
+        return uiScaleFactor;
+    }
+
     public static int toLogicalMouseX(int framebufferX) {
-        return Math.round(framebufferX / getPixelScaleFactor());
+        return Math.round(framebufferX / getUiScaleFactor());
     }
 
     public static int toLogicalMouseY(int framebufferY) {
-        return Math.round(framebufferY / getPixelScaleFactor());
+        return Math.round(framebufferY / getUiScaleFactor());
     }
     
     public static boolean FIXED_SCALE = false;
