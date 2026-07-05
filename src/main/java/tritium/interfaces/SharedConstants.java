@@ -1,7 +1,7 @@
 package tritium.interfaces;
 
-import today.opai.api.OpenAPI;
-import tritium.ExtensionEntry;
+import tritium.desktop.DesktopApi;
+import tritium.desktop.DesktopAppState;
 
 /**
  * Commonly shared constants between the classes.
@@ -11,6 +11,6 @@ import tritium.ExtensionEntry;
  */
 public interface SharedConstants {
 
-    OpenAPI api = ExtensionEntry.getAPI();
+    DesktopApi api = DesktopAppState.api();
 
 }

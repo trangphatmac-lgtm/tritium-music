@@ -1,6 +1,6 @@
 package tritium.screens.ncm.panels;
 
-import today.opai.api.enums.EnumChatColor;
+import tritium.desktop.DesktopChatColor;
 import tritium.management.FontManager;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.dto.Music;
@@ -126,7 +126,7 @@ public class MusicWidget extends RoundedRectWidget {
 
         String translatedNames = music.getTranslatedNames();
 
-        LabelWidget lblMusicName = new LabelWidget(music.getName() + (translatedNames.isEmpty() ? "" : EnumChatColor.GRAY + " (" + translatedNames + ")"), FontManager.pf14bold);
+        LabelWidget lblMusicName = new LabelWidget(music.getName() + (translatedNames.isEmpty() ? "" : DesktopChatColor.GRAY + " (" + translatedNames + ")"), FontManager.pf14bold);
         this.addChild(lblMusicName);
 
         lblMusicName

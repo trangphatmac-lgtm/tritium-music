@@ -10,9 +10,9 @@
     <name>Tritium Music</name>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.jupiter.version>5.10.3</junit.jupiter.version>
     </properties>
 
     <repositories>
@@ -35,27 +35,10 @@
         </dependency>
 
         <dependency>
-            <groupId>org.ow2.asm</groupId>
-            <artifactId>asm</artifactId>
-            <version>9.7.1</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.ow2.asm</groupId>
-            <artifactId>asm-tree</artifactId>
-            <version>9.7.1</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.32</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.github.opai-client</groupId>
-            <artifactId>opensource-components</artifactId>
-            <version>-SNAPSHOT</version>
+            <version>1.18.42</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -94,6 +77,12 @@
             <groupId>net.java.jinput</groupId>
             <artifactId>jinput</artifactId>
             <version>2.0.5</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>net.java.jinput</groupId>
+                    <artifactId>jinput-platform</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -197,6 +186,13 @@
             <artifactId>gson</artifactId>
             <version>2.2.4</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -206,6 +202,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
+                    <release>${maven.compiler.release}</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -231,14 +228,6 @@
                             <finalName>tritium-music-${project.version}</finalName>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
 
-                            <artifactSet>
-                                <includes>
-                                    <include>org.ow2.asm:asm</include>
-                                    <include>org.ow2.asm:asm-tree</include>
-                                    <include>com.google.zxing:core</include>
-                                </includes>
-                            </artifactSet>
-
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -249,11 +238,110 @@
                                     </excludes>
                                 </filter>
                             </filters>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>tritium.desktop.TritiumMusicDesktopApp</mainClass>
+                                </transformer>
+                            </transformers>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.7.1</version>
+                <executions>
+                    <execution>
+                        <id>portable</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/portable.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <useModulePath>false</useModulePath>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>jpackage-macos-arm64</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.panteleyev</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <version>1.6.6</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jpackage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <name>Tritium Music</name>
+                            <appVersion>${project.version}</appVersion>
+                            <vendor>Tritium</vendor>
+                            <destination>${project.build.directory}/jpackage/macos-arm64</destination>
+                            <input>${project.build.directory}</input>
+                            <mainJar>tritium-music-${project.version}.jar</mainJar>
+                            <mainClass>tritium.desktop.TritiumMusicDesktopApp</mainClass>
+                            <type>DMG</type>
+                            <javaOptions>
+                                <option>-XstartOnFirstThread</option>
+                            </javaOptions>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>jpackage-windows-x64</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.panteleyev</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <version>1.6.6</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jpackage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <name>Tritium Music</name>
+                            <appVersion>${project.version}</appVersion>
+                            <vendor>Tritium</vendor>
+                            <destination>${project.build.directory}/jpackage/windows-x64</destination>
+                            <input>${project.build.directory}</input>
+                            <mainJar>tritium-music-${project.version}.jar</mainJar>
+                            <mainClass>tritium.desktop.TritiumMusicDesktopApp</mainClass>
+                            <type>EXE</type>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

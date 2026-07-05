@@ -1,7 +1,7 @@
 package tritium.screens.ncm.panels;
 
 import org.lwjgl.input.Mouse;
-import tritium.TritiumMusicExtension;
+import tritium.desktop.DesktopAppState;
 import tritium.management.FontManager;
 import tritium.ncm.music.AudioPlayer;
 import tritium.ncm.music.CloudMusic;
@@ -261,7 +261,7 @@ public class ControlsBar extends NCMPanel {
         RoundedRectWidget volumeBarBg = new RoundedRectWidget() {
             @Override
             public void onRender(double mouseX, double mouseY) {
-                double volume = TritiumMusicExtension.getInstance().musicInfo.volume.getValue();
+                double volume = DesktopAppState.preferences().volume().getValue();
                 volume = Math.max(0, Math.min(1, volume));
 
                 this.roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 1.5, 1, 1, 1, this.getAlpha() * .5f);
@@ -273,7 +273,7 @@ public class ControlsBar extends NCMPanel {
                 if (this.testHovered(mouseX, mouseY, 2) && Mouse.isButtonDown(0)) {
                     double xDelta = Math.max(0, Math.min(this.getWidth(), mouseX - this.getX()));
                     double percent = xDelta / this.getWidth();
-                    TritiumMusicExtension.getInstance().musicInfo.volume.setValue(percent);
+                    DesktopAppState.preferences().volume().setValue(percent);
                     if (CloudMusic.player != null) {
                         CloudMusic.player.setVolume((float) percent);
                     }

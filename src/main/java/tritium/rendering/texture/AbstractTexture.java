@@ -2,7 +2,7 @@ package tritium.rendering.texture;
 
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
-import tritium.TritiumMusicExtension;
+import tritium.desktop.DesktopAppState;
 import tritium.interfaces.SharedConstants;
 import tritium.rendering.TextureUtil;
 import tritium.rendering.rendersystem.RenderSystem;
@@ -102,7 +102,7 @@ public abstract class AbstractTexture implements ITextureObject, SharedConstants
             return;
         }
 
-        if (TritiumMusicExtension.isCallingFromMainThread()) {
+        if (DesktopAppState.isMainThread()) {
             api.getGLStateManager().deleteTexture(this.getGlTextureId());
         } else {
             MultiThreadingUtil.runOnMainThreadBlocking(() -> {

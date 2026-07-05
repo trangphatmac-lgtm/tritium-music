@@ -1,7 +1,7 @@
 package tritium.widget.impl;
 
 import lombok.Getter;
-import tritium.TritiumMusicExtension;
+import tritium.desktop.DesktopAppState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -114,8 +114,9 @@ public class SpectrumVisualizer {
             for (int bin = band.lowBin; bin <= band.highBin && bin < magnitudes.length; bin++) {
                 float magnitude = magnitudes[bin] * magnitudes[bin];
 
-                if (TritiumMusicExtension.getInstance().musicSpectrum.absVol.getValue()) {
-                    magnitude *= (0.125f * 0.125f) / (float) (TritiumMusicExtension.getInstance().musicInfo.volume.getValue() * TritiumMusicExtension.getInstance().musicInfo.volume.getValue());
+                if (DesktopAppState.preferences().spectrumAbsoluteVolume().getValue()) {
+                    double volume = DesktopAppState.preferences().volume().getValue();
+                    magnitude *= (0.125f * 0.125f) / (float) Math.max(0.0001, volume * volume);
                 } else {
                     magnitude *= 0.25f * 0.25f;
                 }

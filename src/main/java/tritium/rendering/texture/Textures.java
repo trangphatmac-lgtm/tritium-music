@@ -1,8 +1,7 @@
 package tritium.rendering.texture;
 
 import lombok.experimental.UtilityClass;
-import tritium.TritiumEventHandler;
-import tritium.TritiumMusicExtension;
+import tritium.desktop.DesktopAppState;
 import tritium.interfaces.SharedConstants;
 import tritium.rendering.TextureManager;
 import tritium.utils.Location;
@@ -58,8 +57,8 @@ public class Textures implements SharedConstants {
         if (img == null)
             return;
 
-        if (!TritiumMusicExtension.isCallingFromMainThread()) {
-            TritiumEventHandler.addScheduledTask(() -> loadTexture(location, img, clearable, linear));
+        if (!DesktopAppState.isMainThread()) {
+            DesktopAppState.runOnMainThread(() -> loadTexture(location, img, clearable, linear));
             return;
         }
 

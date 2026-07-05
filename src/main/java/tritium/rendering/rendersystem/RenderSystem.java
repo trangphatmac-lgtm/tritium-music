@@ -6,18 +6,12 @@ import lombok.SneakyThrows;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
-import today.opai.api.OpenAPI;
-import today.opai.api.events.EventRender2D;
-import today.opai.api.interfaces.EventHandler;
-import today.opai.api.interfaces.render.GLStateManager;
-import today.opai.api.interfaces.render.WindowResolution;
 import tritium.interfaces.SharedConstants;
 import tritium.rendering.Framebuffer;
 import tritium.rendering.RGBA;
 import tritium.rendering.Rect;
 
 import java.awt.*;
-import java.util.UUID;
 
 import static org.lwjgl.opengl.GL11.*;
 
@@ -58,7 +52,8 @@ public class RenderSystem implements SharedConstants {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
     }
 
-    private static int scaleFactor, width, height;
+    private static int scaleFactor = 1, width, height, framebufferWidth, framebufferHeight;
+    private static float pixelScaleFactor = 1.0f;
 
     public static double getScaleMultiplier() {
         return getScaleFactor() * 0.5;
@@ -66,33 +61,57 @@ public class RenderSystem implements SharedConstants {
 
     @SneakyThrows
     public static int getScaleFactor() {
+        updateDisplayMetrics();
         return scaleFactor;
     }
 
-    static {
-        api.registerEvent(new EventHandler() {
-            @Override
-            public void onRender2D(EventRender2D event) {
-                WindowResolution wr = event.getWindowResolution();
+    public static void updateDisplayMetrics() {
+        if (Display.isCreated()) {
+            framebufferWidth = Display.getWidth();
+            framebufferHeight = Display.getHeight();
+            pixelScaleFactor = Math.max(1.0f, Display.getPixelScaleFactor());
+            width = Math.max(1, Math.round(framebufferWidth / pixelScaleFactor));
+            height = Math.max(1, Math.round(framebufferHeight / pixelScaleFactor));
+        }
+    }
 
-                scaleFactor = wr.getScaleFactor();
-                width = wr.getWidth();
-                height = wr.getHeight();
-            }
-        });
+    public static int getFramebufferWidth() {
+        updateDisplayMetrics();
+        return framebufferWidth;
+    }
+
+    public static int getFramebufferHeight() {
+        updateDisplayMetrics();
+        return framebufferHeight;
+    }
+
+    public static float getPixelScaleFactor() {
+        updateDisplayMetrics();
+        return pixelScaleFactor;
+    }
+
+    public static int toLogicalMouseX(int framebufferX) {
+        return Math.round(framebufferX / getPixelScaleFactor());
+    }
+
+    public static int toLogicalMouseY(int framebufferY) {
+        return Math.round(framebufferY / getPixelScaleFactor());
     }
     
     public static boolean FIXED_SCALE = false;
 
     public static double getWidthNotScaled() {
+        updateDisplayMetrics();
         return width;
     }
 
     public static double getHeightNotScaled() {
+        updateDisplayMetrics();
         return height;
     }
 
     public static double getWidth() {
+        updateDisplayMetrics();
         if (!FIXED_SCALE) {
             return width;
         }
@@ -101,6 +120,7 @@ public class RenderSystem implements SharedConstants {
     }
 
     public static double getHeight() {
+        updateDisplayMetrics();
         if (!FIXED_SCALE) {
             return height;
         }
@@ -109,12 +129,14 @@ public class RenderSystem implements SharedConstants {
     }
 
     public static double getFixedWidth() {
-        return Math.min(Display.getWidth(), 1920);
+        updateDisplayMetrics();
+        return Math.min(width, 1920);
     }
 
     public static double getFixedHeight() {
-        double scaleFactor = Display.getWidth() / getFixedWidth();
-        return Display.getHeight() / scaleFactor;
+        updateDisplayMetrics();
+        double fixedScaleFactor = width / getFixedWidth();
+        return height / fixedScaleFactor;
     }
 
     public static void color(int color) {
@@ -297,7 +319,7 @@ public class RenderSystem implements SharedConstants {
     }
 
     public static Framebuffer createFrameBuffer(Framebuffer framebuffer) {
-        return createFrameBuffer(framebuffer, Display.getWidth(), Display.getHeight());
+        return createFrameBuffer(framebuffer, getFramebufferWidth(), getFramebufferHeight());
     }
 
     public static Framebuffer createFrameBuffer(Framebuffer framebuffer, int width, int height) {
@@ -310,21 +332,23 @@ public class RenderSystem implements SharedConstants {
     }
 
     public static Framebuffer createFrameBufferNoDepth(Framebuffer framebuffer) {
-        if (framebuffer == null || framebuffer.framebufferWidth != width || framebuffer.framebufferHeight != height) {
+        updateDisplayMetrics();
+        if (framebuffer == null || framebuffer.framebufferWidth != framebufferWidth || framebuffer.framebufferHeight != framebufferHeight) {
             if (framebuffer != null) {
                 framebuffer.deleteFramebuffer();
             }
-            return new Framebuffer(width, height, false);
+            return new Framebuffer(framebufferWidth, framebufferHeight, false);
         }
         return framebuffer;
     }
 
     public static Framebuffer createDownScaledFrameBuffer(Framebuffer framebuffer, double factor) {
-        if (framebuffer == null || framebuffer.framebufferWidth != (int) (width * factor) || framebuffer.framebufferHeight != (int) (height * factor)) {
+        updateDisplayMetrics();
+        if (framebuffer == null || framebuffer.framebufferWidth != (int) (framebufferWidth * factor) || framebuffer.framebufferHeight != (int) (framebufferHeight * factor)) {
             if (framebuffer != null) {
                 framebuffer.deleteFramebuffer();
             }
-            return new Framebuffer((int) (width * factor), (int) (height * factor), false);
+            return new Framebuffer((int) (framebufferWidth * factor), (int) (framebufferHeight * factor), false);
         }
         return framebuffer;
     }
@@ -339,11 +363,11 @@ public class RenderSystem implements SharedConstants {
     }
 
     public static double getMouseX() {
-        return Mouse.getX() * RenderSystem.getScaleFactor();
+        return toLogicalMouseX(Mouse.getX()) * RenderSystem.getScaleFactor();
     }
 
     public static double getMouseY() {
-        return Mouse.getY() * RenderSystem.getScaleFactor();
+        return toLogicalMouseY(Mouse.getY()) * RenderSystem.getScaleFactor();
     }
 
     public static void translateAndScale(double posX, double posY, double scale) {

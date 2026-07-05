@@ -1,7 +1,7 @@
 package tritium.utils.other.multithreading;
 
 import lombok.SneakyThrows;
-import tritium.TritiumEventHandler;
+import tritium.desktop.DesktopAppState;
 import tritium.utils.logging.Logger;
 
 import java.util.concurrent.CompletableFuture;
@@ -38,11 +38,11 @@ public class MultiThreadingUtil {
 
     @SneakyThrows
     public static <T> T runOnMainThreadBlocking(Supplier<T> supplier) {
-        return TritiumEventHandler.addScheduledTask(supplier::get).get();
+        return DesktopAppState.runOnMainThreadBlocking(supplier);
     }
 
     public static void runOnMainThread(Runnable runnable) {
-        TritiumEventHandler.addScheduledTask(runnable);
+        DesktopAppState.runOnMainThread(runnable);
     }
 
     private static class FutureTaskWrapper implements Runnable {

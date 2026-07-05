@@ -6,7 +6,7 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.Project;
-import today.opai.api.features.ExtensionScreen;
+import tritium.desktop.DesktopScreen;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
  * @author IzumiiKonata
  * Date: 2025/3/14 20:31
  */
-public class CoverflowOverlay extends ExtensionScreen implements SharedConstants, SharedRenderingConstants {
+public class CoverflowOverlay extends DesktopScreen implements SharedConstants, SharedRenderingConstants {
 
     @Getter
     private static final CoverflowOverlay instance = new CoverflowOverlay();

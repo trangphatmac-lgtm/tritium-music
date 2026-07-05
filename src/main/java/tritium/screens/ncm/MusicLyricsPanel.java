@@ -3,7 +3,7 @@ package tritium.screens.ncm;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
-import tritium.TritiumMusicExtension;
+import tritium.desktop.DesktopAppState;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
@@ -292,7 +292,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
     private void renderTranslationButton(double mouseX, double mouseY, double posX, double posY, double width, double height, float alpha) {
         boolean available = CloudMusic.hasTransLyrics || CloudMusic.hasRomanization;
-        boolean enabled = TritiumMusicExtension.getInstance().musicLyrics.showTranslation.getValue();
+        boolean enabled = DesktopAppState.preferences().showTranslation().getValue();
 
         double buttonSize = 32;
         double buttonRightPadding = 20;
@@ -305,8 +305,8 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     }
 
     private void toggleTranslation() {
-        boolean enabled = TritiumMusicExtension.getInstance().musicLyrics.showTranslation.getValue();
-        TritiumMusicExtension.getInstance().musicLyrics.showTranslation.setValue(!enabled);
+        boolean enabled = DesktopAppState.preferences().showTranslation().getValue();
+        DesktopAppState.preferences().showTranslation().setValue(!enabled);
 
         synchronized (CloudMusic.lyrics) {
             CloudMusic.lyrics.forEach(LyricLine::markDirty);
@@ -802,7 +802,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
             double xDelta = Math.max(0, Math.min(volumeBarWidth, (mouseX - (volumeBarXOffset))));
             double percent = xDelta / volumeBarWidth;
 
-            TritiumMusicExtension.getInstance().musicInfo.volume.setValue(percent);
+            DesktopAppState.preferences().volume().setValue(percent);
         }
 
         if (hoveringProgressBar || hoveringVolumeBar) {

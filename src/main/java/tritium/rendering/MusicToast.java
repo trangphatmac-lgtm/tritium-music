@@ -3,7 +3,6 @@ package tritium.rendering;
 import lombok.Getter;
 import lombok.experimental.UtilityClass;
 import org.lwjgl.opengl.GL11;
-import today.opai.api.interfaces.render.Font;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
@@ -44,7 +43,7 @@ public class MusicToast implements SharedRenderingConstants, SharedConstants {
 
         double musicNotesSize = 16;
         double spacing = 4;
-        double contentWidth = musicNotesSize + spacing + api.getFontUtil().getVanillaFont().getWidth(text);
+        double contentWidth = musicNotesSize + spacing + FontManager.pf14bold.getStringWidthD(text);
 
         offset = -Math.max(120, contentWidth + 12) * 1.25;
         animation.setValue(offset);
@@ -70,11 +69,9 @@ public class MusicToast implements SharedRenderingConstants, SharedConstants {
 
     public void render() {
         if (text != null) {
-            Font vanilla = api.getFontUtil().getVanillaFont();
-
             double musicNotesSize = 16;
             double spacing = 4;
-            double contentWidth = musicNotesSize + spacing + vanilla.getWidth(text);
+            double contentWidth = musicNotesSize + spacing + FontManager.pf14bold.getStringWidthD(text);
 
             double toastWidth = Math.max(120, contentWidth + 12), toastHeight = 24;
 
@@ -139,7 +136,10 @@ public class MusicToast implements SharedRenderingConstants, SharedConstants {
 //                    value.render(offset + toastWidth * .5 - musicNotesSize * .5, toastHeight * .5 - musicNotesSize * .5, musicNotesSize, musicNotesSize, true);
             }
 
-            vanilla.drawString(text, offsetX + toastWidth * .5 - contentWidth * .5 + musicNotesSize + spacing, offsetY + toastHeight * .5 - vanilla.getHeight() * .5, -1);
+            FontManager.pf14bold.drawString(text,
+                    offsetX + toastWidth * .5 - contentWidth * .5 + musicNotesSize + spacing,
+                    offsetY + toastHeight * .5 - FontManager.pf14bold.getHeight() * .5,
+                    -1);
         }
     }
 

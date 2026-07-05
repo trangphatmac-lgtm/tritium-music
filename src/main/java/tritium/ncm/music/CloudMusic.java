@@ -15,8 +15,10 @@ import repackage.org.kc7bfi.jflac.PCMProcessor;
 import repackage.org.kc7bfi.jflac.metadata.StreamInfo;
 import repackage.org.kc7bfi.jflac.util.ByteData;
 import repackage.org.kc7bfi.jflac.util.WavWriter;
-import today.opai.api.enums.EnumChatColor;
-import tritium.TritiumMusicExtension;
+import tritium.desktop.AppPaths;
+import tritium.desktop.DesktopCookieStore;
+import tritium.desktop.DesktopAppState;
+import tritium.desktop.DesktopChatColor;
 import tritium.interfaces.SharedConstants;
 import tritium.ncm.OptionsUtil;
 import tritium.ncm.api.CloudMusicApi;
@@ -61,6 +63,9 @@ public class CloudMusic implements SharedConstants {
 
     @Getter
     private static final Map<String, String> headers = new HashMap<>();
+    public static volatile boolean loadingSession = false;
+    public static volatile String sessionStatusText = "";
+    public static volatile long loadingSessionStartedAt = 0L;
     public static AudioPlayer player;
     // 当前播放列表
     public static List<Music> playList = new ArrayList<>();
@@ -82,7 +87,7 @@ public class CloudMusic implements SharedConstants {
     public static boolean hasRomanization = false;
     public static boolean haveNoWords = false;
 
-    public static final File COOKIE_FILE = new File("NCMCookie.txt");
+    public static final File COOKIE_FILE = AppPaths.cookieFile().toFile();
 
     public static void initLyrics(JsonObject rawLyricData, Music music, List<LyricLine> parsedLyrics) {
         resetLyricFlags();
@@ -316,7 +321,7 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static String getSecondaryLyrics(LyricLine lyricLine) {
-        if (!TritiumMusicExtension.getInstance().musicLyrics.showTranslation.getValue()) {
+        if (!DesktopAppState.preferences().showTranslation().getValue()) {
             return "";
         }
 
@@ -332,7 +337,7 @@ public class CloudMusic implements SharedConstants {
     }
     
     private static String getTranslationOrRomanizationText(LyricLine lyricLine) {
-        boolean showRoman = TritiumMusicExtension.getInstance().musicLyrics.showRoman.getValue();
+        boolean showRoman = DesktopAppState.preferences().showRoman().getValue();
         
         if (!showRoman) {
             return StringUtils.returnEmptyStringIfNull(lyricLine.getTranslationText());
@@ -346,7 +351,7 @@ public class CloudMusic implements SharedConstants {
     }
     
     private static String getRomanizationTextIfEnabled(LyricLine lyricLine) {
-        if (TritiumMusicExtension.getInstance().musicLyrics.showRoman.getValue()) {
+        if (DesktopAppState.preferences().showRoman().getValue()) {
             return StringUtils.returnEmptyStringIfNull(lyricLine.getRomanizationText());
         }
         return "";
@@ -354,7 +359,7 @@ public class CloudMusic implements SharedConstants {
 
     public static boolean hasSecondaryLyrics() {
         boolean hasAvailableLyrics = hasTransLyrics || hasRomanization;
-        boolean showTranslationEnabled = TritiumMusicExtension.getInstance().musicLyrics.showTranslation.getValue();
+        boolean showTranslationEnabled = DesktopAppState.preferences().showTranslation().getValue();
         return hasAvailableLyrics && showTranslationEnabled;
     }
 
@@ -365,18 +370,26 @@ public class CloudMusic implements SharedConstants {
         if (cookie.isEmpty()) {
             System.out.println("[NCM] Not logged in.");
         } else {
+            loadNCMFromStoredCookie(cookie);
+        }
+    }
+
+    private static void loadNCMFromStoredCookie(String cookie) {
+        loadingSession = true;
+        loadingSessionStartedAt = System.currentTimeMillis();
+        sessionStatusText = "正在验证本地 Cookie";
+        try {
             loadNCM(cookie);
+        } finally {
+            loadingSession = false;
+            loadingSessionStartedAt = 0L;
+            sessionStatusText = "";
         }
     }
 
     @SneakyThrows
     private static String loadCookie() {
-        if (!COOKIE_FILE.exists()) {
-            return "";
-        }
-        
-        List<String> cookieLines = Files.readAllLines(COOKIE_FILE.toPath());
-        return cookieLines.isEmpty() ? "" : cookieLines.getFirst();
+        return DesktopCookieStore.load(COOKIE_FILE.toPath());
     }
     
     private static String getCookieFromFileOrOptions() {
@@ -386,10 +399,12 @@ public class CloudMusic implements SharedConstants {
 
     public static void loadNCM(String cookie) {
         OptionsUtil.setCookie(cookie);
+        sessionStatusText = "正在加载用户信息";
         // 获取用户信息
         profile = getUserProfile();
 
         if (profile == null) {
+            sessionStatusText = "Cookie 无效或登录已过期";
             return;
         }
 
@@ -399,9 +414,11 @@ public class CloudMusic implements SharedConstants {
             onStop();
         }
 
+        sessionStatusText = "正在加载歌单";
         CloudMusic.playLists = loadUserPlaylists();
         System.out.printf("[NCM] Loaded %s playlists\n", playLists.size());
 
+        sessionStatusText = "正在加载喜欢列表";
         likeList = likeList();
         NCMScreen.getInstance().markDirty();
     }
@@ -434,9 +451,46 @@ public class CloudMusic implements SharedConstants {
 
     @SneakyThrows
     public static void onStop() {
+        DesktopCookieStore.save(COOKIE_FILE.toPath(), OptionsUtil.getCookie());
 
-        Files.write(COOKIE_FILE.toPath(), OptionsUtil.getCookie().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+    }
 
+    public static void shutdown() {
+        doBreak = true;
+        playing.set(false);
+
+        if (playThread != null) {
+            playThread.interrupt();
+            try {
+                playThread.join(2000L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            playThread = null;
+        }
+
+        if (player != null) {
+            try {
+                player.close();
+            } catch (Throwable ignored) {
+            }
+            player = null;
+        }
+    }
+
+    private static void setDownloading(boolean downloading) {
+        DesktopAppState.downloadStatus().downloading = downloading;
+        NCMScreen.getInstance().downloading = downloading;
+    }
+
+    private static void setDownloadProgress(double progress) {
+        DesktopAppState.downloadStatus().downloadProgress = progress;
+        NCMScreen.getInstance().downloadProgress = progress;
+    }
+
+    private static void setDownloadSpeed(String speed) {
+        DesktopAppState.downloadStatus().downloadSpeed = speed;
+        NCMScreen.getInstance().downloadSpeed = speed;
     }
 
     @Getter
@@ -650,7 +704,7 @@ public class CloudMusic implements SharedConstants {
         }
         
         private boolean initializeAndPlaySong(Music song, Tuple<String, String> playUrl) {
-            TritiumMusicExtension.getInstance().musicInfo.downloading = false;
+            setDownloading(false);
             File musicFile = getMusicFile(playUrl, song);
             
             try {
@@ -697,14 +751,14 @@ public class CloudMusic implements SharedConstants {
         }
         
         private void handleUnplayableSong(Music song) {
-            api.printMessage(EnumChatColor.RED + "无法播放: " + song.getName() + " - " + song.getArtistsName());
+            api.printMessage(DesktopChatColor.RED + "无法播放: " + song.getName() + " - " + song.getArtistsName());
 
-            System.err.printf("%s无法播放: %s - %s, 可能因为该歌曲没有版权\n", EnumChatColor.RED, song.getName(), song.getArtistsName());
+            System.err.printf("%s无法播放: %s - %s, 可能因为该歌曲没有版权\n", DesktopChatColor.RED, song.getName(), song.getArtistsName());
         }
         
         private void handlePlayerInitializationError(Exception e) {
             e.printStackTrace();
-            System.err.printf(EnumChatColor.RED + "[NCM] Failed to initiate audio player! Error: %s\n", e.getMessage());
+            System.err.printf(DesktopChatColor.RED + "[NCM] Failed to initiate audio player! Error: %s\n", e.getMessage());
         }
         
         private void notifySongStart(Music song) {
@@ -750,10 +804,10 @@ public class CloudMusic implements SharedConstants {
         }
 
         private File getCachedOrTempFile(String playUrl, String type, Music song) {
-            File musicCacheDir = new File("MusicCache");
+            File musicCacheDir = AppPaths.musicCacheDir().toFile();
 
             if (!musicCacheDir.exists()) {
-                musicCacheDir.mkdir();
+                musicCacheDir.mkdirs();
             }
 
             String extension = "_" + quality.getQuality() + "." + type;
@@ -767,7 +821,12 @@ public class CloudMusic implements SharedConstants {
 
                 MultiThreadingUtil.runAsync(() -> {
 
-                    for (File file : musicCacheDir.listFiles()) {
+                    File[] files = musicCacheDir.listFiles();
+                    if (files == null) {
+                        return;
+                    }
+
+                    for (File file : files) {
 
                         if (file.getName().startsWith(String.valueOf(song.getId())) && !file.getName().startsWith(song.getId() + "_" + quality.getQuality())) {
                             file.delete();
@@ -786,7 +845,7 @@ public class CloudMusic implements SharedConstants {
             if (player == null) {
                 player = new AudioPlayer(musicFile);
 //                player.volume = 0.25f;
-                player.setVolume(TritiumMusicExtension.getInstance().musicInfo.volume.getValue().floatValue());
+                player.setVolume(DesktopAppState.preferences().volume().getValue().floatValue());
                 CloudMusic.player = player;
             } else {
                 player.setAudio(musicFile);
@@ -953,7 +1012,7 @@ public class CloudMusic implements SharedConstants {
                     ww.writeHeader(info);
                 } catch (IOException e) {
                     e.printStackTrace();
-                    TritiumMusicExtension.getInstance().musicInfo.downloading = false;
+                    setDownloading(false);
                     destFile.delete();
                 }
             }
@@ -964,7 +1023,7 @@ public class CloudMusic implements SharedConstants {
                     ww.writePCM(pcm);
                 } catch (IOException e) {
                     e.printStackTrace();
-                    TritiumMusicExtension.getInstance().musicInfo.downloading = false;
+                    setDownloading(false);
                     destFile.delete();
                 }
             }
@@ -986,9 +1045,9 @@ public class CloudMusic implements SharedConstants {
     @SneakyThrows
     private static void downloadMusic(String playUrl, File music) {
 
-        TritiumMusicExtension.getInstance().musicInfo.downloading = NCMScreen.getInstance().downloading = true;
-        TritiumMusicExtension.getInstance().musicInfo.downloadProgress = NCMScreen.getInstance().downloadProgress = 0;
-        TritiumMusicExtension.getInstance().musicInfo.downloadSpeed = NCMScreen.getInstance().downloadSpeed = "0 b/s";
+        setDownloading(true);
+        setDownloadProgress(0);
+        setDownloadSpeed("0 b/s");
 
         try {
             InputStream stream = new WrappedInputStream(HttpUtils.get(playUrl, null), new WrappedInputStream.ProgressListener() {
@@ -998,10 +1057,10 @@ public class CloudMusic implements SharedConstants {
                 @Override
                 public void onProgress(double progress) {
                     if (progress >= 1) {
-                        TritiumMusicExtension.getInstance().musicInfo.downloading = NCMScreen.getInstance().downloading = false;
+                        setDownloading(false);
                     }
 
-                    TritiumMusicExtension.getInstance().musicInfo.downloadProgress = NCMScreen.getInstance().downloadProgress = progress;
+                    setDownloadProgress(progress);
                 }
 
                 final long kilo = 1024;
@@ -1041,7 +1100,7 @@ public class CloudMusic implements SharedConstants {
 
                         int diff = (bytesRead - lastBytesRead) * (1000 / checkDelay);
 
-                        TritiumMusicExtension.getInstance().musicInfo.downloadSpeed = NCMScreen.getInstance().downloadSpeed = this.getSize(diff) + "/s";
+                        setDownloadSpeed(this.getSize(diff) + "/s");
 
                         lastBytesRead = bytesRead;
                     }
@@ -1058,7 +1117,7 @@ public class CloudMusic implements SharedConstants {
         } catch (Throwable t) {
             t.printStackTrace();
 
-            TritiumMusicExtension.getInstance().musicInfo.downloading = NCMScreen.getInstance().downloading = false;
+            setDownloading(false);
 
             music.delete();
         }

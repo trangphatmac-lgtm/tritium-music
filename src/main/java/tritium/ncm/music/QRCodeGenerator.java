@@ -26,8 +26,7 @@ public class QRCodeGenerator {
 
         BufferedImage img = QRCodeGenerator.generateQRCode(address, 128, 128);
 
-        MultiThreadingUtil.runAsync(() -> {
-
+        MultiThreadingUtil.runOnMainThread(() -> {
             if (TextureManager.getInstance().getTexture(qrCode) != null) {
                 TextureManager.getInstance().deleteTexture(qrCode);
             }

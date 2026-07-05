@@ -3,7 +3,7 @@ package tritium.screens.ncm;
 import lombok.Getter;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
-import today.opai.api.features.ExtensionScreen;
+import tritium.desktop.DesktopScreen;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
@@ -28,7 +28,7 @@ import java.util.List;
  * @author IzumiiKonata
  * Date: 2025/10/16 19:47
  */
-public class NCMScreen extends ExtensionScreen implements SharedConstants, SharedRenderingConstants {
+public class NCMScreen extends DesktopScreen implements SharedConstants, SharedRenderingConstants {
 
     @Getter
     private static NCMScreen instance = new NCMScreen();
@@ -65,7 +65,7 @@ public class NCMScreen extends ExtensionScreen implements SharedConstants, Share
 
     @Override
     public void initGui() {
-        alpha = 0f;
+        alpha = 1f;
         closing = false;
 
         this.checkDirty();
@@ -120,7 +120,7 @@ public class NCMScreen extends ExtensionScreen implements SharedConstants, Share
     }
 
     public double getSpacing() {
-        return 16.0;
+        return 0.0;
     }
 
     public double getPanelWidth() {
@@ -136,7 +136,7 @@ public class NCMScreen extends ExtensionScreen implements SharedConstants, Share
         if (closing && alpha <= 0.02f)
             api.displayScreen(null);
 
-        alpha = Interpolations.interpolate(alpha, closing ? 0f : 1f, 0.4f);
+        alpha = closing ? Interpolations.interpolate(alpha, 0f, 0.4f) : 1f;
 
         CursorUtils.resetOverride();
 
@@ -148,15 +148,23 @@ public class NCMScreen extends ExtensionScreen implements SharedConstants, Share
 
         int dWheel = Mouse.getDWheel();
 
-        RenderSystem.FIXED_SCALE = true;
+        RenderSystem.FIXED_SCALE = false;
         api.getGLStateManager().pushMatrix();
-        double xScale = RenderSystem.getWidthNotScaled() / RenderSystem.getWidth();
-        double yScale = RenderSystem.getHeightNotScaled() / RenderSystem.getHeight();
-        double mouseX = mX / xScale;
-        double mouseY = mY / yScale;
-        api.getGLStateManager().scale(xScale, yScale, 1);
+        double mouseX = mX;
+        double mouseY = mY;
 
-        this.scaleAtPos(RenderSystem.getWidth() * .5, RenderSystem.getHeight() * .5, 0.9 + (alpha * 0.1));
+        Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), getColor(ColorType.GENERIC_BACKGROUND));
+
+        boolean loggedIn = CloudMusic.profile != null;
+        if (!loggedIn) {
+            renderLoginGate(mouseX, mouseY);
+            this.renderDownloadingPanel();
+            api.getGLStateManager().popMatrix();
+            RenderSystem.FIXED_SCALE = false;
+            CursorUtils.setOverride();
+            api.getGLStateManager().enableTexture2D();
+            return;
+        }
 
         this.basePanel.setBounds(this.getPanelWidth(), this.getPanelHeight());
 
@@ -207,30 +215,6 @@ public class NCMScreen extends ExtensionScreen implements SharedConstants, Share
                 this.musicLyricsPanel = null;
         }
 
-        boolean loggedIn = !OptionsUtil.getCookie().isEmpty();
-
-        if (!loggedIn && this.loginRenderer == null) {
-            this.loginRenderer = new LoginRenderer();
-        }
-
-        if (this.loginRenderer != null) {
-            this.loginRenderer.render(mouseX, mouseY, basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), basePanel.getAlpha());
-
-            if (this.loginRenderer.canClose() && !OptionsUtil.getCookie().isEmpty()) {
-                this.loginRenderer = null;
-                MultiThreadingUtil.runAsync(() -> {
-                    CloudMusic.loadNCM(OptionsUtil.getCookie());
-
-                    MultiThreadingUtil.runOnMainThread(() -> {
-                        this.layout();
-
-                        if (CloudMusic.profile != null)
-                            this.setCurrentPanel(new HomePanel());
-                    });
-                });
-            }
-        }
-
         this.renderDownloadingPanel();
 
         api.getGLStateManager().popMatrix();
@@ -238,6 +222,67 @@ public class NCMScreen extends ExtensionScreen implements SharedConstants, Share
         CursorUtils.setOverride();
         api.getGLStateManager().enableTexture2D();
 
+    }
+
+    private void renderLoginGate(double mouseX, double mouseY) {
+        if (CloudMusic.loadingSession) {
+            renderSessionLoading();
+            if (System.currentTimeMillis() - CloudMusic.loadingSessionStartedAt <= 8000L) {
+                return;
+            }
+        }
+
+        if (this.loginRenderer == null) {
+            this.loginRenderer = new LoginRenderer();
+        }
+
+        this.loginRenderer.render(mouseX, mouseY, 0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), 1f);
+
+        if (this.loginRenderer.canClose() && !OptionsUtil.getCookie().isEmpty()) {
+            this.loginRenderer = null;
+            MultiThreadingUtil.runAsync(() -> {
+                CloudMusic.loadingSession = true;
+                CloudMusic.loadingSessionStartedAt = System.currentTimeMillis();
+                CloudMusic.sessionStatusText = "正在加载用户信息";
+                try {
+                    CloudMusic.loadNCM(OptionsUtil.getCookie());
+                } finally {
+                    CloudMusic.loadingSession = false;
+                    CloudMusic.loadingSessionStartedAt = 0L;
+                    CloudMusic.sessionStatusText = "";
+                }
+
+                MultiThreadingUtil.runOnMainThread(() -> {
+                    this.layout();
+
+                    if (CloudMusic.profile != null)
+                        this.setCurrentPanel(new HomePanel());
+                });
+            });
+        }
+    }
+
+    private void renderSessionLoading() {
+        double centerX = RenderSystem.getWidth() * .5;
+        double centerY = RenderSystem.getHeight() * .5;
+        double cardWidth = Math.min(360, RenderSystem.getWidth() * .4);
+        double cardHeight = 112;
+        double cardX = centerX - cardWidth * .5;
+        double cardY = centerY - cardHeight * .5;
+
+        Rect.draw(cardX, cardY, cardWidth, cardHeight, hexColor(34, 34, 34, 230));
+        Rect.draw(cardX, cardY, 4, cardHeight, hexColor(195, 2, 24, 255));
+
+        long elapsed = Math.max(0L, System.currentTimeMillis() - CloudMusic.loadingSessionStartedAt);
+        double progress = ((elapsed % 1800L) / 1800.0);
+        double barWidth = cardWidth - 48;
+        Rect.draw(cardX + 24, cardY + cardHeight - 28, barWidth, 4, hexColor(70, 70, 70, 255));
+        Rect.draw(cardX + 24, cardY + cardHeight - 28, Math.max(24, barWidth * progress), 4, hexColor(195, 2, 24, 255));
+
+        FontManager.pf25bold.drawCenteredString("正在加载登录状态", centerX, centerY - FontManager.pf25bold.getHeight(), hexColor(1, 1, 1, alpha));
+        if (!CloudMusic.sessionStatusText.isBlank()) {
+            FontManager.pf18.drawCenteredString(CloudMusic.sessionStatusText, centerX, centerY + 10, hexColor(180, 180, 180, alpha));
+        }
     }
 
     public boolean downloading = false;
@@ -311,6 +356,9 @@ public class NCMScreen extends ExtensionScreen implements SharedConstants, Share
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
+        if (this.loginRenderer != null && this.loginRenderer.keyTyped(typedChar, keyCode)) {
+            return;
+        }
 
         if (this.basePanel.onKeyTypedReceived(typedChar, keyCode)) {
             return;
@@ -341,10 +389,12 @@ public class NCMScreen extends ExtensionScreen implements SharedConstants, Share
     @Override
     public void mouseClicked(int mX, int mY, int mouseButton) {
 
-        double xScale = RenderSystem.getWidthNotScaled() / (RenderSystem.getFixedWidth() * .5);
-        double yScale = RenderSystem.getHeightNotScaled() / (RenderSystem.getFixedHeight() * .5);
-        double mouseX = mX / xScale;
-        double mouseY = mY / yScale;
+        double mouseX = mX;
+        double mouseY = mY;
+
+        if (this.loginRenderer != null && this.loginRenderer.mouseClicked(mouseX, mouseY, mouseButton)) {
+            return;
+        }
 
         if (musicLyricsPanel == null) {
             this.basePanel.onMouseClickReceived(mouseX, mouseY, mouseButton);
