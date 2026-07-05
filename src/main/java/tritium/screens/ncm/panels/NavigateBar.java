@@ -225,6 +225,14 @@ public class NavigateBar extends NCMPanel {
         this.addChild(creatorAvatar);
         creatorAvatar.fadeIn();
         creatorAvatar.setLinearFilter(true);
+        creatorAvatar.setShouldOverrideMouseCursor(true);
+        creatorAvatar.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
+            if (mouseButton == 0) {
+                NCMScreen.getInstance().setCurrentPanel(new SettingsPanel());
+            }
+
+            return true;
+        });
 
         this.loadAvatar();
 
@@ -321,12 +329,13 @@ public class NavigateBar extends NCMPanel {
 
             LabelWidget lbl = new LabelWidget(label, FontManager.pf14bold);
             this.addChild(lbl);
+            lbl.setWidthLimitType(LabelWidget.WidthLimitType.TRIM_TO_WIDTH);
 
             lbl.setBeforeRenderCallback(() -> {
                 lbl.centerVertically();
                 lbl.setPosition(lblIcon.getRelativeX() + lblIcon.getWidth() + 4, lbl.getRelativeY());
                 lbl.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
-                lbl.setMaxWidth(this.getWidth() - 8 - lblIcon.getWidth() - 12);
+                lbl.setMaxWidth(Math.max(0, this.getWidth() - lbl.getRelativeX() - 8));
             });
 
             lbl.setClickable(false);

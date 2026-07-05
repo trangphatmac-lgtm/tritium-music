@@ -471,21 +471,51 @@ public class CFontRenderer implements Closeable, SharedConstants {
     public String trim(String text, double width) {
         String name = text;
 
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        if (width <= 0) {
+            return "";
+        }
+
         if (this.getStringWidthD(name) > width) {
-            int idx = name.length() - 1;
-            while (true) {
+            String ellipsis = fitEllipsis(width);
+            if (this.getStringWidthD(ellipsis) > width) {
+                return "";
+            }
+
+            int idx = name.length();
+            while (idx > 0) {
                 String substring = name.substring(0, idx);
 
-                if (this.getStringWidthD(substring + "...") <= width) {
-                    name = substring + "...";
+                if (this.getStringWidthD(substring + ellipsis) <= width) {
+                    name = substring + ellipsis;
                     break;
                 }
 
                 idx--;
             }
+
+            if (idx == 0) {
+                return ellipsis;
+            }
         }
 
         return name;
+    }
+
+    private String fitEllipsis(double width) {
+        if (this.getStringWidthD("...") <= width) {
+            return "...";
+        }
+        if (this.getStringWidthD("..") <= width) {
+            return "..";
+        }
+        if (this.getStringWidthD(".") <= width) {
+            return ".";
+        }
+        return "";
     }
 
     public int getStringWidth(String text) {

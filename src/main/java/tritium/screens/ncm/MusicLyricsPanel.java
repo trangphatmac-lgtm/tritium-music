@@ -735,12 +735,14 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
         float currentTimeMillis = player == null ? 0 : player.getCurrentTimeMillis();
         float totalTimeMillis = player == null ? 0.01f : player.getTotalTimeMillis();
-        double perc = player == null ? 0 : (progressBarDragging ? progressBarProgressOverride : currentTimeMillis / totalTimeMillis);
-
-        StencilClipManager.beginClip(() -> Rect.draw(elementsXOffset, progressBarYOffset - progressBarHeight * .5, progressBarWidth * perc, progressBarHeight, -1));
-
-        roundedRect(elementsXOffset, progressBarYOffset - progressBarHeight * .5, progressBarWidth, progressBarHeight, (this.progressBarHeight / 8.0f) * 2.5, hexColor(1, 1, 1, alpha));
-        StencilClipManager.endClip();
+        double perc = player == null || totalTimeMillis <= 0
+                ? 0
+                : (progressBarDragging ? progressBarProgressOverride : currentTimeMillis / totalTimeMillis);
+        perc = Math.max(0, Math.min(1, perc));
+        double filledProgressWidth = progressBarWidth * perc;
+        if (filledProgressWidth > 0) {
+            roundedRect(elementsXOffset, progressBarYOffset - progressBarHeight * .5, filledProgressWidth, progressBarHeight, (this.progressBarHeight / 8.0f) * 2.5, hexColor(1, 1, 1, alpha));
+        }
 
         boolean hoveringProgressBar = progressBarDragging || this.isHovered(mouseX, mouseY, elementsXOffset, progressBarYOffset - progressBarHeight * .5, progressBarWidth, 8);
         this.progressBarHeight = Interpolations.interpolate(this.progressBarHeight, hoveringProgressBar ? 8 : 5, 0.3f);
@@ -791,10 +793,12 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         FontManager.music40.drawString("J", elementsXOffset + progressBarWidth - FontManager.music40.getStringWidthD("J") + 4, volumeIconY, hexColor(1, 1, 1, alpha * .5f));
 
         double volumeBarXOffset = elementsXOffset + FontManager.music40.getStringWidthD("I") - 2;
+        double volume = Math.max(0, Math.min(1, DesktopAppState.preferences().volume().getValue()));
         roundedRect(volumeBarXOffset, volumeBarYOffset - volumeBarHeight * .5, volumeBarWidth, volumeBarHeight, (this.volumeBarHeight / 8.0f) * 2.5, hexColor(1, 1, 1, alpha * .5f));
-        StencilClipManager.beginClip(() -> Rect.draw(volumeBarXOffset, volumeBarYOffset - volumeBarHeight * .5, volumeBarWidth * (player == null ? 0 : player.getVolume()), volumeBarHeight, -1));
-        roundedRect(volumeBarXOffset, volumeBarYOffset - volumeBarHeight * .5, volumeBarWidth, volumeBarHeight, (this.volumeBarHeight / 8.0f) * 2.5, hexColor(1, 1, 1, alpha));
-        StencilClipManager.endClip();
+        double filledVolumeWidth = volumeBarWidth * volume;
+        if (filledVolumeWidth > 0) {
+            roundedRect(volumeBarXOffset, volumeBarYOffset - volumeBarHeight * .5, filledVolumeWidth, volumeBarHeight, (this.volumeBarHeight / 8.0f) * 2.5, hexColor(1, 1, 1, alpha));
+        }
 
         boolean hoveringVolumeBar = this.isHovered(mouseX, mouseY, volumeBarXOffset, volumeBarYOffset - volumeBarHeight * .5, volumeBarWidth, 8);
         this.volumeBarHeight = Interpolations.interpolate(this.volumeBarHeight, hoveringVolumeBar ? 8 : 5, 0.3f);
@@ -803,6 +807,9 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
             double percent = xDelta / volumeBarWidth;
 
             DesktopAppState.preferences().volume().setValue(percent);
+            if (player != null) {
+                player.setVolume((float) percent);
+            }
         }
 
         if (hoveringProgressBar || hoveringVolumeBar) {
