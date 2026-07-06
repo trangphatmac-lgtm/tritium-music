@@ -28,6 +28,7 @@ public class MusicPreferences {
     private final PreferenceValue<Boolean> showRoman = new PreferenceValue<>("Show Romanization in Japanese songs", false);
     private final NumberPreference lyricHeight = new NumberPreference("Lyric Height", 20.0, 14.0, 50.0, 0.5);
     private final PreferenceValue<Boolean> spectrumAbsoluteVolume = new PreferenceValue<>("Absolute Volume", true);
+    private final HudPreferences hud = new HudPreferences(spectrumAbsoluteVolume);
     private Runnable changeCallback = () -> {
     };
     private boolean loading;
@@ -56,6 +57,7 @@ public class MusicPreferences {
         showRoman.setValueCallback(value -> fireChanged());
         lyricHeight.setValueCallback(value -> fireChanged());
         spectrumAbsoluteVolume.setValueCallback(value -> fireChanged());
+        hud.setChangeCallback(this::fireChanged);
 
         applyQuality(quality.getValue());
         ClientSettings.SHOW_WIDGET_BOUNDARY = showWidgetBoundary.getValue();
@@ -94,6 +96,7 @@ public class MusicPreferences {
         json.addProperty(SHOW_ROMAN_KEY, showRoman.getValue());
         json.addProperty(LYRIC_HEIGHT_KEY, lyricHeight.getValue());
         json.addProperty(SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume.getValue());
+        json.add(HudPreferences.HUD_KEY, hud.toJsonObject());
         return json;
     }
 
@@ -113,6 +116,10 @@ public class MusicPreferences {
             applyBoolean(json, SHOW_ROMAN_KEY, showRoman);
             applyNumber(json, LYRIC_HEIGHT_KEY, lyricHeight);
             applyBoolean(json, SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume);
+            JsonElement hudElement = json.get(HudPreferences.HUD_KEY);
+            if (hudElement != null && hudElement.isJsonObject()) {
+                hud.loadFromJsonObject(hudElement.getAsJsonObject());
+            }
         } finally {
             loading = false;
         }
@@ -178,5 +185,9 @@ public class MusicPreferences {
 
     public PreferenceValue<Boolean> spectrumAbsoluteVolume() {
         return spectrumAbsoluteVolume;
+    }
+
+    public HudPreferences hud() {
+        return hud;
     }
 }

@@ -18,6 +18,8 @@ import tritium.screens.ncm.NCMScreen;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
 
 public class SettingsPanel extends NCMPanel {
     private static final int MARGIN = 24;
@@ -58,8 +60,39 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new SliderRow("歌词高度", preferences.lyricHeight(),
                 value -> String.format(Locale.ROOT, "%.1f", value)));
 
-        scrollPanel.addChild(new SectionHeader("HUD 预留"));
-        scrollPanel.addChild(new ToggleRow("频谱绝对音量", preferences.spectrumAbsoluteVolume()));
+        scrollPanel.addChild(new SectionHeader("系统 HUD"));
+        scrollPanel.addChild(new ToggleRow("启用信息 HUD", preferences.hud().musicInfo().enabled()));
+        scrollPanel.addChild(new ToggleRow("启用歌词 HUD", preferences.hud().musicLyrics().enabled()));
+        scrollPanel.addChild(new ToggleRow("启用频谱 HUD", preferences.hud().musicSpectrum().enabled()));
+        scrollPanel.addChild(new ToggleRow("编辑 HUD 布局", preferences.hud().editMode()));
+        scrollPanel.addChild(new ActionRow("重置 HUD 布局", () -> {
+            Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                    .getDefaultScreenDevice()
+                    .getDefaultConfiguration()
+                    .getBounds();
+            preferences.hud().resetLayout(bounds);
+            preferences.hud().layoutInitialized().setValue(true);
+            DesktopAppState.savePreferences();
+        }));
+
+        scrollPanel.addChild(new SectionHeader("信息 HUD"));
+        scrollPanel.addChild(new ToggleRow("作者区域显示当前歌词", preferences.hud().musicInfo().turnComposerIntoLyric()));
+
+        scrollPanel.addChild(new SectionHeader("歌词 HUD"));
+        scrollPanel.addChild(new ChoiceRow("滚动效果", preferences.hud().musicLyrics().scrollEffect()));
+        scrollPanel.addChild(new ChoiceRow("对齐方式", preferences.hud().musicLyrics().align()));
+        scrollPanel.addChild(new ToggleRow("单行模式", preferences.hud().musicLyrics().singleLine()));
+        scrollPanel.addChild(new ToggleRow("歌词阴影", preferences.hud().musicLyrics().shadow()));
+        scrollPanel.addChild(new ToggleRow("优雅滚动", preferences.hud().musicLyrics().graceScroll()));
+
+        scrollPanel.addChild(new SectionHeader("频谱 HUD"));
+        scrollPanel.addChild(new ChoiceRow("频谱样式", preferences.hud().musicSpectrum().style()));
+        scrollPanel.addChild(new ToggleRow("紧凑模式", preferences.hud().musicSpectrum().compact()));
+        scrollPanel.addChild(new ToggleRow("频谱指示线", preferences.hud().musicSpectrum().indicator()));
+        scrollPanel.addChild(new ToggleRow("频谱绝对音量", preferences.hud().musicSpectrum().absoluteVolume()));
+        scrollPanel.addChild(new SliderRow("频谱倍率", preferences.hud().musicSpectrum().multiplier(),
+                value -> String.format(Locale.ROOT, "%.1fx", value)));
+        scrollPanel.addChild(new ColorRow("频谱颜色", preferences.hud().musicSpectrum().color()));
 
         scrollPanel.addChild(new SectionHeader("调试"));
         scrollPanel.addChild(new ToggleRow("UI 边界", preferences.showWidgetBoundary()));
@@ -263,6 +296,92 @@ public class SettingsPanel extends NCMPanel {
                 raw = preference.getMin() + Math.round((raw - preference.getMin()) / increment) * increment;
             }
             preference.setValue(raw);
+        }
+    }
+
+    private static final class ActionRow extends SettingsRow<ActionRow> {
+        private final Runnable action;
+        private float pressAnimation;
+
+        private ActionRow(String label, Runnable action) {
+            super(label, 52);
+            this.action = action;
+            this.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
+                if (mouseButton == 0) {
+                    action.run();
+                    pressAnimation = 1f;
+                }
+                return true;
+            });
+        }
+
+        @Override
+        public void onRender(double mouseX, double mouseY) {
+            super.onRender(mouseX, mouseY);
+            pressAnimation = Interpolations.interpolate(pressAnimation, 0f, .25f);
+            String label = "执行";
+            double width = 56;
+            double height = 24;
+            double x = rightInset(width);
+            double y = this.getY() + this.getHeight() * .5 - height * .5;
+            int bg = blend(0xFFC30218, 0xFFE4434F, pressAnimation);
+            roundedRect(x, y, width, height, 5, RenderSystem.reAlpha(bg, this.getAlpha()));
+            FontManager.pf14bold.drawCenteredString(label, x + width * .5,
+                    y + height * .5 - FontManager.pf14bold.getHeight() * .5,
+                    RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha()));
+        }
+    }
+
+    private static final class ColorRow extends SettingsRow<ColorRow> {
+        private static final int[] COLORS = {
+                0xC87D7D7D,
+                0xD0C30218,
+                0xD0FFFFFF,
+                0xC858A6FF,
+                0xC871E096
+        };
+        private final PreferenceValue<Integer> preference;
+
+        private ColorRow(String label, PreferenceValue<Integer> preference) {
+            super(label, 52);
+            this.preference = preference;
+            this.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
+                if (mouseButton == 0 || mouseButton == 1) {
+                    cycle(mouseButton == 0 ? 1 : -1);
+                }
+                return true;
+            });
+        }
+
+        @Override
+        public void onRender(double mouseX, double mouseY) {
+            super.onRender(mouseX, mouseY);
+            int color = preference.getValue();
+            String hex = String.format(Locale.ROOT, "#%08X", color);
+            double swatchSize = 24;
+            double textWidth = FontManager.pf14bold.getStringWidthD(hex);
+            double x = rightInset(swatchSize + 10 + textWidth);
+            double y = this.getY() + this.getHeight() * .5 - swatchSize * .5;
+            roundedRect(x, y, swatchSize, swatchSize, 5, RenderSystem.reAlpha(color, this.getAlpha()));
+            roundedRect(x, y, swatchSize, swatchSize, 5, RenderSystem.reAlpha(0x33FFFFFF, this.getAlpha()));
+            FontManager.pf14bold.drawString(hex, x + swatchSize + 10,
+                    this.getY() + this.getHeight() * .5 - FontManager.pf14bold.getHeight() * .5,
+                    RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha() * .72f));
+        }
+
+        private void cycle(int direction) {
+            int index = 0;
+            for (int i = 0; i < COLORS.length; i++) {
+                if (COLORS[i] == preference.getValue()) {
+                    index = i;
+                    break;
+                }
+            }
+            int next = (index + direction) % COLORS.length;
+            if (next < 0) {
+                next += COLORS.length;
+            }
+            preference.setValue(COLORS[next]);
         }
     }
 }

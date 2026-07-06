@@ -41,10 +41,12 @@ public final class TritiumMusicDesktopApp {
             new FontManager().init();
             MultiThreadingUtil.runAsync(CloudMusic::initNCM);
             DesktopAppState.api().displayScreen(NCMScreen.getInstance());
+            DesktopAppState.hudManager().start(hasArg(args, "--hud-smoke"));
             runLoop(smokeExitAt);
         } finally {
             shutdown();
         }
+        System.exit(0);
     }
 
     private static long parseSmokeExitAt(String[] args) {
@@ -55,6 +57,15 @@ public final class TritiumMusicDesktopApp {
             }
         }
         return -1;
+    }
+
+    private static boolean hasArg(String[] args, String target) {
+        for (String arg : args) {
+            if (target.equals(arg)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void applyStartupOptions(String[] args) {
@@ -98,6 +109,7 @@ public final class TritiumMusicDesktopApp {
             }
 
             DesktopAppState.pumpMainThreadTasks();
+            DesktopAppState.hudManager().pump();
             handleInput();
             renderFrame();
             Display.update();
@@ -203,6 +215,11 @@ public final class TritiumMusicDesktopApp {
         }
         try {
             CloudMusic.shutdown();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        try {
+            DesktopAppState.hudManager().stop();
         } catch (Throwable t) {
             t.printStackTrace();
         }

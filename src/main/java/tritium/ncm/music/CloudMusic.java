@@ -19,6 +19,7 @@ import tritium.desktop.AppPaths;
 import tritium.desktop.DesktopCookieStore;
 import tritium.desktop.DesktopAppState;
 import tritium.desktop.DesktopChatColor;
+import tritium.desktop.hud.HudArtworkCache;
 import tritium.interfaces.SharedConstants;
 import tritium.ncm.OptionsUtil;
 import tritium.ncm.api.CloudMusicApi;
@@ -944,7 +945,7 @@ public class CloudMusic implements SharedConstants {
                 BufferedImage coverImage = DynamicTexture.readImage(new ByteArrayInputStream(imageData));
                 
                 if (coverImage != null) {
-                    loadCoverTextures(coverImage, musicCover, musicCoverBlur);
+                    loadCoverTextures(music.getId(), coverImage, musicCover, musicCoverBlur);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -952,7 +953,8 @@ public class CloudMusic implements SharedConstants {
         });
     }
     
-    private static void loadCoverTextures(BufferedImage coverImage, Location musicCover, Location musicCoverBlur) {
+    private static void loadCoverTextures(long musicId, BufferedImage coverImage, Location musicCover, Location musicCoverBlur) {
+        HudArtworkCache.put(musicId, HudArtworkCache.ArtworkType.COVER, coverImage);
         Textures.loadTexture(musicCover, coverImage);
         
         MultiThreadingUtil.runAsync(() -> {
@@ -963,6 +965,7 @@ public class CloudMusic implements SharedConstants {
 
             // 创建高斯模糊之后的歌曲封面, 目前仅在播放器的歌词界面使用
             BufferedImage blurredImage = gaussianBlur(inputImage, 31);
+            HudArtworkCache.put(musicId, HudArtworkCache.ArtworkType.BLURRED, blurredImage);
             Textures.loadTexture(musicCoverBlur, blurredImage);
         });
     }
@@ -971,6 +974,7 @@ public class CloudMusic implements SharedConstants {
         MultiThreadingUtil.runAsync(() -> {
             InputStream smallCoverStream = HttpUtils.downloadStream(music.getCoverUrl(128), 5);
             BufferedImage smallCoverImage = DynamicTexture.readImage(smallCoverStream);
+            HudArtworkCache.put(music.getId(), HudArtworkCache.ArtworkType.SMALL, smallCoverImage);
             Textures.loadTexture(musicCoverSmall, smallCoverImage);
         });
     }

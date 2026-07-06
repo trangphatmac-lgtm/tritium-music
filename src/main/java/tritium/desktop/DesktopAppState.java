@@ -1,5 +1,7 @@
 package tritium.desktop;
 
+import tritium.desktop.hud.HudManager;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -11,6 +13,7 @@ public final class DesktopAppState {
     private static final DesktopPreferenceStore PREFERENCE_STORE = DesktopPreferenceStore.defaultStore();
     private static final ScreenManager SCREEN_MANAGER = new ScreenManager();
     private static final DownloadStatus DOWNLOAD_STATUS = new DownloadStatus();
+    private static final HudManager HUD_MANAGER = new HudManager();
     private static final ConcurrentLinkedQueue<Runnable> MAIN_THREAD_TASKS = new ConcurrentLinkedQueue<>();
 
     private static volatile Thread mainThread;
@@ -29,7 +32,10 @@ public final class DesktopAppState {
 
     public static void loadPreferences() {
         PREFERENCE_STORE.load(PREFERENCES);
-        PREFERENCES.setChangeCallback(() -> PREFERENCE_STORE.save(PREFERENCES));
+        PREFERENCES.setChangeCallback(() -> {
+            PREFERENCE_STORE.save(PREFERENCES);
+            HUD_MANAGER.onPreferencesChanged();
+        });
     }
 
     public static void savePreferences() {
@@ -42,6 +48,10 @@ public final class DesktopAppState {
 
     public static DownloadStatus downloadStatus() {
         return DOWNLOAD_STATUS;
+    }
+
+    public static HudManager hudManager() {
+        return HUD_MANAGER;
     }
 
     public static void markMainThread() {
