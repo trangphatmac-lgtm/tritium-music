@@ -77,10 +77,8 @@ java -jar target/tritium-music-1.0.2.jar
 
 ### macOS Apple Silicon
 
-LWJGL2 在 macOS 上需要从 first thread 启动：
-
 ```bash
-java -XstartOnFirstThread -jar target/tritium-music-1.0.2.jar
+java -jar target/tritium-music-1.0.2.jar
 ```
 
 ### 常用启动参数
@@ -237,7 +235,6 @@ Tritium Music 最初是 Opai Extension 中的音乐模块。现在已经迁移�
 
 ## 开发小贴士 💡
 
-- macOS 本地调试一定要加 `-XstartOnFirstThread`。
 - HUD 使用 AWT/Swing `JWindow` + Java2D，不占用额外 LWJGL Display。
 - HUD 渲染只读 `HudStateSnapshot`，避免直接遍历播放器可变状态。
 - OpenGL texture 上传必须走桌面主线程任务队列。
