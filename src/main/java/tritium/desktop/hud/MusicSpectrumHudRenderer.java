@@ -65,11 +65,22 @@ public final class MusicSpectrumHudRenderer implements HudRenderer {
                     6, HudRenderUtil.withAlpha(0x66000000, opacity));
         }
 
+        if (!snapshot.playing && !snapshot.smoke && !context.editMode) {
+            renderIdleBaseline(graphics, bounds, color, opacity);
+            return;
+        }
+
         if ("Line".equals(preferences.style().getValue())) {
             renderLine(graphics, bounds, color, opacity, multiplier, compact);
         } else {
             renderRect(graphics, bounds, color, opacity, multiplier, compact, preferences.indicator().getValue(), snapshot.nowMillis);
         }
+    }
+
+    private void renderIdleBaseline(Graphics2D graphics, Rectangle2D bounds, int color, double opacity) {
+        graphics.setColor(new Color(HudRenderUtil.withAlpha(color, opacity * .45), true));
+        double y = bounds.getY() + bounds.getHeight() - 2;
+        graphics.fill(new Rectangle2D.Double(bounds.getX(), y, bounds.getWidth(), 1.5));
     }
 
     private void renderRect(Graphics2D graphics, Rectangle2D bounds, int color, double opacity, double multiplier,

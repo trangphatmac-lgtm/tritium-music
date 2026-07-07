@@ -1,6 +1,7 @@
 package tritium.screens.ncm.panels;
 
 import org.lwjgl.input.Mouse;
+import tritium.desktop.DesktopCacheManager;
 import tritium.desktop.DesktopAppState;
 import tritium.desktop.ModePreference;
 import tritium.desktop.MusicPreferences;
@@ -14,6 +15,7 @@ import tritium.rendering.ui.container.ScrollPanel;
 import tritium.rendering.ui.widgets.LabelWidget;
 import tritium.screens.ncm.NCMPanel;
 import tritium.screens.ncm.NCMScreen;
+import tritium.utils.other.multithreading.MultiThreadingUtil;
 
 import java.util.List;
 import java.util.Locale;
@@ -53,6 +55,9 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new ChoiceRow("音质", preferences.quality()));
         scrollPanel.addChild(new SliderRow("音量", preferences.volume(), value -> Math.round(value * 100) + "%"));
         scrollPanel.addChild(new ToggleRow("播放提示", preferences.musicToast()));
+
+        scrollPanel.addChild(new SectionHeader("缓存"));
+        scrollPanel.addChild(new CacheRow());
 
         scrollPanel.addChild(new SectionHeader("歌词"));
         scrollPanel.addChild(new ToggleRow("显示翻译", preferences.showTranslation()));
@@ -329,6 +334,115 @@ public class SettingsPanel extends NCMPanel {
             FontManager.pf14bold.drawCenteredString(label, x + width * .5,
                     y + height * .5 - FontManager.pf14bold.getHeight() * .5,
                     RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha()));
+        }
+    }
+
+    private static final class CacheRow extends SettingsRow<CacheRow> {
+        private volatile String sizeText = "计算中...";
+        private volatile String statusText = "";
+        private volatile boolean refreshing;
+        private volatile boolean clearing;
+        private long lastRefreshMillis;
+        private float pressAnimation;
+
+        private CacheRow() {
+            super("音乐缓存", 64);
+            refreshSize();
+            this.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
+                if (mouseButton == 0 && isButtonHit(relativeX, relativeY) && !clearing) {
+                    clearCache();
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        @Override
+        public void onRender(double mouseX, double mouseY) {
+            super.onRender(mouseX, mouseY);
+
+            long now = System.currentTimeMillis();
+            if (!clearing && now - lastRefreshMillis > 5000L) {
+                refreshSize();
+            }
+
+            pressAnimation = Interpolations.interpolate(pressAnimation, 0f, .25f);
+            double buttonWidth = 72;
+            double buttonHeight = 26;
+            double buttonX = buttonX(buttonWidth);
+            double buttonY = this.getY() + this.getHeight() * .5 - buttonHeight * .5;
+            int buttonBg = blend(clearing ? 0xFF555555 : 0xFFC30218, clearing ? 0xFF666666 : 0xFFE4434F, pressAnimation);
+            roundedRect(buttonX, buttonY, buttonWidth, buttonHeight, 5, RenderSystem.reAlpha(buttonBg, this.getAlpha()));
+
+            String buttonLabel = clearing ? "清理中" : "清除";
+            FontManager.pf14bold.drawCenteredString(buttonLabel, buttonX + buttonWidth * .5,
+                    buttonY + buttonHeight * .5 - FontManager.pf14bold.getHeight() * .5,
+                    RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha()));
+
+            String currentSize = clearing ? "清理中..." : sizeText;
+            double sizeWidth = FontManager.pf14bold.getStringWidthD(currentSize);
+            double sizeX = buttonX - 14 - sizeWidth;
+            FontManager.pf14bold.drawString(currentSize, sizeX, this.getY() + 14,
+                    RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha() * .78f));
+
+            if (!statusText.isBlank()) {
+                FontManager.pf12bold.drawString(statusText,
+                        this.getX() + 16,
+                        this.getY() + 40,
+                        RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha() * .46f));
+            }
+        }
+
+        private boolean isButtonHit(double relativeX, double relativeY) {
+            double width = 72;
+            double height = 26;
+            double x = this.getWidth() - width - 16;
+            double y = this.getHeight() * .5 - height * .5;
+            return relativeX >= x && relativeX <= x + width && relativeY >= y && relativeY <= y + height;
+        }
+
+        private double buttonX(double width) {
+            return rightInset(width);
+        }
+
+        private void refreshSize() {
+            if (refreshing) {
+                return;
+            }
+
+            refreshing = true;
+            lastRefreshMillis = System.currentTimeMillis();
+            MultiThreadingUtil.runAsync(() -> {
+                try {
+                    sizeText = DesktopCacheManager.formatSize(DesktopCacheManager.musicCacheSize());
+                } catch (Exception e) {
+                    sizeText = "读取失败";
+                } finally {
+                    refreshing = false;
+                }
+            });
+        }
+
+        private void clearCache() {
+            if (DesktopAppState.downloadStatus().downloading) {
+                statusText = "正在下载音乐，稍后再清理";
+                refreshSize();
+                return;
+            }
+
+            clearing = true;
+            statusText = "正在清理缓存...";
+            pressAnimation = 1f;
+            MultiThreadingUtil.runAsync(() -> {
+                DesktopCacheManager.ClearResult result = DesktopCacheManager.clearMusicCache();
+                long freed = Math.max(0L, result.sizeBefore() - result.sizeAfter());
+                sizeText = DesktopCacheManager.formatSize(result.sizeAfter());
+                statusText = result.successful()
+                        ? "已释放 " + DesktopCacheManager.formatSize(freed)
+                        : "部分文件无法删除，已释放 " + DesktopCacheManager.formatSize(freed);
+                clearing = false;
+                lastRefreshMillis = System.currentTimeMillis();
+            });
         }
     }
 

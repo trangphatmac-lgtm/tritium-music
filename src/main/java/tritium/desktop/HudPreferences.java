@@ -75,8 +75,8 @@ public class HudPreferences {
         double screenWidth = screenBounds.getWidth();
         double screenHeight = screenBounds.getHeight();
 
-        musicInfo.setBounds(screenX + 24, screenY + 24, 230, 56);
-        musicLyrics.setBounds(screenX + Math.max(0, (screenWidth - 450) * .5), screenY + Math.max(0, screenHeight * .72), 450, 120);
+        musicInfo.setBounds(screenX + 24, screenY + 24, 450, 110);
+        musicLyrics.setBounds(screenX + Math.max(0, (screenWidth - 900) * .5), screenY + Math.max(0, screenHeight * .72), 900, 120);
         musicSpectrum.setBounds(screenX, screenY + Math.max(0, screenHeight - 170), screenWidth, 170);
         clampTo(screenBounds);
     }
@@ -112,7 +112,7 @@ public class HudPreferences {
         private final PreferenceValue<Boolean> turnComposerIntoLyric = new PreferenceValue<>("Turn Composer Into Lyric", false);
 
         private MusicInfoPreferences() {
-            super("musicInfo", false, 24, 24, 230, 56, 1.0, 1.0, 160, 44);
+            super("musicInfo", false, 24, 24, 450, 110, 1.0, 1.0, 440, 108);
         }
 
         @Override
@@ -155,7 +155,7 @@ public class HudPreferences {
         private final PreferenceValue<Boolean> graceScroll = new PreferenceValue<>("Elegant Scrolling", true);
 
         private MusicLyricsPreferences() {
-            super("musicLyrics", false, 735, 780, 450, 120, 1.0, 1.0, 225, 60);
+            super("musicLyrics", false, 735, 780, 900, 120, 1.0, 1.0, 225, 60);
         }
 
         @Override

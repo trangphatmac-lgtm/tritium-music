@@ -955,6 +955,7 @@ public class CloudMusic implements SharedConstants {
     
     private static void loadCoverTextures(long musicId, BufferedImage coverImage, Location musicCover, Location musicCoverBlur) {
         HudArtworkCache.put(musicId, HudArtworkCache.ArtworkType.COVER, coverImage);
+        HudArtworkCache.put(musicId, HudArtworkCache.ArtworkType.SMALL, scaleCover(coverImage, 128));
         Textures.loadTexture(musicCover, coverImage);
         
         MultiThreadingUtil.runAsync(() -> {
@@ -968,6 +969,20 @@ public class CloudMusic implements SharedConstants {
             HudArtworkCache.put(musicId, HudArtworkCache.ArtworkType.BLURRED, blurredImage);
             Textures.loadTexture(musicCoverBlur, blurredImage);
         });
+    }
+
+    private static BufferedImage scaleCover(BufferedImage source, int size) {
+        BufferedImage scaled = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = scaled.createGraphics();
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.drawImage(source, 0, 0, size, size, null);
+        } finally {
+            graphics.dispose();
+        }
+        return scaled;
     }
     
     private static void loadSmallCoverAsync(Music music, Location musicCoverSmall) {

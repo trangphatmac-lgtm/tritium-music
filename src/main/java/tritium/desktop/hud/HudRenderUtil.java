@@ -1,6 +1,5 @@
 package tritium.desktop.hud;
 
-import tritium.management.FontManager;
 import tritium.rendering.font.CFontRenderer;
 
 import java.awt.AlphaComposite;
@@ -16,9 +15,13 @@ import java.awt.Shape;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
+import java.util.Map;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class HudRenderUtil {
+    private static final Map<String, Long> SCROLL_START_TIMES = new ConcurrentHashMap<>();
+
     private HudRenderUtil() {
     }
 
@@ -31,18 +34,19 @@ public final class HudRenderUtil {
     }
 
     public static Font font(CFontRenderer renderer, int fallbackSize, boolean bold) {
-        if (renderer != null && renderer.font != null) {
-            return renderer.font;
-        }
+        // HUD text is rendered by Java2D, so use Java's logical composite font
+        // instead of the OpenGL renderer's physical SF Pro font. The physical
+        // font does not contain CJK glyphs, while SansSerif falls back to the
+        // platform CJK fonts on Windows and macOS.
         return new Font(Font.SANS_SERIF, bold ? Font.BOLD : Font.PLAIN, fallbackSize);
     }
 
     public static Font fontRegular(int size) {
-        return font(FontManager.pf18, size, false).deriveFont((float) size);
+        return font(null, size, false);
     }
 
     public static Font fontBold(int size) {
-        return font(FontManager.pf18bold, size, true).deriveFont((float) size);
+        return font(null, size, true);
     }
 
     public static int withAlpha(int argb, double alphaMultiplier) {
@@ -174,13 +178,18 @@ public final class HudRenderUtil {
 
     public static void drawTextClipped(Graphics2D graphics, String text, Font font, double x, double baseline,
                                        double width, int argb, boolean shadow) {
+        drawTextClipped(graphics, text, font, x, baseline, x, width, argb, shadow);
+    }
+
+    public static void drawTextClipped(Graphics2D graphics, String text, Font font, double drawX, double baseline,
+                                       double clipX, double width, int argb, boolean shadow) {
         Shape oldClip = graphics.getClip();
         FontMetrics metrics = graphics.getFontMetrics(font);
-        graphics.clip(new Rectangle2D.Double(x, baseline - metrics.getAscent() - 4, width, metrics.getHeight() + 8));
+        graphics.clip(new Rectangle2D.Double(clipX, baseline - metrics.getAscent() - 4, width, metrics.getHeight() + 8));
         if (shadow) {
-            drawTextWithShadow(graphics, text, font, x, baseline, argb);
+            drawTextWithShadow(graphics, text, font, drawX, baseline, argb);
         } else {
-            drawText(graphics, text, font, x, baseline, argb);
+            drawText(graphics, text, font, drawX, baseline, argb);
         }
         graphics.setClip(oldClip);
     }
@@ -197,7 +206,12 @@ public final class HudRenderUtil {
         double overflow = textWidth - width;
         long period = Math.max(2600L, (long) (overflow * 42L) + 2600L);
         long wait = 1200L;
-        long t = nowMillis % (period + wait * 2);
+        String key = scrollKey(text, font, width);
+        if (SCROLL_START_TIMES.size() > 256) {
+            SCROLL_START_TIMES.clear();
+        }
+        long startMillis = SCROLL_START_TIMES.computeIfAbsent(key, ignored -> nowMillis);
+        long t = Math.floorMod(nowMillis - startMillis, period + wait * 2);
         double offset;
         if (t < wait) {
             offset = 0;
@@ -206,7 +220,12 @@ public final class HudRenderUtil {
         } else {
             offset = overflow * ((t - wait) / (double) period);
         }
-        drawTextClipped(graphics, text, font, x - offset, baseline, width, argb, false);
+        drawTextClipped(graphics, text, font, x - offset, baseline, x, width, argb, false);
+    }
+
+    private static String scrollKey(String text, Font font, double width) {
+        return text + "|" + font.getFamily() + "|" + font.getStyle() + "|"
+                + Math.round(font.getSize2D() * 10) + "|" + Math.round(width);
     }
 
     public static double measure(Graphics2D graphics, Font font, String text) {

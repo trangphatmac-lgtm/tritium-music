@@ -39,7 +39,7 @@ public final class MusicLyricsHudRenderer implements HudRenderer {
         Rectangle2D bounds = context.bounds;
 
         if (snapshot.lyrics.isEmpty()) {
-            if (context.editMode) {
+            if (context.editMode || preferences.enabled().getValue()) {
                 renderPlaceholder(graphics, bounds, preferences);
             }
             return;

@@ -39,7 +39,7 @@ public final class MusicInfoHudRenderer implements HudRenderer {
         HudStateSnapshot snapshot = context.snapshot;
         Rectangle2D bounds = context.bounds;
         HudPreferences.MusicInfoPreferences preferences = context.preferences.hud().musicInfo();
-        boolean active = snapshot.playing || snapshot.smoke || context.editMode;
+        boolean active = preferences.enabled().getValue() || snapshot.playing || snapshot.smoke || context.editMode;
         alpha = HudRenderUtil.smooth(alpha, active ? 1f : 0f, active ? .15f : .2f);
         if (alpha <= .01f) {
             return;
@@ -63,7 +63,7 @@ public final class MusicInfoHudRenderer implements HudRenderer {
 
         double x = bounds.getX();
         double y = bounds.getY() + downloadHeight;
-        double radius = 10;
+        double radius = Math.min(14, Math.max(10, baseHeight * .12));
 
         HudRenderUtil.fillRound(graphics, x, bounds.getY(), width, totalHeight, radius, HudRenderUtil.withAlpha(0xCC000000, alpha * opacity * .45));
 
@@ -74,28 +74,33 @@ public final class MusicInfoHudRenderer implements HudRenderer {
         HudRenderUtil.drawImageCover(graphics, snapshot.blurredCover, backgroundBounds, radius, alpha * opacity * backgroundAlpha);
         HudRenderUtil.fillRound(graphics, x, bounds.getY(), width, totalHeight, radius, HudRenderUtil.withAlpha(0x66000000, alpha * opacity));
 
-        double spacing = 4;
-        double coverSize = Math.max(1, baseHeight - spacing * 2);
-        double coverX = x + spacing;
-        double coverY = y + spacing;
-        if (previousSmallCover != null && backgroundAlpha < .99f) {
-            HudRenderUtil.drawImageRound(graphics, previousSmallCover, coverX, coverY, coverSize, coverSize, 6, alpha * opacity * (1f - backgroundAlpha));
+        double padding = HudRenderUtil.clamp(baseHeight * .09, 8, 12);
+        double gap = Math.max(10, padding);
+        double coverSize = Math.max(1, baseHeight - padding * 2);
+        double coverX = x + padding;
+        double coverY = y + padding;
+        BufferedImage currentCover = snapshot.smallCover == null ? snapshot.cover : snapshot.smallCover;
+        BufferedImage previousCover = previousSmallCover == null ? snapshot.cover : previousSmallCover;
+        if (previousCover != null && backgroundAlpha < .99f) {
+            HudRenderUtil.drawImageRound(graphics, previousCover, coverX, coverY, coverSize, coverSize, 8, alpha * opacity * (1f - backgroundAlpha));
         }
-        HudRenderUtil.drawImageRound(graphics, snapshot.smallCover, coverX, coverY, coverSize, coverSize, 6, alpha * opacity * backgroundAlpha);
+        HudRenderUtil.drawImageRound(graphics, currentCover, coverX, coverY, coverSize, coverSize, 8, alpha * opacity * backgroundAlpha);
 
         if (showDownload) {
-            renderDownloadPanel(graphics, snapshot, x, bounds.getY(), width, spacing, alpha * opacity);
+            renderDownloadPanel(graphics, snapshot, x, bounds.getY(), width, padding, alpha * opacity);
         }
 
-        double textX = coverX + coverSize + spacing;
-        double textWidth = Math.max(1, width - coverSize - spacing * 3.25);
-        Font nameFont = HudRenderUtil.fontBold(25);
-        Font secondaryFont = HudRenderUtil.fontRegular(20);
-        Font timeFont = HudRenderUtil.fontBold(14);
+        double textX = coverX + coverSize + gap;
+        double textWidth = Math.max(1, width - coverSize - padding * 2 - gap);
+        Font nameFont = HudRenderUtil.fontBold((int) Math.round(HudRenderUtil.clamp(baseHeight * .27, 24, 32)));
+        Font secondaryFont = HudRenderUtil.fontRegular((int) Math.round(HudRenderUtil.clamp(baseHeight * .18, 16, 22)));
+        Font timeFont = HudRenderUtil.fontBold((int) Math.round(HudRenderUtil.clamp(baseHeight * .13, 13, 16)));
         FontMetrics nameMetrics = HudRenderUtil.metrics(graphics, nameFont);
         FontMetrics secondaryMetrics = HudRenderUtil.metrics(graphics, secondaryFont);
+        FontMetrics timeMetrics = HudRenderUtil.metrics(graphics, timeFont);
 
-        double nameBaseline = coverY + 3 + nameMetrics.getAscent();
+        double progressY = y + baseHeight - padding - timeMetrics.getHeight() - 8;
+        double nameBaseline = y + padding + nameMetrics.getAscent();
         HudRenderUtil.drawScrollingText(graphics, snapshot.musicName, nameFont, textX, nameBaseline, textWidth,
                 HudRenderUtil.withAlpha(0xFFFFFFFF, alpha * opacity), snapshot.nowMillis);
 
@@ -105,10 +110,8 @@ public final class MusicInfoHudRenderer implements HudRenderer {
             secondary = snapshot.lyrics.get(snapshot.currentLyricIndex).text();
         }
 
-        double progressY = y + baseHeight - spacing - 3 - timeFont.getSize2D() - 8;
-        double secondaryBaseline = nameBaseline + nameMetrics.getDescent()
-                + (progressY - (nameBaseline + nameMetrics.getDescent())) * .5
-                + secondaryMetrics.getAscent() * .35;
+        double secondaryBaseline = nameBaseline + nameMetrics.getDescent() + 4 + secondaryMetrics.getAscent();
+        secondaryBaseline = Math.min(secondaryBaseline, progressY - 5 - secondaryMetrics.getDescent());
         HudRenderUtil.drawScrollingText(graphics, secondary, secondaryFont, textX, secondaryBaseline, textWidth,
                 HudRenderUtil.withAlpha(0xCCFFFFFF, alpha * opacity), snapshot.nowMillis + 700L);
 

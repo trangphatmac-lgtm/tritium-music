@@ -24,22 +24,23 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public final class HudManager {
+    private static final int EDIT_PADDING = 8;
+    private static final int EDIT_TOP_PADDING = 28;
+
     private final List<HudRenderer> renderers = List.of(
             new MusicSpectrumHudRenderer(),
             new MusicLyricsHudRenderer(),
             new MusicInfoHudRenderer()
     );
+    private final List<RendererWindow> rendererWindows = new ArrayList<>();
 
-    private JWindow window;
-    private HudPanel panel;
     private Timer timer;
     private Rectangle screenBounds = new Rectangle(0, 0, 1, 1);
+    private HudStateSnapshot currentSnapshot = HudStateSnapshot.capture(false);
     private boolean smokeMode;
-    private boolean lastPassThrough = true;
     private boolean requested;
     private boolean startPending;
     private long startAfterMillis;
@@ -48,21 +49,23 @@ public final class HudManager {
     public void start(boolean smokeMode) {
         this.smokeMode = smokeMode;
         this.requested = true;
-        if (!shouldShowOverlay()) {
+        if (!shouldRunHud()) {
             return;
         }
         scheduleStart(750L);
     }
 
     public void onPreferencesChanged() {
-        if (!requested || window != null || !shouldShowOverlay()) {
+        if (!requested) {
             return;
         }
-        scheduleStart(250L);
+        if (timer == null && shouldRunHud()) {
+            scheduleStart(250L);
+        }
     }
 
     public void pump() {
-        if (!startPending || window != null || !shouldShowOverlay()) {
+        if (!startPending || timer != null || !shouldRunHud()) {
             return;
         }
 
@@ -71,17 +74,13 @@ public final class HudManager {
         }
 
         if (GraphicsEnvironment.isHeadless()) {
-            System.err.println("[HUD] Headless environment detected; HUD overlay disabled.");
+            System.err.println("[HUD] Headless environment detected; HUD disabled.");
             startPending = false;
             return;
         }
 
         startPending = false;
-        if (isMac()) {
-            startOnEdt();
-        } else {
-            EventQueue.invokeLater(this::startOnEdt);
-        }
+        EventQueue.invokeLater(this::startOnEdt);
     }
 
     private void scheduleStart(long delayMillis) {
@@ -89,25 +88,10 @@ public final class HudManager {
         startAfterMillis = System.currentTimeMillis() + delayMillis;
     }
 
-    private boolean isMac() {
-        return System.getProperty("os.name", "").toLowerCase().contains("mac");
-    }
-
     public void stop() {
         requested = false;
         startPending = false;
-        if (window == null && timer == null && panel == null) {
-            return;
-        }
-
-        if (isMac()) {
-            if (timer != null) {
-                timer.stop();
-                timer = null;
-            }
-            window = null;
-            panel = null;
-            dragState = null;
+        if (timer == null && rendererWindows.stream().allMatch(RendererWindow::isDisposed)) {
             return;
         }
 
@@ -116,16 +100,13 @@ public final class HudManager {
                 timer.stop();
                 timer = null;
             }
-            if (window != null) {
-                window.setVisible(false);
-                window.dispose();
-                window = null;
+            for (RendererWindow rendererWindow : rendererWindows) {
+                rendererWindow.dispose();
             }
-            panel = null;
             dragState = null;
         };
 
-        if (isMac() || SwingUtilities.isEventDispatchThread()) {
+        if (SwingUtilities.isEventDispatchThread()) {
             task.run();
             return;
         }
@@ -140,31 +121,15 @@ public final class HudManager {
     }
 
     private void startOnEdt() {
-        if (!requested || window != null || !shouldShowOverlay()) {
+        if (!requested || timer != null || !shouldRunHud()) {
             return;
         }
 
         updateScreenBounds();
         DesktopAppState.preferences().hud().ensureLayoutInitialized(screenBounds);
-
-        window = new JWindow();
-        window.setType(Window.Type.UTILITY);
-        window.setBackground(new Color(0, 0, 0, 0));
-        window.setAlwaysOnTop(true);
-        window.setFocusable(false);
-        window.setFocusableWindowState(false);
-        window.setBounds(screenBounds);
-
-        panel = new HudPanel();
-        panel.setOpaque(false);
-        MouseHandler mouseHandler = new MouseHandler();
-        panel.addMouseListener(mouseHandler);
-        panel.addMouseMotionListener(mouseHandler);
-        window.setContentPane(panel);
-        window.setVisible(shouldShowOverlay());
-        if (window.isVisible()) {
-            HudPlatformWindow.apply(window, true);
-        }
+        ensureRendererWindows();
+        currentSnapshot = HudStateSnapshot.capture(smokeMode);
+        syncWindows();
 
         timer = new Timer(16, ignored -> tick());
         timer.setRepeats(true);
@@ -174,27 +139,45 @@ public final class HudManager {
     private void tick() {
         updateScreenBounds();
         DesktopAppState.preferences().hud().ensureLayoutInitialized(screenBounds);
+        currentSnapshot = HudStateSnapshot.capture(smokeMode);
+        syncWindows();
+        repaintWindows();
+    }
 
-        boolean visible = shouldShowOverlay();
-        if (window != null && window.isVisible() != visible) {
-            window.setVisible(visible);
-            if (visible) {
-                HudPlatformWindow.apply(window, lastPassThrough);
-            }
-        }
-
-        boolean passThrough = !DesktopAppState.preferences().hud().editMode().getValue();
-        if (window != null && passThrough != lastPassThrough) {
-            HudPlatformWindow.apply(window, passThrough);
-            lastPassThrough = passThrough;
-        }
-
-        if (panel != null && visible) {
-            panel.repaint();
+    private void syncWindows() {
+        MusicPreferences preferences = DesktopAppState.preferences();
+        ensureRendererWindows();
+        for (RendererWindow rendererWindow : rendererWindows) {
+            rendererWindow.sync(preferences);
         }
     }
 
-    private boolean shouldShowOverlay() {
+    private void repaintWindows() {
+        for (RendererWindow rendererWindow : rendererWindows) {
+            rendererWindow.repaint();
+        }
+    }
+
+    private void ensureRendererWindows() {
+        if (!rendererWindows.isEmpty()) {
+            return;
+        }
+        for (HudRenderer renderer : renderers) {
+            rendererWindows.add(new RendererWindow(renderer));
+        }
+    }
+
+    private JWindow createHudWindow() {
+        JWindow window = new JWindow();
+        window.setType(Window.Type.UTILITY);
+        window.setBackground(new Color(0, 0, 0, 0));
+        window.setAlwaysOnTop(true);
+        window.setFocusable(false);
+        window.setFocusableWindowState(false);
+        return window;
+    }
+
+    private boolean shouldRunHud() {
         MusicPreferences preferences = DesktopAppState.preferences();
         return smokeMode || preferences.hud().editMode().getValue()
                 || renderers.stream().anyMatch(renderer -> renderer.layout(preferences).enabled().getValue());
@@ -204,8 +187,8 @@ public final class HudManager {
         Rectangle bounds = getDefaultScreenBounds();
         if (!bounds.equals(screenBounds)) {
             screenBounds = bounds;
-            if (window != null) {
-                window.setBounds(screenBounds);
+            for (RendererWindow rendererWindow : rendererWindows) {
+                rendererWindow.invalidateBounds();
             }
         }
     }
@@ -222,13 +205,107 @@ public final class HudManager {
         return renderer.bounds(DesktopAppState.preferences(), screenBounds);
     }
 
-    private boolean rendererVisibleForEditing(HudRenderer renderer) {
-        MusicPreferences preferences = DesktopAppState.preferences();
-        return smokeMode || preferences.hud().editMode().getValue()
-                || renderer.layout(preferences).enabled().getValue();
+    private Rectangle toWindowBounds(Rectangle2D localBounds, boolean editMode) {
+        int extraWidth = editMode ? EDIT_PADDING * 2 : 0;
+        int extraHeight = editMode ? EDIT_TOP_PADDING + EDIT_PADDING : 0;
+        return new Rectangle(
+                (int) Math.round(screenBounds.getX() + localBounds.getX() - (editMode ? EDIT_PADDING : 0)),
+                (int) Math.round(screenBounds.getY() + localBounds.getY() - (editMode ? EDIT_TOP_PADDING : 0)),
+                Math.max(1, (int) Math.ceil(localBounds.getWidth()) + extraWidth),
+                Math.max(1, (int) Math.ceil(localBounds.getHeight()) + extraHeight)
+        );
     }
 
-    private final class HudPanel extends JPanel {
+    private final class RendererWindow {
+        private final HudRenderer renderer;
+        private final RendererPanel panel;
+        private JWindow window;
+        private Rectangle lastBounds = new Rectangle();
+        private Boolean lastPassThrough;
+
+        private RendererWindow(HudRenderer renderer) {
+            this.renderer = renderer;
+            this.panel = new RendererPanel(this);
+        }
+
+        private void sync(MusicPreferences preferences) {
+            boolean editMode = preferences.hud().editMode().getValue();
+            boolean visible = smokeMode || editMode || renderer.layout(preferences).enabled().getValue();
+            if (!visible) {
+                hide();
+                return;
+            }
+
+            ensureWindow();
+            Rectangle bounds = toWindowBounds(rendererBounds(renderer), editMode);
+            if (!bounds.equals(lastBounds)) {
+                window.setBounds(bounds);
+                lastBounds = bounds;
+            }
+            if (!window.isVisible()) {
+                window.setVisible(true);
+                lastPassThrough = null;
+            }
+
+            boolean passThrough = !editMode;
+            if (!Boolean.valueOf(passThrough).equals(lastPassThrough)) {
+                HudPlatformWindow.apply(window, passThrough);
+                lastPassThrough = passThrough;
+            }
+        }
+
+        private void ensureWindow() {
+            if (window != null) {
+                return;
+            }
+
+            window = createHudWindow();
+            panel.setOpaque(false);
+            window.setContentPane(panel);
+        }
+
+        private void repaint() {
+            if (window != null && window.isVisible()) {
+                panel.repaint();
+            }
+        }
+
+        private void hide() {
+            if (window != null) {
+                window.setVisible(false);
+            }
+            lastPassThrough = null;
+        }
+
+        private void dispose() {
+            if (window != null) {
+                window.setVisible(false);
+                window.dispose();
+                window = null;
+            }
+            lastBounds = new Rectangle();
+            lastPassThrough = null;
+        }
+
+        private void invalidateBounds() {
+            lastBounds = new Rectangle();
+        }
+
+        private boolean isDisposed() {
+            return window == null;
+        }
+    }
+
+    private final class RendererPanel extends JPanel {
+        private final RendererWindow owner;
+
+        private RendererPanel(RendererWindow owner) {
+            this.owner = owner;
+            MouseHandler mouseHandler = new MouseHandler(owner);
+            addMouseListener(mouseHandler);
+            addMouseMotionListener(mouseHandler);
+        }
+
         @Override
         protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
@@ -237,29 +314,33 @@ public final class HudManager {
                 HudRenderUtil.configure(g);
                 MusicPreferences preferences = DesktopAppState.preferences();
                 boolean editMode = preferences.hud().editMode().getValue();
-                HudStateSnapshot snapshot = HudStateSnapshot.capture(smokeMode);
-
-                for (HudRenderer renderer : renderers) {
-                    if (!renderer.shouldRender(snapshot, preferences, editMode)) {
-                        continue;
-                    }
-                    Rectangle2D bounds = rendererBounds(renderer);
-                    HudRenderContext context = new HudRenderContext(preferences, snapshot, screenBounds, bounds, editMode);
-                    renderer.render(g, context);
+                HudStateSnapshot snapshot = currentSnapshot;
+                HudRenderer renderer = owner.renderer;
+                if (!renderer.shouldRender(snapshot, preferences, editMode)) {
+                    return;
                 }
 
+                Rectangle2D bounds = rendererPanelBounds(editMode, getWidth(), getHeight());
+                HudRenderContext context = new HudRenderContext(preferences, snapshot, screenBounds, bounds, editMode);
+                renderer.render(g, context);
                 if (editMode) {
-                    for (HudRenderer renderer : renderers) {
-                        drawEditFrame(g, renderer, renderer.layout(preferences).enabled().getValue());
-                    }
+                    drawEditFrame(g, renderer, bounds, renderer.layout(preferences).enabled().getValue());
                 }
             } finally {
                 g.dispose();
             }
         }
 
-        private void drawEditFrame(Graphics2D graphics, HudRenderer renderer, boolean enabled) {
-            Rectangle2D bounds = rendererBounds(renderer);
+        private Rectangle2D rendererPanelBounds(boolean editMode, int width, int height) {
+            if (!editMode) {
+                return new Rectangle2D.Double(0, 0, width, height);
+            }
+            return new Rectangle2D.Double(EDIT_PADDING, EDIT_TOP_PADDING,
+                    Math.max(1, width - EDIT_PADDING * 2.0),
+                    Math.max(1, height - EDIT_TOP_PADDING - EDIT_PADDING));
+        }
+
+        private void drawEditFrame(Graphics2D graphics, HudRenderer renderer, Rectangle2D bounds, boolean enabled) {
             int frameColor = enabled ? 0xD0C30218 : 0x80777777;
             HudRenderUtil.strokeRound(graphics, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
                     6, frameColor, 1.5f);
@@ -275,45 +356,39 @@ public final class HudManager {
     }
 
     private final class MouseHandler extends MouseAdapter {
+        private final RendererWindow owner;
+
+        private MouseHandler(RendererWindow owner) {
+            this.owner = owner;
+        }
+
         @Override
         public void mousePressed(MouseEvent event) {
             if (!DesktopAppState.preferences().hud().editMode().getValue()) {
                 return;
             }
 
-            double x = event.getX();
-            double y = event.getY();
-            List<HudRenderer> reversed = new ArrayList<>(renderers);
-            Collections.reverse(reversed);
-            for (HudRenderer renderer : reversed) {
-                if (!rendererVisibleForEditing(renderer)) {
-                    continue;
-                }
-                Rectangle2D bounds = rendererBounds(renderer);
-                if (resizeHandle(bounds).contains(x, y)) {
-                    dragState = DragState.resize(renderer, event, screenBounds);
-                    panel.setCursor(Cursor.getPredefinedCursor(Cursor.SE_RESIZE_CURSOR));
-                    return;
-                }
-                if (bounds.contains(x, y)) {
-                    dragState = DragState.move(renderer, event, screenBounds);
-                    panel.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
-                    return;
-                }
+            Rectangle2D bounds = owner.panel.rendererPanelBounds(true, owner.panel.getWidth(), owner.panel.getHeight());
+            if (resizeHandle(bounds).contains(event.getX(), event.getY())) {
+                dragState = DragState.resize(owner.renderer, event);
+                owner.panel.setCursor(Cursor.getPredefinedCursor(Cursor.SE_RESIZE_CURSOR));
+                return;
+            }
+            if (bounds.contains(event.getX(), event.getY()) || titleBounds(bounds).contains(event.getX(), event.getY())) {
+                dragState = DragState.move(owner.renderer, event);
+                owner.panel.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
             }
         }
 
         @Override
         public void mouseDragged(MouseEvent event) {
-            if (dragState == null) {
+            if (dragState == null || dragState.renderer != owner.renderer) {
                 return;
             }
 
             HudElementPreferences layout = dragState.renderer.layout(DesktopAppState.preferences());
-            double mouseScreenX = screenBounds.getX() + event.getX();
-            double mouseScreenY = screenBounds.getY() + event.getY();
-            double dx = mouseScreenX - dragState.startMouseX;
-            double dy = mouseScreenY - dragState.startMouseY;
+            double dx = event.getXOnScreen() - dragState.startMouseX;
+            double dy = event.getYOnScreen() - dragState.startMouseY;
 
             if (dragState.resize) {
                 double width = Math.max(layout.minWidth(), dragState.startWidth + dx);
@@ -323,7 +398,8 @@ public final class HudManager {
                 layout.setBounds(dragState.startX + dx, dragState.startY + dy, dragState.startWidth, dragState.startHeight);
             }
             layout.clampTo(screenBounds);
-            panel.repaint();
+            owner.invalidateBounds();
+            owner.panel.repaint();
         }
 
         @Override
@@ -332,31 +408,31 @@ public final class HudManager {
                 return;
             }
 
-            for (HudRenderer renderer : renderers) {
-                Rectangle2D bounds = rendererBounds(renderer);
-                if (resizeHandle(bounds).contains(event.getX(), event.getY())) {
-                    panel.setCursor(Cursor.getPredefinedCursor(Cursor.SE_RESIZE_CURSOR));
-                    return;
-                }
-                if (bounds.contains(event.getX(), event.getY())) {
-                    panel.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
-                    return;
-                }
+            Rectangle2D bounds = owner.panel.rendererPanelBounds(true, owner.panel.getWidth(), owner.panel.getHeight());
+            if (resizeHandle(bounds).contains(event.getX(), event.getY())) {
+                owner.panel.setCursor(Cursor.getPredefinedCursor(Cursor.SE_RESIZE_CURSOR));
+                return;
             }
-            panel.setCursor(Cursor.getDefaultCursor());
+            if (bounds.contains(event.getX(), event.getY()) || titleBounds(bounds).contains(event.getX(), event.getY())) {
+                owner.panel.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+                return;
+            }
+            owner.panel.setCursor(Cursor.getDefaultCursor());
         }
 
         @Override
         public void mouseReleased(MouseEvent event) {
             dragState = null;
-            if (panel != null) {
-                panel.setCursor(Cursor.getDefaultCursor());
-            }
+            owner.panel.setCursor(Cursor.getDefaultCursor());
             DesktopAppState.savePreferences();
         }
 
         private Rectangle2D resizeHandle(Rectangle2D bounds) {
             return new Rectangle2D.Double(bounds.getMaxX() - 18, bounds.getMaxY() - 18, 18, 18);
+        }
+
+        private Rectangle2D titleBounds(Rectangle2D bounds) {
+            return new Rectangle2D.Double(bounds.getX(), Math.max(0, bounds.getY() - 24), 120, 24);
         }
     }
 
@@ -370,11 +446,11 @@ public final class HudManager {
         final double startWidth;
         final double startHeight;
 
-        private DragState(HudRenderer renderer, boolean resize, MouseEvent event, Rectangle screenBounds) {
+        private DragState(HudRenderer renderer, boolean resize, MouseEvent event) {
             this.renderer = renderer;
             this.resize = resize;
-            this.startMouseX = screenBounds.getX() + event.getX();
-            this.startMouseY = screenBounds.getY() + event.getY();
+            this.startMouseX = event.getXOnScreen();
+            this.startMouseY = event.getYOnScreen();
             HudElementPreferences layout = renderer.layout(DesktopAppState.preferences());
             this.startX = layout.x().getValue();
             this.startY = layout.y().getValue();
@@ -382,12 +458,12 @@ public final class HudManager {
             this.startHeight = layout.height().getValue();
         }
 
-        static DragState move(HudRenderer renderer, MouseEvent event, Rectangle screenBounds) {
-            return new DragState(renderer, false, event, screenBounds);
+        static DragState move(HudRenderer renderer, MouseEvent event) {
+            return new DragState(renderer, false, event);
         }
 
-        static DragState resize(HudRenderer renderer, MouseEvent event, Rectangle screenBounds) {
-            return new DragState(renderer, true, event, screenBounds);
+        static DragState resize(HudRenderer renderer, MouseEvent event) {
+            return new DragState(renderer, true, event);
         }
     }
 }

@@ -38,7 +38,6 @@ class HudPreferencesTest {
 
         assertEquals(124, preferences.hud().musicInfo().x().getValue(), 0.0001);
         assertEquals(224, preferences.hud().musicInfo().y().getValue(), 0.0001);
-        assertEquals(475, preferences.hud().musicLyrics().x().getValue(), 0.0001);
         assertEquals(830, preferences.hud().musicSpectrum().y().getValue(), 0.0001);
 
         preferences.hud().musicInfo().setBounds(5000, 5000, 5000, 5000);

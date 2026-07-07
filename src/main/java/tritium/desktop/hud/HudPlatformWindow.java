@@ -3,6 +3,7 @@ package tritium.desktop.hud;
 import com.sun.jna.Function;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
+import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.win32.StdCallLibrary;
@@ -16,20 +17,21 @@ final class HudPlatformWindow {
     private HudPlatformWindow() {
     }
 
-    static void apply(Window window, boolean passThrough) {
+    static boolean apply(Window window, boolean passThrough) {
         window.setAlwaysOnTop(true);
         window.setFocusable(false);
         window.setFocusableWindowState(false);
 
         String os = System.getProperty("os.name", "").toLowerCase();
         if (os.contains("win")) {
-            applyWindows(window, passThrough);
+            return applyWindows(window, passThrough);
         } else if (os.contains("mac")) {
-            applyMac(window, passThrough);
+            return applyMac(window, passThrough);
         }
+        return !passThrough;
     }
 
-    private static void applyWindows(Window window, boolean passThrough) {
+    private static boolean applyWindows(Window window, boolean passThrough) {
         try {
             WinDef.HWND hwnd = new WinDef.HWND(Native.getWindowPointer(window));
             int exStyle = User32Ext.INSTANCE.GetWindowLongW(hwnd, User32Ext.GWL_EXSTYLE);
@@ -42,15 +44,17 @@ final class HudPlatformWindow {
             User32Ext.INSTANCE.SetWindowLongW(hwnd, User32Ext.GWL_EXSTYLE, exStyle);
             User32Ext.INSTANCE.SetWindowPos(hwnd, User32Ext.HWND_TOPMOST, 0, 0, 0, 0,
                     User32Ext.SWP_NOMOVE | User32Ext.SWP_NOSIZE | User32Ext.SWP_NOACTIVATE | User32Ext.SWP_FRAMECHANGED);
+            return true;
         } catch (Throwable t) {
             if (!windowsWarningPrinted) {
                 System.err.println("[HUD] Failed to apply Windows overlay flags: " + t.getMessage());
                 windowsWarningPrinted = true;
             }
+            return !passThrough;
         }
     }
 
-    private static void applyMac(Window window, boolean passThrough) {
+    private static boolean applyMac(Window window, boolean passThrough) {
         try {
             MacObjC objc = MacObjC.INSTANCE;
             Pointer view = Native.getComponentPointer(window);
@@ -59,17 +63,19 @@ final class HudPlatformWindow {
                 nsWindow = Native.getWindowPointer(window);
             }
             if (isNull(nsWindow)) {
-                return;
+                return !passThrough;
             }
 
-            objc.msgVoid(nsWindow, "setIgnoresMouseEvents:", passThrough);
-            objc.msgVoid(nsWindow, "setLevel:", 25);
-            objc.msgVoid(nsWindow, "setCollectionBehavior:", 1 | 16 | 128 | 256);
+            objc.msgVoid(nsWindow, "setIgnoresMouseEvents:", (byte) (passThrough ? 1 : 0));
+            objc.msgVoid(nsWindow, "setLevel:", new NativeLong(25));
+            objc.msgVoid(nsWindow, "setCollectionBehavior:", new NativeLong(1 | 16 | 128 | 256));
+            return !passThrough || objc.msgBoolean(nsWindow, "ignoresMouseEvents");
         } catch (Throwable t) {
             if (!macWarningPrinted) {
                 System.err.println("[HUD] Failed to apply macOS overlay flags, using Java fallback: " + t.getMessage());
                 macWarningPrinted = true;
             }
+            return !passThrough;
         }
     }
 
@@ -112,6 +118,14 @@ final class HudPlatformWindow {
 
         Pointer msgPointer(Pointer receiver, String selector) {
             return objcMsgSend.invokePointer(new Object[]{receiver, selector(selector)});
+        }
+
+        boolean msgBoolean(Pointer receiver, String selector) {
+            Object value = objcMsgSend.invoke(Byte.class, new Object[]{receiver, selector(selector)});
+            if (value instanceof Number number) {
+                return number.byteValue() != 0;
+            }
+            return Boolean.TRUE.equals(value);
         }
 
         void msgVoid(Pointer receiver, String selector, Object... args) {
