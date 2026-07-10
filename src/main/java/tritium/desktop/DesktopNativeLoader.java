@@ -34,8 +34,15 @@ public final class DesktopNativeLoader {
     }
 
     private static NativeBundle detectNativeBundle() {
-        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        return detectNativeBundle(
+                System.getProperty("os.name", ""),
+                System.getProperty("os.arch", "")
+        );
+    }
+
+    static NativeBundle detectNativeBundle(String osName, String osArch) {
+        String os = osName.toLowerCase(Locale.ROOT);
+        String arch = osArch.toLowerCase(Locale.ROOT);
 
         if (os.contains("win") && (arch.equals("amd64") || arch.equals("x86_64"))) {
             return new NativeBundle("windows-x64", List.of(
@@ -47,6 +54,12 @@ public final class DesktopNativeLoader {
         if (os.contains("mac") && (arch.equals("aarch64") || arch.equals("arm64"))) {
             return new NativeBundle("macos-arm64", List.of(
                     "lwjgl-platform-2.9.4-nightly-20150209-natives-osx-arm64.jar"
+            ));
+        }
+
+        if (os.contains("linux") && (arch.equals("amd64") || arch.equals("x86_64"))) {
+            return new NativeBundle("linux-x64", List.of(
+                    "lwjgl-platform-2.9.3-natives-linux.jar"
             ));
         }
 
@@ -81,6 +94,6 @@ public final class DesktopNativeLoader {
         }
     }
 
-    private record NativeBundle(String platform, List<String> nativeJars) {
+    record NativeBundle(String platform, List<String> nativeJars) {
     }
 }
