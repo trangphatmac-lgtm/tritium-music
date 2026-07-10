@@ -249,8 +249,9 @@ public final class HudManager {
 
             boolean passThrough = !editMode;
             if (!Boolean.valueOf(passThrough).equals(lastPassThrough)) {
-                HudPlatformWindow.apply(window, passThrough);
-                lastPassThrough = passThrough;
+                if (HudPlatformWindow.apply(window, passThrough)) {
+                    lastPassThrough = passThrough;
+                }
             }
         }
 

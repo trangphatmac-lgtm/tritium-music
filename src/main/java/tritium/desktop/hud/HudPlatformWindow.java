@@ -3,12 +3,14 @@ package tritium.desktop.hud;
 import com.sun.jna.Function;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
-import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.win32.StdCallLibrary;
 
+import java.awt.Component;
 import java.awt.Window;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 final class HudPlatformWindow {
     private static boolean macWarningPrinted;
@@ -60,16 +62,14 @@ final class HudPlatformWindow {
             Pointer view = Native.getComponentPointer(window);
             Pointer nsWindow = view == null ? null : objc.msgPointer(view, "window");
             if (isNull(nsWindow)) {
-                nsWindow = Native.getWindowPointer(window);
+                nsWindow = MacWindowHandle.resolve(window);
             }
             if (isNull(nsWindow)) {
                 return !passThrough;
             }
 
             objc.msgVoid(nsWindow, "setIgnoresMouseEvents:", (byte) (passThrough ? 1 : 0));
-            objc.msgVoid(nsWindow, "setLevel:", new NativeLong(25));
-            objc.msgVoid(nsWindow, "setCollectionBehavior:", new NativeLong(1 | 16 | 128 | 256));
-            return !passThrough || objc.msgBoolean(nsWindow, "ignoresMouseEvents");
+            return objc.msgBoolean(nsWindow, "ignoresMouseEvents") == passThrough;
         } catch (Throwable t) {
             if (!macWarningPrinted) {
                 System.err.println("[HUD] Failed to apply macOS overlay flags, using Java fallback: " + t.getMessage());
@@ -81,6 +81,63 @@ final class HudPlatformWindow {
 
     private static boolean isNull(Pointer pointer) {
         return pointer == null || Pointer.nativeValue(pointer) == 0;
+    }
+
+    /**
+     * JNA's JAWT bridge returns a Cocoa view for heavyweight drawing surfaces,
+     * but a top-level transparent JWindow has no such surface on recent JDKs.
+     * Read the NSWindow pointer already held by the macOS AWT peer instead.
+     */
+    private static final class MacWindowHandle {
+        private static final Object UNSAFE;
+        private static final Method GET_OBJECT;
+        private static final Method GET_LONG_VOLATILE;
+        private static final long COMPONENT_PEER_OFFSET;
+        private static final long PLATFORM_WINDOW_OFFSET;
+        private static final long NATIVE_POINTER_OFFSET;
+
+        static {
+            try {
+                Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+                Field theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                UNSAFE = theUnsafe.get(null);
+
+                Method objectFieldOffset = unsafeClass.getMethod("objectFieldOffset", Field.class);
+                GET_OBJECT = unsafeClass.getMethod("getObject", Object.class, long.class);
+                GET_LONG_VOLATILE = unsafeClass.getMethod("getLongVolatile", Object.class, long.class);
+
+                COMPONENT_PEER_OFFSET = offset(objectFieldOffset, Component.class.getDeclaredField("peer"));
+                Class<?> windowPeerClass = Class.forName("sun.lwawt.LWWindowPeer");
+                PLATFORM_WINDOW_OFFSET = offset(objectFieldOffset,
+                        windowPeerClass.getDeclaredField("platformWindow"));
+                Class<?> retainedResourceClass = Class.forName("sun.lwawt.macosx.CFRetainedResource");
+                NATIVE_POINTER_OFFSET = offset(objectFieldOffset,
+                        retainedResourceClass.getDeclaredField("ptr"));
+            } catch (ReflectiveOperationException e) {
+                throw new ExceptionInInitializerError(e);
+            }
+        }
+
+        private MacWindowHandle() {
+        }
+
+        static Pointer resolve(Window window) throws ReflectiveOperationException {
+            Object peer = GET_OBJECT.invoke(UNSAFE, window, COMPONENT_PEER_OFFSET);
+            if (peer == null) {
+                return null;
+            }
+            Object platformWindow = GET_OBJECT.invoke(UNSAFE, peer, PLATFORM_WINDOW_OFFSET);
+            if (platformWindow == null) {
+                return null;
+            }
+            long pointer = (long) GET_LONG_VOLATILE.invoke(UNSAFE, platformWindow, NATIVE_POINTER_OFFSET);
+            return pointer == 0 ? null : new Pointer(pointer);
+        }
+
+        private static long offset(Method objectFieldOffset, Field field) throws ReflectiveOperationException {
+            return (long) objectFieldOffset.invoke(UNSAFE, field);
+        }
     }
 
     private interface User32Ext extends StdCallLibrary {
