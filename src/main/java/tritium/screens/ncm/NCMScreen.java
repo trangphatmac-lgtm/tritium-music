@@ -369,12 +369,9 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         }
 
         if (keyCode == Keyboard.KEY_ESCAPE) {
-
-            if (this.musicLyricsPanel != null)
+            if (this.musicLyricsPanel != null) {
                 this.musicLyricsPanel.close();
-            else
-                closing = true;
-
+            }
         }
 
         if (keyCode == Keyboard.KEY_SPACE && CloudMusic.currentlyPlaying != null && CloudMusic.player != null && !CloudMusic.player.isFinished()) {
