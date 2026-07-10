@@ -22,6 +22,7 @@ class HudPreferencesTest {
         assertFalse(preferences.hud().musicInfo().enabled().getValue());
         assertFalse(preferences.hud().musicLyrics().enabled().getValue());
         assertFalse(preferences.hud().musicSpectrum().enabled().getValue());
+        assertEquals(1.0, preferences.hud().musicInfo().opacity().getValue(), 0.0001);
         assertFalse(preferences.hud().musicInfo().turnComposerIntoLyric().getValue());
         assertEquals("Scroll", preferences.hud().musicLyrics().scrollEffect().getValue());
         assertEquals("Center", preferences.hud().musicLyrics().align().getValue());
@@ -57,6 +58,7 @@ class HudPreferencesTest {
         MusicPreferences preferences = new MusicPreferences();
         preferences.hud().editMode().setValue(true);
         preferences.hud().musicInfo().enabled().setValue(true);
+        preferences.hud().musicInfo().opacity().setValue(0.42);
         preferences.hud().musicInfo().turnComposerIntoLyric().setValue(true);
         preferences.hud().musicLyrics().scrollEffect().setValue("SlideIn");
         preferences.hud().musicLyrics().align().setValue("Right");
@@ -73,6 +75,7 @@ class HudPreferencesTest {
 
         assertTrue(loaded.hud().editMode().getValue());
         assertTrue(loaded.hud().musicInfo().enabled().getValue());
+        assertEquals(0.42, loaded.hud().musicInfo().opacity().getValue(), 0.0001);
         assertTrue(loaded.hud().musicInfo().turnComposerIntoLyric().getValue());
         assertEquals("SlideIn", loaded.hud().musicLyrics().scrollEffect().getValue());
         assertEquals("Right", loaded.hud().musicLyrics().align().getValue());

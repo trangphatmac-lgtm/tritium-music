@@ -81,6 +81,8 @@ public class SettingsPanel extends NCMPanel {
         }));
 
         scrollPanel.addChild(new SectionHeader("信息 HUD"));
+        scrollPanel.addChild(new SliderRow("不透明度", preferences.hud().musicInfo().opacity(),
+                value -> Math.round(value * 100) + "%"));
         scrollPanel.addChild(new ToggleRow("作者区域显示当前歌词", preferences.hud().musicInfo().turnComposerIntoLyric()));
 
         scrollPanel.addChild(new SectionHeader("歌词 HUD"));
