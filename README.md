@@ -1,6 +1,6 @@
-# Tritium Music 🎵
+# 🔥🔥Tritium Music🔥🔥
 
-A standalone desktop NetEase Cloud Music (NCM) player Developed in Java.  
+A standalone desktop NetEase Cloud Music (NCM) player Developed in Java.  🎵
 It has interface, shaders, fonts, and control system with features such as system-level HUDs, QR-code login, cookie login, lyric translation/romaji, and music cache management. ✨
 
 > Current target platforms: Desktop Systems like Windows x64, linux and macOS Apple Silicon.  
@@ -205,4 +205,3 @@ mvn test
 Disclaimer : This project is intended only for learning, research, and personal use. Music copyrights belong to their respective rights holders. Please follow the NetEase Cloud Music terms of service and the laws and regulations of your region.
 ''''
 ---
-
