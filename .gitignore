@@ -1,0 +1,31 @@
+# Maven / Java build output
+target/
+*.class
+dependency-reduced-pom.xml
+
+# IDE local files
+.idea/
+*.iml
+*.ipr
+*.iws
+/out/
+.classpath
+.project
+.settings/
+
+# Logs and JVM crash dumps
+*.log
+hs_err_pid*
+replay_pid*
+
+# Local application data (legacy working-directory storage)
+/NCMCookie.txt
+/preferences.json
+/MusicCache/
+/natives/
+
+# Operating system metadata
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
