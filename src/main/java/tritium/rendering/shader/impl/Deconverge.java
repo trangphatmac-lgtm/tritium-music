@@ -1,6 +1,6 @@
 package tritium.rendering.shader.impl;
 
-import org.lwjgl.opengl.Display;
+import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.shader.ShaderProgram;
 import tritium.rendering.shader.uniform.Uniform1i;
 import tritium.rendering.shader.uniform.Uniform2f;
@@ -25,7 +25,7 @@ public class Deconverge {
     public void render(float randomNess) {
         this.deconvergeProgram.start();
         textureIn.setValue(0);
-        texelSize.setValue(1.0F / Display.getWidth(), 1.0F / Display.getHeight());
+        texelSize.setValue(1.0F / RenderSystem.getFramebufferWidth(), 1.0F / RenderSystem.getFramebufferHeight());
 
         this.setConvergeX(this.nextFloat(-randomNess, randomNess), this.nextFloat(-randomNess, randomNess),
                 this.nextFloat(-randomNess, randomNess));

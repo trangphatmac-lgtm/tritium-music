@@ -1,6 +1,7 @@
 package tritium.rendering.font;
 
 import tritium.utils.other.multithreading.MultiThreadingUtil;
+import tritium.rendering.rendersystem.RenderSystem;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -87,10 +88,14 @@ public class GlyphGenerator {
             return;
         }
 
+        // Glyph geometry already uses 2x logical units. Increase only texture
+        // density on Retina displays, preserving text metrics and the UI layout.
+        int rasterScale = Math.max(1, (int) Math.ceil(RenderSystem.getUiScaleFactor() / 2.0f));
         MultiThreadingUtil.runAsync(() -> {
-            BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage bi = new BufferedImage(width * rasterScale, height * rasterScale, BufferedImage.TYPE_INT_ARGB);
 
             Graphics2D g2d = bi.createGraphics();
+            g2d.scale(rasterScale, rasterScale);
             g2d.setColor(new Color(255, 255, 255, 255));
             g2d.setComposite(AlphaComposite.Src);
 

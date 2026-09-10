@@ -6,6 +6,7 @@ import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.PixelFormat;
 import tritium.management.FontManager;
 import tritium.ncm.music.CloudMusic;
 import tritium.rendering.Framebuffer;
@@ -80,8 +81,12 @@ public final class TritiumMusicDesktopApp {
         System.setProperty("org.lwjgl.opengl.Display.enableHighDPI", "true");
         Display.setTitle("Tritium Music");
         Display.setResizable(true);
-        Display.setDisplayMode(new DisplayMode(DEFAULT_WIDTH, DEFAULT_HEIGHT));
-        Display.create();
+        DisplayMode desktop = Display.getDesktopDisplayMode();
+        Display.setDisplayMode(new DisplayMode(
+                Math.min(DEFAULT_WIDTH, Math.max(1, (int) (desktop.getWidth() * 0.9))),
+                Math.min(DEFAULT_HEIGHT, Math.max(1, (int) (desktop.getHeight() * 0.9)))));
+        Display.create(new PixelFormat().withDepthBits(24).withStencilBits(8));
+        MacOpenGLSurface.enableHighResolution();
         Keyboard.create();
         Mouse.create();
         Keyboard.enableRepeatEvents(true);
@@ -131,7 +136,7 @@ public final class TritiumMusicDesktopApp {
             }
 
             int eventX = RenderSystem.toLogicalMouseX(Mouse.getEventX());
-            int eventY = RenderSystem.toLogicalMouseY(RenderSystem.getFramebufferHeight() - Mouse.getEventY());
+            int eventY = RenderSystem.toLogicalMouseY(Display.getHeight() - Mouse.getEventY());
             if (Mouse.getEventButtonState()) {
                 DesktopAppState.screenManager().getCurrentScreen().mouseClicked(eventX, eventY, button);
             } else {
@@ -149,7 +154,7 @@ public final class TritiumMusicDesktopApp {
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
 
         int mouseX = RenderSystem.toLogicalMouseX(Mouse.getX());
-        int mouseY = RenderSystem.toLogicalMouseY(RenderSystem.getFramebufferHeight() - Mouse.getY());
+        int mouseY = RenderSystem.toLogicalMouseY(Display.getHeight() - Mouse.getY());
         if (DesktopAppState.screenManager().getCurrentScreen() != null) {
             try {
                 DesktopAppState.screenManager().getCurrentScreen().drawScreen(mouseX, mouseY);

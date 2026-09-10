@@ -97,7 +97,7 @@ java -jar target/tritium-music-1.0.2.jar --smoke-exit-after=3
 # Force a synthetic preview of all three HUDs
 java -jar target/tritium-music-1.0.2.jar --hud-smoke --smoke-exit-after=3
 
-# Adjust UI scaling
+# Adjust UI size in window units (independent of Retina pixel density)
 java -jar target/tritium-music-1.0.2.jar --ui-scale=1.25
 ```
 
@@ -200,6 +200,14 @@ src/main/resources/tritium
 ```bash
 mvn test
 ```
+
+On a desktop with a display, also validate actual framebuffer pixels, clipping, and resizing:
+
+```bash
+mvn -Dtritium.testRendering=true test
+```
+
+This check opens a temporary test window.
 
 ''''
 Disclaimer : This project is intended only for learning, research, and personal use. Music copyrights belong to their respective rights holders. Please follow the NetEase Cloud Music terms of service and the laws and regulations of your region.

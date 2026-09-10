@@ -20,8 +20,8 @@ import java.util.List;
 public class GaussianBlurShader extends Shader {
 
     private final ShaderProgram blurProgram = new ShaderProgram("blur.frag", "vertex.vsh");
-    private Framebuffer inputFramebuffer = new Framebuffer(Display.getWidth(), Display.getHeight(), true);
-    private Framebuffer outputFramebuffer = new Framebuffer(Display.getWidth(), Display.getHeight(), true);
+    private Framebuffer inputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
+    private Framebuffer outputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
     private GaussianKernel gaussianKernel = new GaussianKernel(0);
 
     private final Uniform1i u_radius = new Uniform1i(blurProgram, "u_radius");
@@ -76,7 +76,7 @@ public class GaussianBlurShader extends Shader {
             u_diffuse_sampler.setValue(0);
             u_other_sampler.setValue(20);
             u_texel_size.setValue((float) (1.0F / RenderSystem.getWidth()), (float) (1.0F / RenderSystem.getHeight()));
-//            u_texel_size.setValue((float) (1.0F / Display.getWidth() * .5), (float) (1.0F / Display.getHeight() * .5));
+//            u_texel_size.setValue((float) (1.0F / RenderSystem.getFramebufferWidth() * .5), (float) (1.0F / RenderSystem.getFramebufferHeight() * .5));
             u_direction.setValue(compression, 0.0F);
 
             api.getGLStateManager().enableBlend();
@@ -106,12 +106,12 @@ public class GaussianBlurShader extends Shader {
     public void update() {
         this.setActive(false);
 
-        if (Display.getWidth() != inputFramebuffer.framebufferWidth || Display.getHeight() != inputFramebuffer.framebufferHeight) {
+        if (RenderSystem.getFramebufferWidth() != inputFramebuffer.framebufferWidth || RenderSystem.getFramebufferHeight() != inputFramebuffer.framebufferHeight) {
             inputFramebuffer.deleteFramebuffer();
-            inputFramebuffer = new Framebuffer(Display.getWidth(), Display.getHeight(), true);
+            inputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
 
             outputFramebuffer.deleteFramebuffer();
-            outputFramebuffer = new Framebuffer(Display.getWidth(), Display.getHeight(), true);
+            outputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
 
         } else {
 //            inputFramebuffer.framebufferClear();

@@ -68,26 +68,28 @@ public class RenderSystem implements SharedConstants {
 
     public static void updateDisplayMetrics() {
         if (Display.isCreated()) {
-            framebufferWidth = Display.getWidth();
-            framebufferHeight = Display.getHeight();
             pixelScaleFactor = Math.max(1.0f, Display.getPixelScaleFactor());
-            uiScaleFactor = resolveUiScaleFactor(framebufferWidth, framebufferHeight, pixelScaleFactor);
+            // LWJGL 2 exposes window and mouse coordinates in screen units, not backing pixels.
+            framebufferWidth = toFramebufferSize(Display.getWidth(), pixelScaleFactor);
+            framebufferHeight = toFramebufferSize(Display.getHeight(), pixelScaleFactor);
+            uiScaleFactor = resolveUiScaleFactor(pixelScaleFactor,
+                    firstNonBlank(System.getProperty("tritium.uiScale"), System.getenv("TRITIUM_UI_SCALE")));
             scaleFactor = Math.max(1, Math.round(uiScaleFactor));
             width = Math.max(1, Math.round(framebufferWidth / uiScaleFactor));
             height = Math.max(1, Math.round(framebufferHeight / uiScaleFactor));
         }
     }
 
-    private static float resolveUiScaleFactor(int framebufferWidth, int framebufferHeight, float nativePixelScaleFactor) {
-        String configuredScale = firstNonBlank(System.getProperty("tritium.uiScale"), System.getenv("TRITIUM_UI_SCALE"));
+    static float resolveUiScaleFactor(float nativePixelScaleFactor, String configuredScale) {
         if (configuredScale != null && !"auto".equalsIgnoreCase(configuredScale)) {
             try {
-                return clampScale(Float.parseFloat(configuredScale));
+                return nativePixelScaleFactor * clampScale(Float.parseFloat(configuredScale));
             } catch (NumberFormatException ignored) {
             }
         }
 
-        return Math.max(nativePixelScaleFactor, inferScaleFromFramebuffer(framebufferWidth, framebufferHeight));
+        // Preserve the existing 2x UI layout in window units; Retina density is separate.
+        return Math.max(1.0f, nativePixelScaleFactor) * 2.0f;
     }
 
     private static String firstNonBlank(String first, String second) {
@@ -102,23 +104,12 @@ public class RenderSystem implements SharedConstants {
         return null;
     }
 
-    static float inferScaleFromFramebuffer(int framebufferWidth, int framebufferHeight) {
-        int max = Math.max(framebufferWidth, framebufferHeight);
-        int min = Math.min(framebufferWidth, framebufferHeight);
-        float magicnum = 2.0f;
-        //if (max >= 3840 && min >= 1800) {
-        return magicnum;
-        //}
+    static int toFramebufferSize(int windowSize, float pixelScale) {
+        return Math.max(1, Math.round(windowSize * pixelScale));
+    }
 
-        //if (max >= 3000 && min >= 1600) {
-        //    return 3.0f;
-        //}
-
-        //if (max >= 2400 && min >= 1300) {
-        //    return 2.0f;
-        //}
-
-        //return 1.0f;
+    static int toLogicalMouse(int windowCoordinate, float pixelScale, float uiScale) {
+        return Math.round(windowCoordinate * pixelScale / uiScale);
     }
 
     private static float clampScale(float scale) {
@@ -149,12 +140,14 @@ public class RenderSystem implements SharedConstants {
         return uiScaleFactor;
     }
 
-    public static int toLogicalMouseX(int framebufferX) {
-        return Math.round(framebufferX / getUiScaleFactor());
+    public static int toLogicalMouseX(int windowX) {
+        updateDisplayMetrics();
+        return toLogicalMouse(windowX, pixelScaleFactor, uiScaleFactor);
     }
 
-    public static int toLogicalMouseY(int framebufferY) {
-        return Math.round(framebufferY / getUiScaleFactor());
+    public static int toLogicalMouseY(int windowY) {
+        updateDisplayMetrics();
+        return toLogicalMouse(windowY, pixelScaleFactor, uiScaleFactor);
     }
     
     public static boolean FIXED_SCALE = false;

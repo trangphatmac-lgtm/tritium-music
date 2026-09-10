@@ -1,5 +1,6 @@
 package tritium.rendering;
 
+import tritium.rendering.rendersystem.RenderSystem;
 import org.lwjgl.opengl.*;
 import tritium.interfaces.SharedConstants;
 
@@ -378,24 +379,19 @@ public class Framebuffer implements SharedConstants {
     static int lastDisplayWidth = 0, lastDisplayHeight = 0;
 
     public static void updateMcFramebuffer() {
-        if (currentlyBinding == null || (lastDisplayWidth != Display.getWidth() || lastDisplayHeight != Display.getHeight())) {
-            lastDisplayWidth = Display.getWidth();
-            lastDisplayHeight = Display.getHeight();
+        if (currentlyBinding == null || (lastDisplayWidth != RenderSystem.getFramebufferWidth() || lastDisplayHeight != RenderSystem.getFramebufferHeight())) {
+            lastDisplayWidth = RenderSystem.getFramebufferWidth();
+            lastDisplayHeight = RenderSystem.getFramebufferHeight();
 
-            int fbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
-            int texId = GL30.glGetFramebufferAttachmentParameteri(
-                    GL30.GL_FRAMEBUFFER,
-                    OpenGlHelper.GL_COLOR_ATTACHMENT0,
-                    GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
-            );
-
-            mcFramebuffer.framebufferObject = fbo;
-            mcFramebuffer.framebufferTexture = texId;
-            mcFramebuffer.framebufferWidth = Display.getWidth();
-            mcFramebuffer.framebufferHeight = Display.getHeight();
+            // The desktop window is the default framebuffer. Attachment queries
+            // for user FBOs are invalid on framebuffer 0 in the legacy context.
+            mcFramebuffer.framebufferObject = 0;
+            mcFramebuffer.framebufferTexture = 0;
+            mcFramebuffer.framebufferWidth = RenderSystem.getFramebufferWidth();
+            mcFramebuffer.framebufferHeight = RenderSystem.getFramebufferHeight();
 
             currentlyBinding = mcFramebuffer;
-            System.out.println("fbo = " + fbo + ", texId = " + texId);
+
         }
     }
 }

@@ -1,5 +1,6 @@
 package tritium.rendering.shader.impl;
 
+import tritium.rendering.rendersystem.RenderSystem;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
@@ -21,8 +22,8 @@ import java.util.List;
 public class BloomShader extends Shader {
 
     private final ShaderProgram bloomProgram = new ShaderProgram("bloom.frag", "vertex.vsh");
-    private Framebuffer inputFramebuffer = new Framebuffer(Display.getWidth(), Display.getHeight(), true);
-    private Framebuffer outputFramebuffer = new Framebuffer(Display.getWidth(), Display.getHeight(), true);
+    private Framebuffer inputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
+    private Framebuffer outputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
     private GaussianKernel gaussianKernel = new GaussianKernel(0);
 
     private final Uniform1f u_radius = new Uniform1f(bloomProgram, "u_radius");
@@ -79,7 +80,7 @@ public class BloomShader extends Shader {
 
             u_diffuse_sampler.setValue(0);
             u_other_sampler.setValue(20);
-            u_texel_size.setValue(1.0F / Display.getWidth(), 1.0F / Display.getHeight());
+            u_texel_size.setValue(1.0F / RenderSystem.getFramebufferWidth(), 1.0F / RenderSystem.getFramebufferHeight());
             u_direction.setValue(compression, 0.0F);
 
             api.getGLStateManager().enableBlend();
@@ -106,12 +107,12 @@ public class BloomShader extends Shader {
 
     @Override
     public void update() {
-        if (Display.getWidth() != inputFramebuffer.framebufferWidth || Display.getHeight() != inputFramebuffer.framebufferHeight) {
+        if (RenderSystem.getFramebufferWidth() != inputFramebuffer.framebufferWidth || RenderSystem.getFramebufferHeight() != inputFramebuffer.framebufferHeight) {
             inputFramebuffer.deleteFramebuffer();
-            inputFramebuffer = new Framebuffer(Display.getWidth(), Display.getHeight(), true);
+            inputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
 
             outputFramebuffer.deleteFramebuffer();
-            outputFramebuffer = new Framebuffer(Display.getWidth(), Display.getHeight(), true);
+            outputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
 
         } else {
 //            inputFramebuffer.framebufferClear();
