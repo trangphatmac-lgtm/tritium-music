@@ -248,7 +248,10 @@ public final class HudManager {
             }
 
             boolean passThrough = !editMode;
-            if (!Boolean.valueOf(passThrough).equals(lastPassThrough)) {
+            // AWT can overwrite native mouse flags after the initial show. A successful
+            // earlier write is not proof that the window is still passing clicks through.
+            if (!Boolean.valueOf(passThrough).equals(lastPassThrough)
+                    || !HudPlatformWindow.isPassThroughApplied(window, passThrough)) {
                 if (HudPlatformWindow.apply(window, passThrough)) {
                     lastPassThrough = passThrough;
                 }

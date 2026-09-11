@@ -19,6 +19,28 @@ final class HudPlatformWindow {
     private HudPlatformWindow() {
     }
 
+    static boolean isPassThroughApplied(Window window, boolean passThrough) {
+        if (!window.isDisplayable()) {
+            return false;
+        }
+        try {
+            String os = System.getProperty("os.name", "").toLowerCase();
+            if (os.contains("win")) {
+                WinDef.HWND hwnd = new WinDef.HWND(Native.getWindowPointer(window));
+                int style = User32Ext.INSTANCE.GetWindowLongW(hwnd, User32Ext.GWL_EXSTYLE);
+                return ((style & User32Ext.WS_EX_TRANSPARENT) != 0) == passThrough;
+            } else if (os.contains("mac")) {
+                Pointer nsWindow = macWindow(window);
+                return !isNull(nsWindow)
+                        && MacObjC.INSTANCE.msgBoolean(nsWindow, "ignoresMouseEvents") == passThrough;
+            }
+        } catch (Throwable ignored) {
+            // Let apply() retry and report platform failures through its existing warning.
+            return false;
+        }
+        return !passThrough;
+    }
+
     static boolean apply(Window window, boolean passThrough) {
         window.setAlwaysOnTop(true);
         window.setFocusable(false);
@@ -59,11 +81,7 @@ final class HudPlatformWindow {
     private static boolean applyMac(Window window, boolean passThrough) {
         try {
             MacObjC objc = MacObjC.INSTANCE;
-            Pointer view = Native.getComponentPointer(window);
-            Pointer nsWindow = view == null ? null : objc.msgPointer(view, "window");
-            if (isNull(nsWindow)) {
-                nsWindow = MacWindowHandle.resolve(window);
-            }
+            Pointer nsWindow = macWindow(window);
             if (isNull(nsWindow)) {
                 return !passThrough;
             }
@@ -77,6 +95,12 @@ final class HudPlatformWindow {
             }
             return !passThrough;
         }
+    }
+
+    private static Pointer macWindow(Window window) throws ReflectiveOperationException {
+        Pointer view = Native.getComponentPointer(window);
+        Pointer nsWindow = isNull(view) ? null : MacObjC.INSTANCE.msgPointer(view, "window");
+        return isNull(nsWindow) ? MacWindowHandle.resolve(window) : nsWindow;
     }
 
     private static boolean isNull(Pointer pointer) {
