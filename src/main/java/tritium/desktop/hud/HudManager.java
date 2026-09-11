@@ -44,6 +44,8 @@ public final class HudManager {
     private boolean requested;
     private boolean startPending;
     private long startAfterMillis;
+    private long startupRefreshAtNanos;
+    private boolean startupWindowsHidden;
     private DragState dragState;
 
     public void start(boolean smokeMode) {
@@ -96,6 +98,8 @@ public final class HudManager {
         }
 
         Runnable task = () -> {
+            startupRefreshAtNanos = 0;
+            startupWindowsHidden = false;
             if (timer != null) {
                 timer.stop();
                 timer = null;
@@ -131,6 +135,10 @@ public final class HudManager {
         currentSnapshot = HudStateSnapshot.capture(smokeMode);
         syncWindows();
 
+        // Repeat the settings off/on workaround once native startup has settled.
+        startupWindowsHidden = false;
+        startupRefreshAtNanos = System.nanoTime() + 1_000_000_000L;
+
         timer = new Timer(16, ignored -> tick());
         timer.setRepeats(true);
         timer.start();
@@ -140,8 +148,33 @@ public final class HudManager {
         updateScreenBounds();
         DesktopAppState.preferences().hud().ensureLayoutInitialized(screenBounds);
         currentSnapshot = HudStateSnapshot.capture(smokeMode);
+        if (refreshStartupWindows()) {
+            return;
+        }
         syncWindows();
         repaintWindows();
+    }
+
+    private boolean refreshStartupWindows() {
+        if (startupRefreshAtNanos == 0) {
+            return false;
+        }
+        if (System.nanoTime() - startupRefreshAtNanos < 0) {
+            return startupWindowsHidden;
+        }
+        if (!startupWindowsHidden) {
+            for (RendererWindow rendererWindow : rendererWindows) {
+                rendererWindow.hide();
+            }
+            startupWindowsHidden = true;
+            // Leave time for the native hide to finish before syncWindows shows
+            // the currently enabled HUDs and reapplies their mouse flags.
+            startupRefreshAtNanos = System.nanoTime() + 150_000_000L;
+            return true;
+        }
+        startupWindowsHidden = false;
+        startupRefreshAtNanos = 0;
+        return false;
     }
 
     private void syncWindows() {
@@ -168,7 +201,7 @@ public final class HudManager {
     }
 
     private JWindow createHudWindow() {
-        JWindow window = new JWindow();
+        JWindow window = new HudWindow();
         window.setType(Window.Type.UTILITY);
         window.setBackground(new Color(0, 0, 0, 0));
         window.setAlwaysOnTop(true);
@@ -270,7 +303,7 @@ public final class HudManager {
 
         private void repaint() {
             if (window != null && window.isVisible()) {
-                panel.repaint();
+                window.repaint();
             }
         }
 
