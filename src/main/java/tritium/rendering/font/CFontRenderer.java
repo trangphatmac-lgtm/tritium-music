@@ -163,8 +163,6 @@ public class CFontRenderer implements Closeable, SharedConstants {
 
         api.getGLStateManager().color(r, g, b, a);
 
-        api.getGLStateManager().bindTexture(atlas.getTextureId());
-
         GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
 
         boolean callLists = false;
@@ -180,6 +178,7 @@ public class CFontRenderer implements Closeable, SharedConstants {
         double yOffset = 0;
         boolean inSel = false;
 
+        int boundTexture = -1;
         GL11.glBegin(GL11.GL_TRIANGLES);
 
         for (int i = 0; i < s.length(); i++) {
@@ -218,6 +217,12 @@ public class CFontRenderer implements Closeable, SharedConstants {
 
             Glyph glyph = locateGlyph(c);
             if (glyph != null && glyph.uploaded) {
+                if (glyph.textureId != boundTexture) {
+                    GL11.glEnd();
+                    api.getGLStateManager().bindTexture(glyph.textureId);
+                    boundTexture = glyph.textureId;
+                    GL11.glBegin(GL11.GL_TRIANGLES);
+                }
                 float x0 = (float) xOffset;
                 float y0 = (float) yOffset;
                 float x1 = x0 + glyph.width;
@@ -354,6 +359,7 @@ public class CFontRenderer implements Closeable, SharedConstants {
         private int compile(String string) {
             int callList = GL11.glGenLists(1);
 
+            int boundTexture = -1;
             GL11.glNewList(callList, GL11.GL_COMPILE);
             GL11.glBegin(GL11.GL_TRIANGLES);
 
@@ -373,6 +379,13 @@ public class CFontRenderer implements Closeable, SharedConstants {
 
                 Glyph glyph = locateGlyph(c);
                 if (glyph != null && glyph.uploaded) {
+                    if (glyph.textureId != boundTexture) {
+                        GL11.glEnd();
+                        // Record the binding in the list without changing the live state cache.
+                        GL11.glBindTexture(GL11.GL_TEXTURE_2D, glyph.textureId);
+                        boundTexture = glyph.textureId;
+                        GL11.glBegin(GL11.GL_TRIANGLES);
+                    }
                     float x0 = (float) xOffset;
                     float y0 = (float) yOffset;
                     float x1 = x0 + glyph.width;
@@ -609,7 +622,7 @@ public class CFontRenderer implements Closeable, SharedConstants {
     @Override
     public void close() {
         atlas.destroy();
-        atlas.init();
+        atlas = new TextureAtlas();
         allGlyphs = new Glyph['\uFFFF' + 1];
         stringWidthMapD.clear();
         callListMap.values().forEach(cl -> {

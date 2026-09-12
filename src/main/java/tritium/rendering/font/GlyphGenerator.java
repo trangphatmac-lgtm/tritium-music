@@ -121,14 +121,16 @@ public class GlyphGenerator {
                 }
             }
 
-            onLoaded.onLoaded(height);
-
             MultiThreadingUtil.runOnMainThread(() -> {
-                TextureAtlas.AtlasRegion region = atlas.upload(bi);
-                if (region != null) {
-                    glyph.setAtlasRegion(region);
+                try {
+                    TextureAtlas.AtlasRegion region = atlas.upload(bi);
+                    if (region != null) {
+                        glyph.setAtlasRegion(region);
+                        onLoaded.onLoaded(height);
+                    }
+                } finally {
+                    bi.flush();
                 }
-                bi.flush();
             });
         });
     }
