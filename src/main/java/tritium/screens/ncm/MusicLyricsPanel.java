@@ -885,9 +885,9 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         });
 
         playModeButton
-                .setAlpha(alpha * .8f)
+                .setAlpha(alpha)
                 .setColor(Color.WHITE)
-                .setPosition(prev.getX() - playModeButton.getWidth() - 16, playPauseButton.getY());
+                .setPosition(next.getX() + next.getWidth() + 16, playPauseButton.getY());
         playModeButton.renderWidget(mouseX, mouseY, 0);
     }
 

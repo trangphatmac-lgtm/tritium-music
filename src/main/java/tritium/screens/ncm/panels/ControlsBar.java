@@ -115,12 +115,6 @@ public class ControlsBar extends NCMPanel {
                         .setPosition(next.getRelativeX() + next.getWidth() * .5 + 20, next.getRelativeY() + buttonsYOffset)
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT)));
 
-        PlayModeButton playModeButton = new PlayModeButton(20);
-        this.addChild(playModeButton);
-        playModeButton.setBeforeRenderCallback(() -> playModeButton
-                .setPosition(prev.getRelativeX() - playModeButton.getWidth() - 10, prev.getRelativeY())
-                .setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT)));
-
         RoundedRectWidget progressBarBg = new RoundedRectWidget() {
 
             boolean prevMouse = false;
@@ -263,6 +257,14 @@ public class ControlsBar extends NCMPanel {
                                 this.getWidth() - volumeRightPadding - FontManager.music40.getStringWidthD("J") - 4 - volumeBarWidth - FontManager.music40.getStringWidthD("I") - 2,
                                 this.getHeight() * .5 - FontManager.music40.getHeight() * .5 - .5
                         ));
+
+        PlayModeButton playModeButton = new PlayModeButton(20);
+        this.addChild(playModeButton);
+        playModeButton.setBeforeRenderCallback(() -> playModeButton
+                .setPosition(
+                        lblVolumeMin.getRelativeX() - playModeButton.getWidth() - 3,
+                        this.getHeight() * .5 - playModeButton.getHeight() * .5)
+                .setColor(Color.WHITE));
 
         RoundedRectWidget volumeBarBg = new RoundedRectWidget() {
             @Override

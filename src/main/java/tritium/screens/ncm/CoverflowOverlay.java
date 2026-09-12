@@ -31,6 +31,7 @@ import java.awt.*;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -131,6 +132,30 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
     }
 
+    static String albumName(Album album) {
+        String name = album.getName();
+        return name == null || name.isBlank() ? "未知专辑" : name;
+    }
+
+    static String musicName(Music music) {
+        String name = music.getName();
+        return name == null || name.isBlank() ? "未知歌曲" : name;
+    }
+
+    void filterAlbums(String text) {
+        String query = text.toLowerCase(Locale.ROOT);
+        renderList = albumList.entrySet().stream()
+                .filter(entry -> query.isEmpty()
+                        || albumName(entry.getKey()).toLowerCase(Locale.ROOT).contains(query)
+                        || entry.getValue().stream().anyMatch(music ->
+                                musicName(music).toLowerCase(Locale.ROOT).contains(query)
+                                        || music.getTranslatedNames().toLowerCase(Locale.ROOT).contains(query)))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(CopyOnWriteArrayList::new));
+        index = 0;
+        scrollOffset = 0;
+    }
+
     private void setupProjectionTransformation() {
         double aspectRatio = RenderSystem.getWidth() / RenderSystem.getHeight();
 
@@ -185,35 +210,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         textBox.setTextColor(-1);
         textBox.setDisabledTextColour(Color.GRAY.getRGB());
         textBox.setPlaceholder("Search (Ctrl + F)");
-        textBox.setCallback(text -> {
-            renderList.clear();
-
-            if (text.isEmpty()) {
-                renderList.addAll(albumList.keySet());
-            } else {
-                for (Album album : albumList.keySet()) {
-                    if (album.getName().toLowerCase().contains(text.toLowerCase()))
-                        renderList.add(album);
-                }
-
-                for (List<Music> m : albumList.values()) {
-                    for (Music music : m) {
-                        if (music.getName().toLowerCase().contains(text.toLowerCase())) {
-                            renderList.add(music.getAlbum());
-                            break;
-                        }
-                        if (music.getTranslatedNames() != null) {
-                            if (music.getTranslatedNames().toLowerCase().contains(text.toLowerCase())) {
-                                renderList.add(music.getAlbum());
-                            }
-                        }
-                    }
-                }
-
-                // distinct the list
-                renderList = renderList.stream().distinct().collect(Collectors.toList());
-            }
-        });
+        textBox.setCallback(this::filterAlbums);
 //        textBox.yOffset = -4f;
 
         textBox.drawTextBox((int) mouseX, (int) mouseY);
@@ -237,6 +234,8 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         double offsetX = -coverSize * 0.5 - scrollOffset;
 
         int dWheel = Mouse.getDWheel();
+
+        index = Math.max(0, Math.min(renderList.size() - 1, index));
 
         if (dWheel != 0 && !renderList.isEmpty() && !albumRenderingData.computeIfAbsent(renderList.get(index), k -> new AlbumRenderingData()).flipped) {
 
@@ -368,7 +367,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                 Image.draw(offsetX + coverSize - imgSize - imgSpacing, y + imgSpacing, imgSize, imgSize, Image.Type.Normal);
 
                 CFontRenderer fr = FontManager.pf28bold;
-                fr.drawString(fr.trim(al.getName(), (coverSize - imgSpacing * 2 - 2 - imgSize) / fontScale), offsetX + 2, y + 2, fontScale, -1);
+                fr.drawString(fr.trim(albumName(al), (coverSize - imgSpacing * 2 - 2 - imgSize) / fontScale), offsetX + 2, y + 2, fontScale, -1);
 
                 double contentSpacing = 2;
 
@@ -415,7 +414,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                     }
 
                     fr.drawString((j + 1) + ".", contentPaneX + 2, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, -1);
-                    fr.drawString(fr.trim(music.getName(), 58 / fontScale), contentPaneX + 4 + 12, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, -1);
+                    fr.drawString(fr.trim(musicName(music), 58 / fontScale), contentPaneX + 4 + 12, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, -1);
 
                     long tMin = (music.getDuration() / 1000) / 60;
                     long tSec = ((music.getDuration() / 1000) - ((music.getDuration() / 1000) / 60) * 60);
@@ -473,7 +472,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
             CFontRenderer fr = FontManager.pf50bold;
 
-            fr.drawCenteredStringWithShadow(al.getName(), RenderSystem.getWidth() * 0.5, RenderSystem.getHeight() * 0.5 + (coverSize - paneHeight * 0.225) / paneHeight * RenderSystem.getHeight(), -1);
+            fr.drawCenteredStringWithShadow(albumName(al), RenderSystem.getWidth() * 0.5, RenderSystem.getHeight() * 0.5 + (coverSize - paneHeight * 0.225) / paneHeight * RenderSystem.getHeight(), -1);
 //            fr.drawCenteredString(al.getA, RenderSystem.getWidth() * 0.5, RenderSystem.getHeight() * 0.5 + (coverSize - paneHeight * 0.25) / paneHeight * RenderSystem.getHeight() + fr.getHeight(), -1);
 
             this.setupProjectionTransformation();
@@ -541,6 +540,9 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         screen.reloadOnClosed = true;
         screen.albumList.clear();
         screen.renderList.clear();
+        screen.index = 0;
+        screen.scrollOffset = 0;
+        screen.textBox.setText("");
         screen.loadAlbumData(Collections.singletonList(playList));
 
         screen.clickResistTimer.reset();

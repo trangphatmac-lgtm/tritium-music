@@ -519,8 +519,6 @@ public class CloudMusic implements SharedConstants {
         }
     }
 
-    // 以下这些 上一首/下一首 以及 播放/暂停 的逻辑我写完我自己都看不懂
-    // BUT IT WORKS
     public static volatile boolean dontAdd = false;
 
     public static void prev() {
