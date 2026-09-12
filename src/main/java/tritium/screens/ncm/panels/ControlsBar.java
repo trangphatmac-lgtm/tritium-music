@@ -115,6 +115,12 @@ public class ControlsBar extends NCMPanel {
                         .setPosition(next.getRelativeX() + next.getWidth() * .5 + 20, next.getRelativeY() + buttonsYOffset)
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT)));
 
+        PlayModeButton playModeButton = new PlayModeButton(20);
+        this.addChild(playModeButton);
+        playModeButton.setBeforeRenderCallback(() -> playModeButton
+                .setPosition(prev.getRelativeX() - playModeButton.getWidth() - 10, prev.getRelativeY())
+                .setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT)));
+
         RoundedRectWidget progressBarBg = new RoundedRectWidget() {
 
             boolean prevMouse = false;

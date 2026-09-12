@@ -20,6 +20,7 @@ import tritium.rendering.shader.ShaderProgram;
 import tritium.rendering.shader.Shaders;
 import tritium.rendering.texture.ITextureObject;
 import tritium.rendering.ui.widgets.IconWidget;
+import tritium.screens.ncm.panels.PlayModeButton;
 import tritium.settings.ClientSettings;
 import tritium.utils.Location;
 import tritium.utils.cursor.CursorUtils;
@@ -68,6 +69,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     IconWidget playPauseButton = new IconWidget("G", FontManager.music40, 0, 0, 24, 24);
     IconWidget prev = new IconWidget("E", FontManager.music40, 0, 0, 32, 32);
     IconWidget next = new IconWidget("H", FontManager.music40, 0, 0, 32, 32);
+    PlayModeButton playModeButton = new PlayModeButton(32);
     IconWidget translationButton = new IconWidget("译", FontManager.pf20bold, 0, 0, 32, 32);
 
     private final Music music;
@@ -881,12 +883,19 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
             return true;
         });
+
+        playModeButton
+                .setAlpha(alpha * .8f)
+                .setColor(Color.WHITE)
+                .setPosition(prev.getX() - playModeButton.getWidth() - 16, playPauseButton.getY());
+        playModeButton.renderWidget(mouseX, mouseY, 0);
     }
 
     public void mouseClicked(double mouseX, double mouseY, int mouseButton) {
         playPauseButton.onMouseClickReceived(mouseX, mouseY, mouseButton);
         prev.onMouseClickReceived(mouseX, mouseY, mouseButton);
         next.onMouseClickReceived(mouseX, mouseY, mouseButton);
+        playModeButton.onMouseClickReceived(mouseX, mouseY, mouseButton);
         translationButton.onMouseClickReceived(mouseX, mouseY, mouseButton);
     }
 

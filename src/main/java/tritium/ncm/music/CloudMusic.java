@@ -78,7 +78,7 @@ public class CloudMusic implements SharedConstants {
     public static List<PlayList> playLists;
     public static List<Long> likeList;
 
-    public static PlayMode playMode = PlayMode.Sequential;
+    public static volatile PlayMode playMode = PlayMode.Sequential;
 
     public static Quality quality = Quality.STANDARD;
 
@@ -496,15 +496,26 @@ public class CloudMusic implements SharedConstants {
 
     @Getter
     public enum PlayMode {
-        Random("F"),
-        LoopInList("I"),
-        LoopSingle("L"),
-        Sequential("G");
+        Random("F", "随机播放"),
+        LoopInList("I", "列表循环"),
+        LoopSingle("L", "单曲循环"),
+        Sequential("G", "顺序播放");
 
         private final String icon;
+        private final String displayName;
 
-        PlayMode(String icon) {
+        PlayMode(String icon, String displayName) {
             this.icon = icon;
+            this.displayName = displayName;
+        }
+
+        public PlayMode nextMode() {
+            return switch (this) {
+                case Sequential -> LoopInList;
+                case LoopInList -> LoopSingle;
+                case LoopSingle -> Random;
+                case Random -> Sequential;
+            };
         }
     }
 
