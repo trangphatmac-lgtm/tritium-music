@@ -10,7 +10,6 @@ import org.lwjgl.opengl.PixelFormat;
 import tritium.management.FontManager;
 import tritium.ncm.music.CloudMusic;
 import tritium.rendering.Framebuffer;
-import tritium.rendering.MusicToast;
 import tritium.rendering.Rect;
 import tritium.rendering.StencilClipManager;
 import tritium.rendering.animation.Interpolations;
@@ -166,10 +165,6 @@ public final class TritiumMusicDesktopApp {
                 }
                 renderFatalOverlay(t);
             }
-        }
-
-        if (DesktopAppState.preferences().musicToast().getValue()) {
-            MusicToast.render();
         }
 
         CursorUtils.setOverride();

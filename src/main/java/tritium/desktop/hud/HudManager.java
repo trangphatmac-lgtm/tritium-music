@@ -25,6 +25,7 @@ import java.awt.geom.Rectangle2D;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 public final class HudManager {
     private static final int EDIT_PADDING = 8;
@@ -36,6 +37,15 @@ public final class HudManager {
             new MusicInfoHudRenderer()
     );
     private final List<RendererWindow> rendererWindows = new ArrayList<>();
+
+    private final AtomicReference<String> pendingToast = new AtomicReference<>();
+    private final MusicToastHud toastHud = new MusicToastHud();
+
+    public void pushMusicToast(String text) {
+        if (text != null && !text.isBlank() && DesktopAppState.preferences().musicToast().getValue()) {
+            pendingToast.set(text);
+        }
+    }
 
     private Timer timer;
     private Rectangle screenBounds = new Rectangle(0, 0, 1, 1);
@@ -93,7 +103,8 @@ public final class HudManager {
     public void stop() {
         requested = false;
         startPending = false;
-        if (timer == null && rendererWindows.stream().allMatch(RendererWindow::isDisposed)) {
+        pendingToast.set(null);
+        if (timer == null && toastHud.isDisposed() && rendererWindows.stream().allMatch(RendererWindow::isDisposed)) {
             return;
         }
 
@@ -107,6 +118,7 @@ public final class HudManager {
             for (RendererWindow rendererWindow : rendererWindows) {
                 rendererWindow.dispose();
             }
+            toastHud.dispose();
             dragState = null;
         };
 
@@ -148,6 +160,8 @@ public final class HudManager {
         updateScreenBounds();
         DesktopAppState.preferences().hud().ensureLayoutInitialized(screenBounds);
         currentSnapshot = HudStateSnapshot.capture(smokeMode);
+        toastHud.tick(pendingToast.getAndSet(null), DesktopAppState.preferences().musicToast().getValue(),
+                System.nanoTime());
         if (refreshStartupWindows()) {
             return;
         }
@@ -212,7 +226,7 @@ public final class HudManager {
 
     private boolean shouldRunHud() {
         MusicPreferences preferences = DesktopAppState.preferences();
-        return smokeMode || preferences.hud().editMode().getValue()
+        return smokeMode || preferences.musicToast().getValue() || preferences.hud().editMode().getValue()
                 || renderers.stream().anyMatch(renderer -> renderer.layout(preferences).enabled().getValue());
     }
 

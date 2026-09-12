@@ -54,7 +54,6 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new SectionHeader("播放"));
         scrollPanel.addChild(new ChoiceRow("音质", preferences.quality()));
         scrollPanel.addChild(new SliderRow("音量", preferences.volume(), value -> Math.round(value * 100) + "%"));
-        scrollPanel.addChild(new ToggleRow("播放提示", preferences.musicToast()));
 
         scrollPanel.addChild(new SectionHeader("缓存"));
         scrollPanel.addChild(new CacheRow());
@@ -66,6 +65,7 @@ public class SettingsPanel extends NCMPanel {
                 value -> String.format(Locale.ROOT, "%.1f", value)));
 
         scrollPanel.addChild(new SectionHeader("系统 HUD"));
+        scrollPanel.addChild(new ToggleRow("启用播放提示 HUD", preferences.musicToast()));
         scrollPanel.addChild(new ToggleRow("启用信息 HUD", preferences.hud().musicInfo().enabled()));
         scrollPanel.addChild(new ToggleRow("启用歌词 HUD", preferences.hud().musicLyrics().enabled()));
         scrollPanel.addChild(new ToggleRow("启用频谱 HUD", preferences.hud().musicSpectrum().enabled()));
