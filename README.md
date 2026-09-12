@@ -15,7 +15,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Play, pause, previous track, and next track
 - Volume adjustment and seek bar dragging
 - Lyric page, word-by-word lyrics, translations, and romaji
-- Cover loading, blurred backgrounds, and music toasts
+- Cover loading and blurred backgrounds
 - Music download cache and cache size display
 
 ### System HUDs
@@ -23,7 +23,9 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - `musicInfo`: cover art, song title, artist/current lyric, playback progress, and download status
 - `musicLyrics`: desktop lyrics, scrolling effect, alignment, shadow, single-line mode, translation/romaji
 - `musicSpectrum`: desktop spectrum visualizer, rectangle/line styles, indicator line, color, and scale
-- Click-through by default; in edit mode, HUDs can be dragged, resized, and saved
+- `musicToast`: independent, always-on-top playback notification at the top-left of the screen, with the artist and song title, pixel border, animated music notes, and slide animations; stays visible for about five seconds and refreshes on track changes
+- Toggle playback notifications in Settings → System HUDs → Enable Playback Toast HUD (`设置 → 系统 HUD → 启用播放提示 HUD`); the setting is saved automatically
+- HUDs are click-through by default. The playback toast does not take focus; the info, lyrics, and spectrum HUDs can be dragged, resized, and saved in edit mode
 
 ## Quick Start
 
@@ -80,7 +82,7 @@ java -jar target/tritium-music-1.x.x.jar
 # Exit automatically after 3 seconds for smoke tests
 java -jar target/tritium-music-1.x.x.jar --smoke-exit-after=3
 
-# Force a synthetic preview of all three HUDs
+# Force a synthetic preview of the info, lyrics, and spectrum HUDs
 java -jar target/tritium-music-1.x.x.jar --hud-smoke --smoke-exit-after=3
 
 # Adjust UI size in window units (independent of Retina pixel density)
