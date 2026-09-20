@@ -207,6 +207,12 @@ public class ControlsBar extends NCMPanel {
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT))
                         .setPosition(progressBarBg.getRelativeX() + progressBarBg.getWidth() + 4, lblCurTime.getRelativeY()));
 
+        FavoriteButton favoriteButton = new FavoriteButton(20);
+        this.addChild(favoriteButton);
+        favoriteButton.setBeforeRenderCallback(() -> favoriteButton
+                .setPosition(playingCover.getRelativeX() + playingCover.getWidth() + 4,
+                        this.getHeight() * .5 - favoriteButton.getHeight() * .5));
+
         LabelWidget lblMusicName = new LabelWidget(() -> CloudMusic.currentlyPlaying == null ? "未在播放" : CloudMusic.currentlyPlaying.getName(), FontManager.pf14bold);
         this.addChild(lblMusicName);
 
@@ -217,7 +223,7 @@ public class ControlsBar extends NCMPanel {
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT))
                         .setMaxWidth(lblCurTime.getRelativeX() - lblMusicName.getRelativeX() - 4)
                         .setPosition(
-                                playingCover.getRelativeX() + playingCover.getWidth() + 4,
+                                favoriteButton.getRelativeX() + favoriteButton.getWidth() + 4,
                                 lblMusicName.getRelativeY() - lblMusicName.getHeight() * .5 - 2
                         ));
 
@@ -238,7 +244,7 @@ public class ControlsBar extends NCMPanel {
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT))
                         .setMaxWidth(lblCurTime.getRelativeX() - lblMusicArtist.getRelativeX() - 4)
                         .setPosition(
-                                playingCover.getRelativeX() + playingCover.getWidth() + 4,
+                                favoriteButton.getRelativeX() + favoriteButton.getWidth() + 4,
                                 lblMusicArtist.getRelativeY() + lblMusicArtist.getHeight() * .5 + 2
                         ));
 

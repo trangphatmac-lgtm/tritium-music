@@ -22,6 +22,7 @@ import tritium.desktop.DesktopChatColor;
 import tritium.desktop.hud.HudArtworkCache;
 import tritium.interfaces.SharedConstants;
 import tritium.ncm.OptionsUtil;
+import tritium.ncm.RequestUtil;
 import tritium.ncm.api.CloudMusicApi;
 import tritium.ncm.music.dto.Music;
 import tritium.ncm.music.dto.PlayList;
@@ -54,7 +55,10 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 
 /**
  * @author IzumiiKonata
@@ -74,9 +78,98 @@ public class CloudMusic implements SharedConstants {
     public static Music currentlyPlaying;
     public static Thread playThread;
 
-    public static User profile;
+    public static volatile User profile;
     public static List<PlayList> playLists;
-    public static List<Long> likeList;
+    public static volatile List<Long> likeList;
+    private static final Object favoritesLock = new Object();
+    private static final Map<Long, Object> pendingFavorites = new HashMap<>();
+
+    public static boolean isLiked(long songId) {
+        List<Long> favorites = likeList;
+        return profile != null && favorites != null && favorites.contains(songId);
+    }
+
+    public static boolean isLikePending(long songId) {
+        synchronized (favoritesLock) {
+            return pendingFavorites.containsKey(songId);
+        }
+    }
+
+    public static CompletableFuture<String> toggleLike(Music song) {
+        return toggleLike(song, CloudMusicApi::like, MultiThreadingUtil::runAsync);
+    }
+
+    // Keep transport and scheduling injectable so failures and in-flight clicks can be tested offline.
+    static CompletableFuture<String> toggleLike(Music song,
+                                                BiFunction<Long, Boolean, RequestUtil.RequestAnswer> request,
+                                                Executor executor) {
+        final User user;
+        final boolean liked;
+        final Object token = new Object();
+        if (song == null) {
+            return CompletableFuture.completedFuture("未在播放");
+        }
+        long songId = song.getId();
+        synchronized (favoritesLock) {
+            user = profile;
+            if (user == null) {
+                return CompletableFuture.completedFuture("请先登录后收藏歌曲");
+            }
+            if (likeList == null) {
+                return CompletableFuture.completedFuture("收藏列表尚未加载，请稍后重试");
+            }
+            if (pendingFavorites.containsKey(songId)) {
+                return CompletableFuture.completedFuture("正在更新收藏…");
+            }
+            liked = !likeList.contains(songId);
+            pendingFavorites.put(songId, token);
+        }
+
+        CompletableFuture<String> result = new CompletableFuture<>();
+        Runnable update = () -> {
+            String message;
+            try {
+                if (profile != user) {
+                    message = "登录状态已变化，请重试";
+                } else {
+                    RequestUtil.RequestAnswer answer = request.apply(songId, liked);
+                    JsonObject body = answer.toJsonObject();
+                    if (answer.getStatus() != 200 || body == null || !body.has("code")
+                            || body.get("code").getAsInt() != 200) {
+                        message = "收藏更新失败，请重试";
+                    } else {
+                        synchronized (favoritesLock) {
+                            if (profile != user || likeList == null) {
+                                message = "登录状态已变化，请重试";
+                            } else {
+                                List<Long> updated = new ArrayList<>(likeList);
+                                updated.removeIf(id -> id == songId);
+                                if (liked) updated.add(songId);
+                                likeList = List.copyOf(updated);
+                                message = liked ? "已收藏" : "已取消收藏";
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                message = "收藏更新失败，请重试";
+            } finally {
+                synchronized (favoritesLock) {
+                    pendingFavorites.remove(songId, token);
+                }
+            }
+            result.complete(message);
+        };
+        try {
+            executor.execute(update);
+        } catch (RuntimeException e) {
+            synchronized (favoritesLock) {
+                pendingFavorites.remove(songId, token);
+            }
+            result.complete("收藏更新失败，请重试");
+        }
+        return result;
+    }
 
     public static volatile PlayMode playMode = PlayMode.Sequential;
 
@@ -399,6 +492,11 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static void loadNCM(String cookie) {
+        synchronized (favoritesLock) {
+            profile = null;
+            likeList = null;
+            pendingFavorites.clear();
+        }
         OptionsUtil.setCookie(cookie);
         sessionStatusText = "正在加载用户信息";
         // 获取用户信息
@@ -420,7 +518,7 @@ public class CloudMusic implements SharedConstants {
         System.out.printf("[NCM] Loaded %s playlists\n", playLists.size());
 
         sessionStatusText = "正在加载喜欢列表";
-        likeList = likeList();
+        likeList = List.copyOf(likeList());
         NCMScreen.getInstance().markDirty();
     }
     

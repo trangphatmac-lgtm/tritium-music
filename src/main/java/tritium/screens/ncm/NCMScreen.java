@@ -429,6 +429,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     public enum ColorType {
 
+        ACCENT,
         GENERIC_BACKGROUND,
         ELEMENT_BACKGROUND,
         ELEMENT_HOVER,
@@ -440,6 +441,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
     public static int getColor(ColorType type) {
 
         return switch (type) {
+            case ACCENT -> 0xD60017;
             case GENERIC_BACKGROUND -> 0x1E1E1E;
             case ELEMENT_BACKGROUND -> 0x232323;
             case ELEMENT_HOVER -> 0x353535;

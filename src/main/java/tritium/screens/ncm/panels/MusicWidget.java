@@ -22,6 +22,10 @@ import java.awt.*;
  */
 public class MusicWidget extends RoundedRectWidget {
 
+    private static final double RIGHT_PADDING = 8;
+    private static final double DURATION_COLUMN_WIDTH = 44;
+    private static final double ACTION_GAP = -20;
+
     public PlayList playList;
     public Music music;
     boolean coverLoaded = false;
@@ -45,7 +49,7 @@ public class MusicWidget extends RoundedRectWidget {
         this.addChild(rrPlayingIndicator);
         rrPlayingIndicator
                 .setAlpha(0f)
-                .setColor(0xFFD60017)
+                .setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT))
                 .setClickable(false);
         if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId()) {
             rrPlayingIndicator.setAlpha(1f);
@@ -121,6 +125,26 @@ public class MusicWidget extends RoundedRectWidget {
 
         lblMusicIndex.setClickable(false);
 
+        LabelWidget lblMusicDuration = new LabelWidget(formatDuration(music.getDuration()), FontManager.pf14bold);
+        this.addChild(lblMusicDuration);
+        lblMusicDuration.setBeforeRenderCallback(() -> {
+            if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId())
+                lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+            else
+                lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
+            lblMusicDuration.centerVertically();
+            lblMusicDuration.setPosition(this.getWidth() - RIGHT_PADDING - lblMusicDuration.getWidth(), lblMusicDuration.getRelativeY());
+        });
+        lblMusicDuration.setClickable(false);
+
+        FavoriteButton favoriteButton = new FavoriteButton(20, () -> this.music);
+        this.addChild(favoriteButton);
+        favoriteButton.setBeforeRenderCallback(() -> favoriteButton
+                .setAccentBackground(CloudMusic.currentlyPlaying != null
+                        && CloudMusic.currentlyPlaying.getId() == this.music.getId())
+                .setPosition(this.getWidth() - RIGHT_PADDING - DURATION_COLUMN_WIDTH - ACTION_GAP - favoriteButton.getWidth(),
+                        (this.getHeight() - favoriteButton.getHeight()) * .5));
+
         boolean musicDirty = music.isDirty();
         double dirtyIndicatorSize = 8;
 
@@ -135,7 +159,8 @@ public class MusicWidget extends RoundedRectWidget {
                     lblMusicName.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
                     lblMusicName.centerVertically();
                     lblMusicName.setPosition(cover.getRelativeX() + cover.getWidth() + 4, lblMusicName.getRelativeY() - lblMusicName.getHeight() * .5 - 2);
-                    lblMusicName.setMaxWidth(this.getWidth() - (cover.getRelativeX() + cover.getWidth() + 4 + 32 + (musicDirty ? (dirtyIndicatorSize + 4) : 0)));
+                    lblMusicName.setMaxWidth(Math.max(0, favoriteButton.getRelativeX() - 8
+                            - lblMusicName.getRelativeX() - (musicDirty ? dirtyIndicatorSize + 4 : 0)));
                 });
         lblMusicName.setClickable(false);
 
@@ -173,22 +198,10 @@ public class MusicWidget extends RoundedRectWidget {
                         lblMusicArtist.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
                     lblMusicArtist.centerVertically();
                     lblMusicArtist.setPosition(cover.getRelativeX() + cover.getWidth() + 4, lblMusicArtist.getRelativeY() + lblMusicArtist.getHeight() * .5 + 2);
-                    lblMusicArtist.setMaxWidth(this.getWidth() - (cover.getRelativeX() + cover.getWidth() + 4 + 32));
+                    lblMusicArtist.setMaxWidth(Math.max(0, favoriteButton.getRelativeX() - 8 - lblMusicArtist.getRelativeX()));
                 });
 
         lblMusicArtist.setClickable(false);
-
-        LabelWidget lblMusicDuration = new LabelWidget(formatDuration(music.getDuration()), FontManager.pf14bold);
-        this.addChild(lblMusicDuration);
-        lblMusicDuration.setBeforeRenderCallback(() -> {
-            if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId())
-                lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
-            else
-                lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
-            lblMusicDuration.centerVertically();
-            lblMusicDuration.setPosition(this.getWidth() - 8 - lblMusicDuration.getWidth(), lblMusicDuration.getRelativeY());
-        });
-        lblMusicDuration.setClickable(false);
     }
 
     private String formatDuration(long totalMillis) {

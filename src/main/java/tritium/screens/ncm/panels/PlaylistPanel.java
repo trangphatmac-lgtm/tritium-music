@@ -64,7 +64,7 @@ public class PlaylistPanel extends NCMPanel {
                 btnPlay.setBounds(57, 17);
                 btnPlay.setPosition(cover.getRelativeX() + cover.getWidth() + 12, cover.getRelativeY() + cover.getHeight() - btnPlay.getHeight());
                 btnPlay.setRadius(3);
-                btnPlay.setColor(0xFFd60017);
+                btnPlay.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
                 btnPlay.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
             });
 
@@ -84,7 +84,7 @@ public class PlaylistPanel extends NCMPanel {
                 btnPlayRandomOrder.setBounds(57, 17);
                 btnPlayRandomOrder.setPosition(cover.getRelativeX() + cover.getWidth() + 12 + btnPlay.getWidth() + 8, cover.getRelativeY() + cover.getHeight() - btnPlayRandomOrder.getHeight());
                 btnPlayRandomOrder.setRadius(3);
-                btnPlayRandomOrder.setColor(0xFFd60017);
+                btnPlayRandomOrder.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
                 btnPlayRandomOrder.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
             });
 
@@ -108,7 +108,7 @@ public class PlaylistPanel extends NCMPanel {
                 btnCoverflow.setBounds(57, 17);
                 btnCoverflow.setPosition(cover.getRelativeX() + cover.getWidth() + 12 + btnPlay.getWidth() + 8 + btnPlayRandomOrder.getWidth() + 8, cover.getRelativeY() + cover.getHeight() - btnCoverflow.getHeight());
                 btnCoverflow.setRadius(3);
-                btnCoverflow.setColor(0xFFd60017);
+                btnCoverflow.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
                 btnCoverflow.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
             });
 
