@@ -200,6 +200,14 @@ public class NavigateBar extends NCMPanel {
                 PlaylistItem item = new PlaylistItem(i == 0 ? "C" : "D", Color.GRAY::getRGB, playList::getName, () -> NCMScreen.getInstance().setCurrentPanel(new PlaylistPanel(playList)));
                 item.setShouldOverrideMouseCursor(true);
 
+                if (CloudMusic.isLikedPlaylist(playList)) {
+                    item.trailingWidth = 24;
+                    HeartbeatButton heartbeatButton = new HeartbeatButton(16);
+                    item.addChild(heartbeatButton);
+                    heartbeatButton.setBeforeRenderCallback(() -> heartbeatButton.setPosition(
+                            item.getWidth() - heartbeatButton.getWidth() - 8, 0));
+                }
+
                 this.playlistPanel.addChild(item);
             }
         }
@@ -290,6 +298,7 @@ public class NavigateBar extends NCMPanel {
         Supplier<String> label;
         Runnable onClick;
         RoundedRectWidget bg = new RoundedRectWidget();
+        double trailingWidth;
 
         @Getter
         @Setter
@@ -335,7 +344,7 @@ public class NavigateBar extends NCMPanel {
                 lbl.centerVertically();
                 lbl.setPosition(lblIcon.getRelativeX() + lblIcon.getWidth() + 4, lbl.getRelativeY());
                 lbl.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
-                lbl.setMaxWidth(Math.max(0, this.getWidth() - lbl.getRelativeX() - 8));
+                lbl.setMaxWidth(Math.max(0, this.getWidth() - lbl.getRelativeX() - 8 - trailingWidth));
             });
 
             lbl.setClickable(false);

@@ -13,6 +13,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Cookie login and persistence
 - Home page, playlists, search, and liked songs
 - Play, pause, previous track, and next track
+- Heartbeat mode (心动模式): use the pulse-heart beside your liked playlist, or cycle the playback-mode control through Sequential → List loop → Single repeat → Random → Heartbeat, to mix liked songs with NetEase intelligence recommendations. Requires login and at least one liked song; more recommendations load automatically. Enabling it preserves the current song, playback position, and pause state; recommendations begin after that song finishes or you skip forward. Click the sidebar pulse-heart again to restore the previous mode, or click the playback-mode control to advance to Sequential, while keeping the current track. Starting another playlist exits Heartbeat mode. If recommendations fail, the existing queue remains available and Next retries the request.
 - Volume adjustment and seek bar dragging
 - Lyric page, word-by-word lyrics, translations, and romaji
 - Cover loading and blurred backgrounds

@@ -141,13 +141,13 @@ public class Music {
     public Tuple<String, String> getPlayUrl() {
         JsonObject result = CloudMusicApi.songUrlV1(this.id, CloudMusic.quality.getQuality().toLowerCase()).toJsonObject();
         JsonObject music = result.get("data").getAsJsonArray().get(0).getAsJsonObject();
-        if (music.get("code").getAsInt() != 200) {
+        if (music.get("code").getAsInt() != 200 || !music.has("url") || music.get("url").isJsonNull()) {
             return null;
         }
 
         String url = music.get("url").getAsString();
 
-        String type = music.get("type").getAsString();
+        String type = music.has("type") && !music.get("type").isJsonNull() ? music.get("type").getAsString() : "mp3";
 
         if (type.isEmpty())
             type = "mp3";

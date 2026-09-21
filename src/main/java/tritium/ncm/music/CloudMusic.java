@@ -59,6 +59,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * @author IzumiiKonata
@@ -73,9 +75,9 @@ public class CloudMusic implements SharedConstants {
     public static volatile long loadingSessionStartedAt = 0L;
     public static AudioPlayer player;
     // 当前播放列表
-    public static List<Music> playList = new ArrayList<>();
-    public static int curIdx = 0;
-    public static Music currentlyPlaying;
+    public static volatile List<Music> playList = new ArrayList<>();
+    public static volatile int curIdx = 0;
+    public static volatile Music currentlyPlaying;
     public static Thread playThread;
 
     public static volatile User profile;
@@ -172,6 +174,128 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static volatile PlayMode playMode = PlayMode.Sequential;
+
+    private static final Object playbackLock = new Object();
+    private static volatile HeartbeatSession heartbeatSession;
+    private static volatile boolean heartbeatLoading;
+    private static PlayMode modeBeforeHeartbeat = PlayMode.Sequential;
+
+    public static boolean isHeartbeatLoading() {
+        return heartbeatLoading;
+    }
+
+    public static String heartbeatError() {
+        HeartbeatSession session = heartbeatSession;
+        return session == null ? null : session.error;
+    }
+
+    public static boolean isLikedPlaylist(PlayList playlist) {
+        User user = profile;
+        return playlist != null && user != null && playlist.getSpecialType() == 5
+                && playlist.getCreator() != null && playlist.getCreator().getId() == user.getId();
+    }
+
+    public static CompletableFuture<String> toggleHeartbeat() {
+        return toggleHeartbeat(CloudMusicApi::intelligenceList, MultiThreadingUtil::runAsync,
+                CloudMusic::startHeartbeatPlayback);
+    }
+
+    static void startHeartbeatPlayback(HeartbeatSession session) {
+        if (playThread instanceof PlayThread thread && thread.queueHeartbeat(session)) return;
+        playInternal(session.songs, 0);
+    }
+
+    private static boolean isCurrentHeartbeat(HeartbeatSession session) {
+        return session != null && heartbeatSession == session && profile == session.user
+                && playMode == PlayMode.Heartbeat;
+    }
+
+    static CompletableFuture<String> toggleHeartbeat(HeartbeatSession.Request request, Executor executor,
+                                                       Consumer<HeartbeatSession> startPlayback) {
+        final HeartbeatSession session;
+        synchronized (playbackLock) {
+            if (heartbeatSession != null) {
+                exitHeartbeat();
+                return CompletableFuture.completedFuture("已退出心动模式");
+            }
+            if (profile == null) return CompletableFuture.completedFuture("请先登录后开启心动模式");
+            if (likeList == null || playLists == null)
+                return CompletableFuture.completedFuture("喜欢列表尚未加载，请稍后重试");
+            if (likeList.isEmpty()) return CompletableFuture.completedFuture("先收藏一些喜欢的歌曲，再开启心动模式");
+            PlayList source = playLists.stream().filter(CloudMusic::isLikedPlaylist).findFirst().orElse(null);
+            if (source == null) return CompletableFuture.completedFuture("未找到我喜欢的音乐，请刷新登录状态");
+            Music current = currentlyPlaying;
+            long seed = current != null && likeList.contains(current.getId()) ? current.getId()
+                    : likeList.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(likeList.size()));
+            session = new HeartbeatSession(profile, source, seed, request, executor);
+            heartbeatSession = session;
+            heartbeatLoading = true;
+        }
+        CompletableFuture<String> result = new CompletableFuture<>();
+        try {
+            session.requestMore(session.seed).whenComplete((songs, failure) -> {
+                synchronized (playbackLock) {
+                    if (heartbeatSession != session) {
+                        result.complete("心动模式请求已取消");
+                        return;
+                    }
+                    if (profile != session.user || failure != null) {
+                        exitHeartbeat();
+                        result.complete(profile != session.user ? "登录状态已变化，请重试"
+                                : heartbeatFailureMessage(failure));
+                        return;
+                    }
+                    session.consumed();
+                    session.songs.addAll(songs);
+                    modeBeforeHeartbeat = playMode;
+                    playMode = PlayMode.Heartbeat;
+                    heartbeatLoading = false;
+                    try {
+                        startPlayback.accept(session);
+                        playedFrom = session.source;
+                        result.complete("已开启心动模式 · 红心歌曲与相似推荐交替播放");
+                    } catch (RuntimeException e) {
+                        exitHeartbeat();
+                        result.complete("心动模式启动失败，请重试");
+                    }
+                }
+            });
+        } catch (RuntimeException e) {
+            synchronized (playbackLock) {
+                if (heartbeatSession == session) exitHeartbeat();
+            }
+            result.complete("心动推荐加载失败，请重试");
+        }
+        return result;
+    }
+
+    private static String heartbeatFailureMessage(Throwable failure) {
+        while (failure.getCause() != null) failure = failure.getCause();
+        return failure instanceof IllegalStateException ? failure.getMessage() : "心动推荐加载失败，请检查网络后重试";
+    }
+
+    public static void exitHeartbeat() {
+        synchronized (playbackLock) {
+            heartbeatSession = null;
+            heartbeatLoading = false;
+            if (playMode == PlayMode.Heartbeat) playMode = modeBeforeHeartbeat;
+        }
+    }
+
+    public static CompletableFuture<String> cyclePlayMode() {
+        return cyclePlayMode(CloudMusic::toggleHeartbeat);
+    }
+
+    static CompletableFuture<String> cyclePlayMode(Supplier<CompletableFuture<String>> startHeartbeat) {
+        synchronized (playbackLock) {
+            // A second click while loading advances past Heartbeat and invalidates its response.
+            PlayMode next = heartbeatLoading ? PlayMode.Heartbeat.nextMode() : playMode.nextMode();
+            if (next == PlayMode.Heartbeat) return startHeartbeat.get();
+            exitHeartbeat();
+            playMode = next;
+            return CompletableFuture.completedFuture("已切换为" + next.getDisplayName());
+        }
+    }
 
     public static Quality quality = Quality.STANDARD;
 
@@ -492,6 +616,8 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static void loadNCM(String cookie) {
+        exitHeartbeat();
+        playLists = null;
         synchronized (favoritesLock) {
             profile = null;
             likeList = null;
@@ -555,6 +681,7 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static void shutdown() {
+        exitHeartbeat();
         doBreak = true;
         playing.set(false);
 
@@ -597,7 +724,8 @@ public class CloudMusic implements SharedConstants {
         Random("F", "随机播放"),
         LoopInList("I", "列表循环"),
         LoopSingle("L", "单曲循环"),
-        Sequential("G", "顺序播放");
+        Sequential("G", "顺序播放"),
+        Heartbeat("D", "心动模式");
 
         private final String icon;
         private final String displayName;
@@ -612,7 +740,8 @@ public class CloudMusic implements SharedConstants {
                 case Sequential -> LoopInList;
                 case LoopInList -> LoopSingle;
                 case LoopSingle -> Random;
-                case Random -> Sequential;
+                case Random -> Heartbeat;
+                case Heartbeat -> Sequential;
             };
         }
     }
@@ -620,6 +749,15 @@ public class CloudMusic implements SharedConstants {
     public static volatile boolean dontAdd = false;
 
     public static void prev() {
+        synchronized (playbackLock) {
+            HeartbeatSession session = heartbeatSession;
+            if (playMode == PlayMode.Heartbeat && session != null && session.error != null
+                    && (playThread == null || !playThread.isAlive())) {
+                session.error = null;
+                startNewPlayThread(playList, Math.max(0, Math.min(curIdx - 1, playList.size() - 1)));
+                return;
+            }
+        }
         updatePlayCountIfNeeded();
         
         if (!canPlayPrevious()) {
@@ -650,6 +788,17 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static void next() {
+        HeartbeatSession session = heartbeatSession;
+        if (playMode == PlayMode.Heartbeat && session != null && session.error != null
+                && (playThread == null || !playThread.isAlive())) {
+            synchronized (playbackLock) {
+                if (heartbeatSession == session) {
+                    session.error = null;
+                    startNewPlayThread(playList, Math.max(0, Math.min(curIdx, playList.size())));
+                }
+            }
+            return;
+        }
         if (!canPlayNext()) {
             return;
         }
@@ -663,6 +812,7 @@ public class CloudMusic implements SharedConstants {
     }
     
     private static boolean canPlayNext() {
+        if (curIdx >= playList.size()) return false;
         if (curIdx + 1 > playList.size() - 1 && playMode == PlayMode.Sequential) {
             return false;
         }
@@ -673,8 +823,8 @@ public class CloudMusic implements SharedConstants {
      * 给网易云发送当前歌曲的播放时长
      */
     private static void updatePlayCountIfNeeded() {
-        if (playedFrom != null && player != null) {
-            playList.get(curIdx).updPlayCount(playedFrom, player.getCurrentTimeSeconds());
+        if (playedFrom != null && player != null && currentlyPlaying != null) {
+            currentlyPlaying.updPlayCount(playedFrom, player.getCurrentTimeSeconds());
         }
     }
     
@@ -699,9 +849,16 @@ public class CloudMusic implements SharedConstants {
      */
     @SneakyThrows
     public static void play(List<Music> songs, int startIdx) {
-        // 深拷贝一份以避免打乱的时候影响传进来的列表的顺序
-        List<Music> safeSongList = new ArrayList<>(songs);
-        
+        if (songs == null || songs.isEmpty()) return;
+        synchronized (playbackLock) {
+            exitHeartbeat();
+            playedFrom = null;
+            playInternal(new ArrayList<>(songs), startIdx);
+        }
+    }
+
+    @SneakyThrows
+    private static void playInternal(List<Music> safeSongList, int startIdx) {
         stopExistingPlayThread();
         
         if (playMode == PlayMode.Random) {
@@ -709,8 +866,8 @@ public class CloudMusic implements SharedConstants {
             startIdx = handleRandomPlayMode(safeSongList, startIdx);
         }
         
-        startIdx = normalizeStartIndex(startIdx);
-        loadMusicCover(safeSongList.getFirst());
+        startIdx = Math.min(normalizeStartIndex(startIdx), safeSongList.size() - 1);
+        loadMusicCover(safeSongList.get(startIdx));
         
         playList = safeSongList;
         startNewPlayThread(safeSongList, startIdx);
@@ -743,6 +900,7 @@ public class CloudMusic implements SharedConstants {
     private static void startNewPlayThread(List<Music> songs, int startIdx) {
         playThread = new PlayThread(songs, startIdx);
         doBreak = false;
+        dontAdd = false;
         playing.set(false);
         playThread.start();
     }
@@ -751,36 +909,152 @@ public class CloudMusic implements SharedConstants {
 
     static AtomicBoolean playing = new AtomicBoolean(true);
 
-    private static class PlayThread extends Thread {
-        private final List<Music> songs;
+    static class PlayThread extends Thread {
+        private List<Music> songs;
         private final int startIdx;
+        private HeartbeatSession heartbeat;
+        private HeartbeatSession pendingHeartbeat;
+        private boolean acceptingHeartbeat = true;
 
         public PlayThread(List<Music> songs, int startIdx) {
             this.songs = songs;
             this.setName("Play Thread");
             this.startIdx = startIdx;
+            this.heartbeat = heartbeatSession != null && heartbeatSession.songs == songs ? heartbeatSession : null;
         }
 
         @Override
         public void run() {
+            try {
+                runPlaylist();
+            } finally {
+                retire();
+            }
+        }
+
+        synchronized boolean queueHeartbeat(HeartbeatSession session) {
+            if (!acceptingHeartbeat || doBreak || isInterrupted()) return false;
+            pendingHeartbeat = session;
+            return true;
+        }
+
+        /** Called only between tracks; never closes, seeks, or resumes the current audio player. */
+        synchronized boolean adoptHeartbeat(int completedIndex) {
+            HeartbeatSession session = pendingHeartbeat;
+            pendingHeartbeat = null;
+            if (!isCurrentHeartbeat(session) || doBreak || isInterrupted()) return false;
+
+            int historyStart = Math.max(0, completedIndex - 99);
+            List<Music> history = new ArrayList<>(songs.subList(historyStart, completedIndex + 1));
+            Set<Long> heard = new HashSet<>();
+            history.forEach(song -> heard.add(song.getId()));
+            List<Music> upcoming = session.songs.stream().filter(song -> heard.add(song.getId())).toList();
+            session.songs.clear();
+            session.songs.addAll(history);
+            session.songs.addAll(upcoming);
+
+            // Preserve a manual previous/next action, otherwise advance to the first recommendation.
+            int nextIndex = dontAdd ? Math.max(0, Math.min(curIdx - historyStart, history.size())) : history.size();
+            heartbeat = session;
+            songs = session.songs;
+            playList = songs;
+            curIdx = nextIndex;
+            dontAdd = false;
+            lastMode = PlayMode.Heartbeat;
+            return true;
+        }
+
+        private void retire() {
+            final HeartbeatSession pending;
+            synchronized (this) {
+                acceptingHeartbeat = false;
+                pending = pendingHeartbeat;
+                pendingHeartbeat = null;
+            }
+            if (!isCurrentHeartbeat(pending)) return;
+            // The request may have arrived just as this thread exhausted its old queue.
+            // Start only after releasing the thread monitor so joining it cannot deadlock.
+            MultiThreadingUtil.runAsync(() -> {
+                synchronized (playbackLock) {
+                    if (playThread == this && isCurrentHeartbeat(pending) && !doBreak) {
+                        playInternal(pending.songs, 0);
+                    }
+                }
+            });
+        }
+
+        private void runPlaylist() {
             curIdx = startIdx;
 
-            while (shouldContinuePlayback()) {
+            int failedSongs = 0;
+            while (!doBreak && !isInterrupted()) {
                 if (playListChanged()) {
                     break;
                 }
+                if (!ensureNextHeartbeatSong() || !shouldContinuePlayback()) break;
 
-                Music currentSong = playList.get(curIdx);
+                int songIndex = curIdx;
+                Music currentSong = playList.get(songIndex);
                 prepareForPlayback();
                 
-                if (!playSong(currentSong)) {
+                boolean started;
+                try {
+                    started = playSong(currentSong);
+                } catch (RuntimeException e) {
+                    if (!isHeartbeat()) throw e;
+                    started = false;
+                }
+                if (!started) {
+                    if (isHeartbeat()) {
+                        curIdx++;
+                        if (++failedSongs < 5) continue;
+                        heartbeat.error = "连续多首推荐无法播放，点击下一首重试";
+                    }
                     break;
+                }
+                failedSongs = 0;
+                if (isHeartbeat() && songs.size() - curIdx <= 3) {
+                    try {
+                        heartbeat.requestMore(songs.getLast().getId());
+                    } catch (RuntimeException e) {
+                        heartbeat.error = "心动推荐加载失败，点击下一首重试";
+                    }
                 }
                 
                 preloadNextCover();
                 waitForPlaybackCompletion();
                 handlePlaybackCompletion();
-                updateCurrentIndex();
+                if (!adoptHeartbeat(songIndex)) updateCurrentIndex();
+            }
+        }
+
+        private boolean isHeartbeat() {
+            return isCurrentHeartbeat(heartbeat);
+        }
+
+        private boolean ensureNextHeartbeatSong() {
+            if (curIdx < songs.size() || !isHeartbeat()) return true;
+            try {
+                List<Music> batch = heartbeat.requestMore(songs.getLast().getId()).get();
+                if (!isHeartbeat() || doBreak || isInterrupted()) return false;
+                List<Music> fresh = heartbeat.freshSongs(batch);
+                if (fresh.isEmpty()) throw new IllegalStateException("暂无新的心动推荐");
+                songs.addAll(fresh);
+                // Preserve a useful previous-track history without growing forever.
+                int trim = Math.max(0, curIdx - 100);
+                if (trim > 0) {
+                    songs.subList(0, trim).clear();
+                    curIdx -= trim;
+                }
+                return true;
+            } catch (InterruptedException e) {
+                interrupt();
+                return false;
+            } catch (Exception e) {
+                heartbeat.error = heartbeatFailureMessage(e) + " · 点击下一首重试";
+                return false;
+            } finally {
+                heartbeat.consumed();
             }
         }
         
@@ -844,8 +1118,8 @@ public class CloudMusic implements SharedConstants {
         }
         
         private void handlePlaybackCompletion() {
-            if (!dontAdd && playedFrom != null) {
-                playList.get(curIdx).updPlayCount(playedFrom, player.getCurrentTimeSeconds());
+            if (!dontAdd && playedFrom != null && currentlyPlaying != null) {
+                currentlyPlaying.updPlayCount(playedFrom, player.getCurrentTimeSeconds());
             }
             
             player.close();

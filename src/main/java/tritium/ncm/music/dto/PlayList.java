@@ -43,6 +43,9 @@ public class PlayList {
     @SerializedName("subscribed")
     private final boolean subscribed;
 
+    @SerializedName("specialType")
+    private final int specialType;
+
     @SerializedName("createTime")
     private final long createTime;
 
