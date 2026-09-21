@@ -148,6 +148,10 @@ public class CloudMusic implements SharedConstants {
                                 updated.removeIf(id -> id == songId);
                                 if (liked) updated.add(songId);
                                 likeList = List.copyOf(updated);
+                                if (playLists != null) {
+                                    playLists.stream().filter(CloudMusic::isLikedPlaylist)
+                                            .forEach(PlayList::invalidateMusics);
+                                }
                                 message = liked ? "已收藏" : "已取消收藏";
                             }
                         }

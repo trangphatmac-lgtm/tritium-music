@@ -9,9 +9,13 @@ import tritium.utils.Location;
 import tritium.utils.json.JsonUtils;
 import tritium.utils.other.multithreading.MultiThreadingUtil;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.function.Supplier;
 
 /**
  * 歌单对象
@@ -50,66 +54,88 @@ public class PlayList {
     private final long createTime;
 
     // unique fields
-    public transient List<Music> musics;
+    public transient volatile List<Music> musics;
     private transient boolean searchMode = false;
-    public transient boolean musicsQueried = false, musicsLoaded = false;
+    public transient volatile boolean musicsQueried = false, musicsLoaded = false;
+    private transient long musicRevision;
+    private transient CompletableFuture<List<Music>> musicLoad;
 
     public final Location getCoverLocation() {
         return Location.of("tritium/textures/playlist/" + this.id + "/cover.png");
     }
 
-    public List<Music> getMusics() {
-
-        if (this.musics == null)
-            this.musics = new CopyOnWriteArrayList<>();
-
-        if (!musics.isEmpty() && (this.musicsQueried || searchMode)) {
-            return this.musics;
-        }
-
-        if (!this.musicsQueried && !searchMode) {
-            this.musicsQueried = true;
-
-            MultiThreadingUtil.runAsync(this::queryMusics);
-        }
-
-        return this.musics;
+    public synchronized List<Music> getMusics() {
+        loadMusics(() -> CloudMusicApi.playlistTrackAll(id, 8), MultiThreadingUtil::runAsync);
+        return musics;
     }
 
     public void loadMusicsWithCallback(MusicsLoadedCallback callback) {
-
-        if (this.musics == null)
-            this.musics = new CopyOnWriteArrayList<>();
-
-        if (!musics.isEmpty() && (this.musicsQueried || searchMode)) {
-            callback.onMusicsLoaded(musics);
-            return;
-        }
-
-        if (!this.musicsQueried && !searchMode) {
-            this.musicsQueried = true;
-
-            MultiThreadingUtil.runAsync(() -> {
-                queryMusics();
-                callback.onMusicsLoaded(musics);
-            });
-        }
+        loadMusics(() -> CloudMusicApi.playlistTrackAll(id, 8), MultiThreadingUtil::runAsync)
+                .thenAccept(callback::onMusicsLoaded);
     }
 
-    private void queryMusics() {
-        RequestUtil.RequestAnswer requestAnswer;
+    /** Reload on the next access, without modifying lists held by playback or an open panel. */
+    public synchronized void invalidateMusics() {
+        musicRevision++;
+        musicsLoaded = false;
+        musicsQueried = musicLoad != null;
+    }
+
+    // A shared load also delivers results to panels opened while a request is in flight.
+    synchronized CompletableFuture<List<Music>> loadMusics(Supplier<RequestUtil.RequestAnswer> request,
+                                                            Executor executor) {
+        if (musics == null) musics = new CopyOnWriteArrayList<>();
+        if (musicsLoaded || searchMode) return CompletableFuture.completedFuture(musics);
+        if (musicLoad != null) return musicLoad;
+
+        CompletableFuture<List<Music>> result = new CompletableFuture<>();
+        musicLoad = result;
+        musicsQueried = true;
         try {
-            requestAnswer = CloudMusicApi.playlistTrackAll(id, 8);
-        } catch (Exception e) {
-            this.musicsQueried = false;
-            e.printStackTrace();
-            return;
+            executor.execute(() -> queryMusics(request, result));
+        } catch (RuntimeException e) {
+            musicLoad = null;
+            musicsQueried = false;
+            result.completeExceptionally(e);
         }
+        return result;
+    }
 
-        JsonArray songs = requestAnswer.toJsonObject().getAsJsonArray("songs");
-        songs.forEach(element -> this.musics.add(JsonUtils.parse(element.getAsJsonObject(), Music.class)));
-
-        musicsLoaded = true;
+    private void queryMusics(Supplier<RequestUtil.RequestAnswer> request,
+                             CompletableFuture<List<Music>> result) {
+        try {
+            while (true) {
+                long revision;
+                synchronized (this) {
+                    revision = musicRevision;
+                }
+                RequestUtil.RequestAnswer answer = request.get();
+                JsonArray songs = answer.toJsonObject().getAsJsonArray("songs");
+                if (answer.getStatus() != 200 || songs == null) {
+                    throw new IllegalStateException("Failed to load playlist songs");
+                }
+                List<Music> loaded = new ArrayList<>();
+                songs.forEach(element -> loaded.add(JsonUtils.parse(element.getAsJsonObject(), Music.class)));
+                List<Music> published;
+                synchronized (this) {
+                    // A favorite changed during the request: fetch again instead of publishing stale songs.
+                    if (revision != musicRevision) continue;
+                    published = new CopyOnWriteArrayList<>(loaded);
+                    musics = published;
+                    musicsLoaded = true;
+                    musicLoad = null;
+                }
+                result.complete(published);
+                return;
+            }
+        } catch (Exception e) {
+            synchronized (this) {
+                musicLoad = null;
+                musicsQueried = false;
+            }
+            result.completeExceptionally(e);
+            e.printStackTrace();
+        }
     }
 
     public interface MusicsLoadedCallback {

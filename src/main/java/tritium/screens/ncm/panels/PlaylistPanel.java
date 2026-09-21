@@ -265,7 +265,7 @@ public class PlaylistPanel extends NCMPanel {
 
         musicsPanel.setBeforeRenderCallback(() -> musicsPanel.setMargin(0));
 
-        playList.loadMusicsWithCallback(musics -> musicsPanel.addChild(musics.stream().map(music -> new MusicWidget(music, playList, playList.getMusics().indexOf(music)).setShouldOverrideMouseCursor(true)).collect(Collectors.toList())));
+        playList.loadMusicsWithCallback(musics -> musicsPanel.addChild(musics.stream().map(music -> new MusicWidget(music, playList, musics.indexOf(music)).setShouldOverrideMouseCursor(true)).collect(Collectors.toList())));
 
         if (this.tfSearch != null) {
             this.tfSearch.setTextChangedCallback(text -> {
@@ -328,7 +328,7 @@ public class PlaylistPanel extends NCMPanel {
         if (lastSize != musics.size()) {
             lastSize = musics.size();
             if (musics.isEmpty()) {
-                cached = playList.getCount() + "首歌曲";
+                cached = "0首歌曲";
             } else {
                 cached = musics.size() + "首歌曲 · " + this.formatDuration(musics.stream().mapToLong(Music::getDuration).sum());
             }

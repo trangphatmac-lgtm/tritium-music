@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tritium.ncm.RequestUtil;
 import tritium.ncm.music.dto.Music;
+import tritium.ncm.music.dto.PlayList;
 import tritium.ncm.music.dto.User;
 
 import java.util.ArrayDeque;
@@ -23,12 +24,15 @@ class CloudMusicFavoritesTest {
     private User previousProfile;
     private List<Long> previousLikes;
     private Music previousSong;
+    private List<PlayList> previousPlaylists;
 
     @BeforeEach
     void setUp() {
         previousProfile = CloudMusic.profile;
         previousLikes = CloudMusic.likeList;
         previousSong = CloudMusic.currentlyPlaying;
+        previousPlaylists = CloudMusic.playLists;
+        CloudMusic.playLists = List.of();
         CloudMusic.profile = gson.fromJson("{\"userId\":1}", User.class);
         CloudMusic.likeList = List.of();
         CloudMusic.currentlyPlaying = first;
@@ -39,6 +43,7 @@ class CloudMusicFavoritesTest {
         CloudMusic.profile = previousProfile;
         CloudMusic.likeList = previousLikes;
         CloudMusic.currentlyPlaying = previousSong;
+        CloudMusic.playLists = previousPlaylists;
     }
 
     @Test
@@ -146,6 +151,45 @@ class CloudMusicFavoritesTest {
         assertEquals("收藏更新失败，请重试", result.join());
         assertFalse(CloudMusic.isLikePending(101));
         assertFalse(CloudMusic.isLiked(101));
+    }
+
+    @Test
+    void successfulFavoriteChangesInvalidateOnlyTheCurrentUsersLikedPlaylist() {
+        PlayList favorites = cachedPlaylist(5, 1);
+        PlayList regular = cachedPlaylist(0, 1);
+        PlayList otherUsersFavorites = cachedPlaylist(5, 2);
+        CloudMusic.playLists = List.of(favorites, regular, otherUsersFavorites);
+        List<Music> playbackSnapshot = favorites.musics;
+
+        assertEquals("已收藏", CloudMusic.toggleLike(first, (id, like) -> response(200, 200), Runnable::run).join());
+        assertFalse(favorites.musicsLoaded);
+        assertFalse(favorites.musicsQueried);
+        assertTrue(regular.musicsLoaded);
+        assertTrue(otherUsersFavorites.musicsLoaded);
+        assertEquals(List.of(second), playbackSnapshot);
+
+        favorites.musics = List.of(first, second);
+        favorites.musicsLoaded = favorites.musicsQueried = true;
+        assertEquals("已取消收藏", CloudMusic.toggleLike(first, (id, like) -> response(200, 200), Runnable::run).join());
+        assertFalse(favorites.musicsLoaded);
+        assertFalse(favorites.musicsQueried);
+    }
+
+    @Test
+    void failedFavoriteChangeKeepsThePlaylistCache() {
+        PlayList favorites = cachedPlaylist(5, 1);
+        CloudMusic.playLists = List.of(favorites);
+        CloudMusic.toggleLike(first, (id, like) -> response(200, 301), Runnable::run).join();
+        assertTrue(favorites.musicsLoaded);
+        assertEquals(List.of(second), favorites.musics);
+    }
+
+    private PlayList cachedPlaylist(int type, long userId) {
+        PlayList playlist = gson.fromJson("{\"id\":10,\"specialType\":" + type
+                + ",\"creator\":{\"userId\":" + userId + "}}", PlayList.class);
+        playlist.musics = List.of(second);
+        playlist.musicsLoaded = playlist.musicsQueried = true;
+        return playlist;
     }
 
     private static RequestUtil.RequestAnswer response(int status, int code) {

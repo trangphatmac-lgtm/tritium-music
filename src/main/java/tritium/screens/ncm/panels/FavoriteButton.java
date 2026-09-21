@@ -58,20 +58,6 @@ public class FavoriteButton extends IconWidget {
         Feedback notice = feedback;
         boolean showFeedback = song != null && notice != null && notice.songId() == song.getId()
                 && System.currentTimeMillis() < notice.expiresAt();
-        if (testHovered(mouseX, mouseY) || showFeedback) {
-            String text = showFeedback ? notice.text()
-                    : song == null ? "未在播放"
-                    : CloudMusic.profile == null ? "请先登录后收藏歌曲"
-                    : CloudMusic.likeList == null ? "收藏列表尚未加载"
-                    : pending ? "正在更新收藏…"
-                    : liked ? "取消收藏" : "收藏歌曲";
-            double width = FontManager.pf14.getStringWidthD(text) + 12;
-            double height = FontManager.pf14.getHeight() + 8;
-            double x = Math.max(4, Math.min(getX() + (getWidth() - width) * .5,
-                    RenderSystem.getWidth() - width - 4));
-            double y = getY() - height - 6;
-            roundedRect(x, y, width, height, 4, hexColor(0, 0, 0, alpha * .85f));
-            FontManager.pf14.drawString(text, x + 6, y + 4, hexColor(1, 1, 1, alpha));
-        }
+
     }
 }

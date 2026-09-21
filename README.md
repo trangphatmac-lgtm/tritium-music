@@ -13,7 +13,6 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Cookie login and persistence
 - Home page, playlists, search, and liked songs
 - Play, pause, previous track, and next track
-- Heartbeat mode (心动模式): use the pulse-heart beside your liked playlist, or cycle the playback-mode control through Sequential → List loop → Single repeat → Random → Heartbeat, to mix liked songs with NetEase intelligence recommendations. Requires login and at least one liked song; more recommendations load automatically. Enabling it preserves the current song, playback position, and pause state; recommendations begin after that song finishes or you skip forward. Click the sidebar pulse-heart again to restore the previous mode, or click the playback-mode control to advance to Sequential, while keeping the current track. Starting another playlist exits Heartbeat mode. If recommendations fail, the existing queue remains available and Next retries the request.
 - Volume adjustment and seek bar dragging
 - Lyric page, word-by-word lyrics, translations, and romaji
 - Cover loading and blurred backgrounds
@@ -25,7 +24,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - `musicLyrics`: desktop lyrics, scrolling effect, alignment, shadow, single-line mode, translation/romaji
 - `musicSpectrum`: desktop spectrum visualizer, rectangle/line styles, indicator line, color, and scale
 - `musicToast`: independent, always-on-top playback notification at the top-left of the screen, with the artist and song title, pixel border, animated music notes, and slide animations; stays visible for about five seconds and refreshes on track changes
-- Toggle playback notifications in Settings → System HUDs → Enable Playback Toast HUD (`设置 → 系统 HUD → 启用播放提示 HUD`); the setting is saved automatically
+- Toggle playback notifications in Settings → System HUDs → Enable Playback Toast HUD; the setting is saved automatically
 - HUDs are click-through by default. The playback toast does not take focus; the info, lyrics, and spectrum HUDs can be dragged, resized, and saved in edit mode
 
 ## Quick Start
