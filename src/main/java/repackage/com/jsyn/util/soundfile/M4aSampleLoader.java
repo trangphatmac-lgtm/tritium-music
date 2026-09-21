@@ -13,11 +13,28 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 /** Decodes AAC and Apple Lossless in MP4 containers into seekable JSyn samples. */
 public final class M4aSampleLoader {
     public FloatSample loadFloatSample(File file) throws IOException {
+        if (FragmentedMp4.isFragmented(file)) {
+            // JAAD reads conventional sample tables, not samples stored in moof fragments.
+            // Repackage the compressed audio without re-encoding or changing the cached original.
+            Path normalized = Files.createTempFile("tritium-m4a-", ".m4a");
+            try {
+                FragmentedMp4.remux(file, normalized);
+                return loadUnfragmented(normalized.toFile());
+            } finally {
+                Files.deleteIfExists(normalized);
+            }
+        }
+        return loadUnfragmented(file);
+    }
+
+    private FloatSample loadUnfragmented(File file) throws IOException {
         // Own seekable inputs so rejected codec probes also close their file handles.
         // MP4 metadata can follow the audio data, so a forward-only stream is insufficient.
         try (MP4InputStream input = MP4InputStream.open(new RandomAccessFile(file, "r"));

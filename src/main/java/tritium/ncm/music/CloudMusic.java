@@ -1304,6 +1304,7 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static void loadMusicCover(Music music, boolean forceReload) {
+        if (music.getCoverUrl(320).isEmpty()) return;
         Location musicCover = music.getCoverLocation();
         Location musicCoverSmall = music.getSmallCoverLocation();
         Location musicCoverBlur = music.getBlurredCoverLocation();

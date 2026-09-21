@@ -114,6 +114,7 @@ public class Music {
     }
 
     public String getCoverUrl(int size) {
+        if (this.album == null || this.album.getPicUrl() == null || this.album.getPicUrl().isBlank()) return "";
         return this.album.getPicUrl() + "?param=" + size + "y" + size;
     }
 

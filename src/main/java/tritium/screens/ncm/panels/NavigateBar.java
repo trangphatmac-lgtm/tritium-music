@@ -191,6 +191,11 @@ public class NavigateBar extends NCMPanel {
 
         this.playlistPanel.addChild(lblPlaylists);
 
+        PlaylistItem cloudStorage = new PlaylistItem("D", Color.GRAY::getRGB, () -> "音乐网盘",
+                () -> NCMScreen.getInstance().setCurrentPanel(new CloudStoragePanel()));
+        cloudStorage.setShouldOverrideMouseCursor(true);
+        this.playlistPanel.addChild(cloudStorage);
+
         List<PlayList> pl = CloudMusic.playLists;
 
         if (pl != null) {

@@ -29,6 +29,18 @@
     <dependencies>
 
         <dependency>
+            <groupId>org.mp4parser</groupId>
+            <artifactId>muxer</artifactId>
+            <version>1.9.56</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>junit</groupId>
+                    <artifactId>junit</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
             <groupId>com.tianscar.javasound</groupId>
             <artifactId>javasound-aac</artifactId>
             <version>0.9.8</version>

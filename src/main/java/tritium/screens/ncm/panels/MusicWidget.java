@@ -224,6 +224,7 @@ public class MusicWidget extends RoundedRectWidget {
     }
 
     private void loadCover() {
+        if (music.getCoverUrl(64).isEmpty()) return;
 
         TextureManager textureManager = TextureManager.getInstance();
         Location coverLoc = this.music.getSmallCoverLocation();

@@ -25,6 +25,13 @@ import java.util.stream.Collectors;
 @UtilityClass
 public class CloudMusicApi {
 
+    public RequestUtil.RequestAnswer userCloud(int limit, int offset) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("limit", limit);
+        data.put("offset", offset);
+        return RequestUtil.createRequest("/api/v1/cloud/get", data, OptionsUtil.createOptions("weapi"));
+    }
+
     /** NetEase intelligence playback: liked tracks interleaved with recommendations. */
     public RequestUtil.RequestAnswer intelligenceList(long songId, long playlistId, long startMusicId) {
         Map<String, Object> data = new HashMap<>();
