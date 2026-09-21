@@ -140,7 +140,7 @@ public class MusicWidget extends RoundedRectWidget {
         FavoriteButton favoriteButton = new FavoriteButton(20, () -> this.music);
         this.addChild(favoriteButton);
         favoriteButton.setBeforeRenderCallback(() -> favoriteButton
-                .setAccentBackground(CloudMusic.currentlyPlaying != null
+                .setMonochrome(CloudMusic.currentlyPlaying != null
                         && CloudMusic.currentlyPlaying.getId() == this.music.getId())
                 .setPosition(this.getWidth() - RIGHT_PADDING - DURATION_COLUMN_WIDTH - ACTION_GAP - favoriteButton.getWidth(),
                         (this.getHeight() - favoriteButton.getHeight()) * .5));

@@ -207,7 +207,7 @@ public class ControlsBar extends NCMPanel {
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT))
                         .setPosition(progressBarBg.getRelativeX() + progressBarBg.getWidth() + 4, lblCurTime.getRelativeY()));
 
-        FavoriteButton favoriteButton = new FavoriteButton(20);
+        FavoriteButton favoriteButton = new FavoriteButton(20).setMonochrome(true);
         this.addChild(favoriteButton);
         favoriteButton.setBeforeRenderCallback(() -> favoriteButton
                 .setPosition(playingCover.getRelativeX() + playingCover.getWidth() + 4,

@@ -15,10 +15,10 @@ public class FavoriteButton extends IconWidget {
 
     private volatile Feedback feedback;
     private final Supplier<Music> songSupplier;
-    private boolean accentBackground;
+    private boolean monochrome;
 
-    public FavoriteButton setAccentBackground(boolean accentBackground) {
-        this.accentBackground = accentBackground;
+    public FavoriteButton setMonochrome(boolean monochrome) {
+        this.monochrome = monochrome;
         return this;
     }
 
@@ -47,7 +47,7 @@ public class FavoriteButton extends IconWidget {
         boolean pending = song != null && CloudMusic.isLikePending(song.getId());
         boolean available = song != null && CloudMusic.profile != null && CloudMusic.likeList != null;
         setIcon(liked ? "S" : "e");
-        setColor(NCMScreen.getColor(liked && !accentBackground
+        setColor(NCMScreen.getColor(liked && !monochrome
                 ? NCMScreen.ColorType.ACCENT : NCMScreen.ColorType.PRIMARY_TEXT));
         float alpha = getAlpha();
         float widgetAlpha = getWidgetAlpha();
