@@ -9,7 +9,7 @@ import java.io.File;
 // calls to amp(), pan() etc affect both the LAST initiated and still running sample, AND all subsequently started ones
 /**
  * This is a Soundfile player which allows to play back and manipulate sound
- * files. Supported formats are: WAV, AIF/AIFF, and MP3.
+ * files. Supported formats are WAV, FLAC, MP3, and M4A/MP4 (AAC or Apple Lossless).
  * 
  * MP3 decoding can be very slow on ARM processors (Android/Raspberry Pi), we generally recommend you use lossless WAV or AIF files.
  * @webref Sampling:SoundFile
@@ -20,7 +20,7 @@ public class SoundFile extends AudioSample {
 	public SoundFile(String path) {
 		super();
 
-		// load WAV or AIF using JSyn
+		// Decode into a seekable JSyn sample.
 		this.sample = SampleLoader.loadStreamedFloatSample(new File(path));
 
 		this.initiatePlayer();

@@ -19,6 +19,7 @@ package repackage.com.jsyn.util;
 import lombok.SneakyThrows;
 import repackage.com.jsyn.data.FloatSample;
 import repackage.com.jsyn.util.soundfile.CustomSampleLoader;
+import repackage.com.jsyn.util.soundfile.M4aSampleLoader;
 import repackage.com.jsyn.util.soundfile.streamed.buffered.BufferedSampleLoader;
 import repackage.com.jsyn.util.soundfile.streamed.raf.RafSampleLoader;
 import repackage.javazoom.jl.converter.Converter;
@@ -26,6 +27,7 @@ import repackage.javazoom.jl.converter.Converter;
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.Locale;
 
 /**
  * Load a FloatSample from various sources. The default loader uses custom code to load WAV or AIF
@@ -75,7 +77,7 @@ public class SampleLoader {
     @SneakyThrows
     public static FloatSample loadStreamedFloatSample(File fileIn) {
 
-        String name = fileIn.getName();
+        String name = fileIn.getName().toLowerCase(Locale.ROOT);
         if (name.endsWith(".flac")) {
             return new BufferedSampleLoader().loadFromFlacStream(new BufferedInputStream(Files.newInputStream(fileIn.toPath())));
         } else if (name.endsWith(".wav")) {
@@ -83,10 +85,19 @@ public class SampleLoader {
         } else if (name.endsWith(".mp3")) {
             Converter converter = new Converter();
             return loadFloatSample(new ByteArrayInputStream(converter.convert(Files.newInputStream(fileIn.toPath()), null, null)));
+        } else if (name.endsWith(".m4a") || name.endsWith(".mp4")) {
+            return new M4aSampleLoader().loadFloatSample(fileIn);
         } else {
-            throw new RuntimeException("Extension not supported: " + name.substring(name.lastIndexOf(".")));
+            throw new IllegalArgumentException("Unsupported audio file: " + name);
         }
 
+    }
+
+    public static boolean isSupportedFileType(String type) {
+        return type != null && switch (type.toLowerCase(Locale.ROOT)) {
+            case "flac", "wav", "mp3", "m4a", "mp4" -> true;
+            default -> false;
+        };
     }
 
     /**

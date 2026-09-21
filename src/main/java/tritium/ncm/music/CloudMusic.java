@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import org.apache.commons.io.IOUtils;
 import repackage.com.jsyn.exceptions.ChannelMismatchException;
+import repackage.com.jsyn.util.SampleLoader;
 import repackage.javazoom.jl.converter.Converter;
 import repackage.org.kc7bfi.jflac.FLACDecoder;
 import repackage.org.kc7bfi.jflac.PCMProcessor;
@@ -1091,9 +1092,10 @@ public class CloudMusic implements SharedConstants {
         
         private boolean initializeAndPlaySong(Music song, Tuple<String, String> playUrl) {
             setDownloading(false);
-            File musicFile = getMusicFile(playUrl, song);
+            File musicFile;
             
             try {
+                musicFile = getMusicFile(playUrl, song);
                 player = initializePlayer(musicFile);
             } catch (Exception e) {
                 handlePlayerInitializationError(e);
@@ -1181,9 +1183,9 @@ public class CloudMusic implements SharedConstants {
         private File getMusicFile(Tuple<String, String> playUrl, Music song) {
 
             String url = playUrl.getA();
-            String type = playUrl.getB().toLowerCase();
+            String type = playUrl.getB().toLowerCase(Locale.ROOT);
 
-            if (type.equals("flac") || type.equals("wav") || type.equals("mp3")) {
+            if (SampleLoader.isSupportedFileType(type)) {
                 return getCachedOrTempFile(url, type, song);
             }
             throw new IllegalArgumentException("Unsupported music format, url: " + url + ", type: " + type);

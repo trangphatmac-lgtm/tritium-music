@@ -17,6 +17,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Lyric page, word-by-word lyrics, translations, and romaji
 - Cover loading and blurred backgrounds
 - Music download cache and cache size display
+- M4A/MP4 cloud music playback (AAC and 16/24-bit Apple Lossless), with bundled Java decoders
 
 ### System HUDs
 
