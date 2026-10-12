@@ -2,6 +2,7 @@ package tritium.screens.ncm.panels;
 
 import org.lwjgl.input.Mouse;
 import tritium.desktop.DesktopCacheManager;
+import tritium.desktop.AppTheme;
 import tritium.desktop.DesktopAppState;
 import tritium.desktop.ModePreference;
 import tritium.desktop.MusicPreferences;
@@ -13,6 +14,7 @@ import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.rendering.ui.widgets.LabelWidget;
+import tritium.rendering.ui.widgets.ColorPickerWidget;
 import tritium.screens.ncm.NCMPanel;
 import tritium.screens.ncm.NCMScreen;
 import tritium.utils.other.multithreading.MultiThreadingUtil;
@@ -50,6 +52,9 @@ public class SettingsPanel extends NCMPanel {
             double top = subtitle.getRelativeY() + subtitle.getHeight() + 22;
             scrollPanel.setBounds(MARGIN, top, this.getWidth() - MARGIN * 2.0, this.getHeight() - top - MARGIN);
         });
+
+        scrollPanel.addChild(new SectionHeader("外观"));
+        scrollPanel.addChild(new ColorRow("主题色", preferences.accentColor(), false));
 
         scrollPanel.addChild(new SectionHeader("播放"));
         scrollPanel.addChild(new ChoiceRow("音质", preferences.quality()));
@@ -99,9 +104,10 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new ToggleRow("频谱绝对音量", preferences.hud().musicSpectrum().absoluteVolume()));
         scrollPanel.addChild(new SliderRow("频谱倍率", preferences.hud().musicSpectrum().multiplier(),
                 value -> String.format(Locale.ROOT, "%.1fx", value)));
-        scrollPanel.addChild(new ColorRow("频谱颜色", preferences.hud().musicSpectrum().color()));
+        scrollPanel.addChild(new ColorRow("频谱颜色", preferences.hud().musicSpectrum().color(), true));
 
         scrollPanel.addChild(new SectionHeader("调试"));
+        scrollPanel.addChild(new ToggleRow("显示 FPS", preferences.showFps()));
         scrollPanel.addChild(new ToggleRow("UI 边界", preferences.showWidgetBoundary()));
         scrollPanel.addChild(new ToggleRow("逐字歌词", preferences.lyricDebug()));
     }
@@ -183,12 +189,12 @@ public class SettingsPanel extends NCMPanel {
             double trackHeight = 20;
             double trackX = rightInset(trackWidth);
             double trackY = this.getY() + this.getHeight() * .5 - trackHeight * .5;
-            int trackColor = blend(0xFF555555, 0xFFC30218, toggleAnimation);
+            int trackColor = blend(0xFF555555, AppTheme.accent(), toggleAnimation);
             roundedRect(trackX, trackY, trackWidth, trackHeight, 10, RenderSystem.reAlpha(trackColor, this.getAlpha()));
 
             double knobSize = 16;
             double knobX = trackX + 2 + (trackWidth - knobSize - 4) * toggleAnimation;
-            roundedRect(knobX, trackY + 2, knobSize, knobSize, 8, RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha()));
+            roundedRect(knobX, trackY + 2, knobSize, knobSize, 8, RenderSystem.reAlpha(blend(0xFFFFFFFF, AppTheme.onAccent(), toggleAnimation), this.getAlpha()));
         }
     }
 
@@ -216,7 +222,7 @@ public class SettingsPanel extends NCMPanel {
             double valueHeight = 24;
             double valueX = rightInset(valueWidth);
             double valueY = this.getY() + this.getHeight() * .5 - valueHeight * .5;
-            roundedRect(valueX, valueY, valueWidth, valueHeight, 5, RenderSystem.reAlpha(0xFF3A3030, this.getAlpha()));
+            roundedRect(valueX, valueY, valueWidth, valueHeight, 5, RenderSystem.reAlpha(AppTheme.accentMuted(), this.getAlpha()));
             FontManager.pf14bold.drawCenteredString(value, valueX + valueWidth * .5,
                     valueY + valueHeight * .5 - FontManager.pf14bold.getHeight() * .5,
                     RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha()));
@@ -282,7 +288,7 @@ public class SettingsPanel extends NCMPanel {
             progress = Math.max(0, Math.min(1, progress));
 
             roundedRect(barX, barY, barWidth, barHeight, 3, RenderSystem.reAlpha(0xFF555555, this.getAlpha()));
-            roundedRect(barX, barY, barWidth * progress, barHeight, 3, RenderSystem.reAlpha(0xFFC30218, this.getAlpha()));
+            roundedRect(barX, barY, barWidth * progress, barHeight, 3, RenderSystem.reAlpha(AppTheme.accent(), this.getAlpha()));
 
             double knobSize = dragging || this.isHovering() ? 12 : 10;
             roundedRect(barX + barWidth * progress - knobSize * .5,
@@ -331,11 +337,11 @@ public class SettingsPanel extends NCMPanel {
             double height = 24;
             double x = rightInset(width);
             double y = this.getY() + this.getHeight() * .5 - height * .5;
-            int bg = blend(0xFFC30218, 0xFFE4434F, pressAnimation);
+            int bg = blend(AppTheme.accent(), AppTheme.accentHover(), pressAnimation);
             roundedRect(x, y, width, height, 5, RenderSystem.reAlpha(bg, this.getAlpha()));
             FontManager.pf14bold.drawCenteredString(label, x + width * .5,
                     y + height * .5 - FontManager.pf14bold.getHeight() * .5,
-                    RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha()));
+                    RenderSystem.reAlpha(AppTheme.onAccent(), this.getAlpha()));
         }
     }
 
@@ -373,13 +379,13 @@ public class SettingsPanel extends NCMPanel {
             double buttonHeight = 26;
             double buttonX = buttonX(buttonWidth);
             double buttonY = this.getY() + this.getHeight() * .5 - buttonHeight * .5;
-            int buttonBg = blend(clearing ? 0xFF555555 : 0xFFC30218, clearing ? 0xFF666666 : 0xFFE4434F, pressAnimation);
+            int buttonBg = blend(clearing ? 0xFF555555 : AppTheme.accent(), clearing ? 0xFF666666 : AppTheme.accentHover(), pressAnimation);
             roundedRect(buttonX, buttonY, buttonWidth, buttonHeight, 5, RenderSystem.reAlpha(buttonBg, this.getAlpha()));
 
             String buttonLabel = clearing ? "清理中" : "清除";
             FontManager.pf14bold.drawCenteredString(buttonLabel, buttonX + buttonWidth * .5,
                     buttonY + buttonHeight * .5 - FontManager.pf14bold.getHeight() * .5,
-                    RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha()));
+                    RenderSystem.reAlpha(clearing ? 0xFFFFFFFF : AppTheme.onAccent(), this.getAlpha()));
 
             String currentSize = clearing ? "清理中..." : sizeText;
             double sizeWidth = FontManager.pf14bold.getStringWidthD(currentSize);
@@ -449,55 +455,97 @@ public class SettingsPanel extends NCMPanel {
     }
 
     private static final class ColorRow extends SettingsRow<ColorRow> {
-        private static final int[] COLORS = {
-                0xC87D7D7D,
-                0xD0C30218,
-                0xD0FFFFFF,
-                0xC858A6FF,
-                0xC871E096
-        };
-        private final PreferenceValue<Integer> preference;
+        private record Preset(String name, int color) { }
 
-        private ColorRow(String label, PreferenceValue<Integer> preference) {
-            super(label, 52);
+        private static final List<Preset> THEME_PRESETS = List.of(
+                new Preset("网易云红", AppTheme.DEFAULT_ACCENT),
+                new Preset("晴空蓝", 0xFF58A6FF),
+                new Preset("鸢尾紫", 0xFFA78BFA),
+                new Preset("湖水青", 0xFF2DD4BF),
+                new Preset("薄荷绿", 0xFF71E096),
+                new Preset("日落橙", 0xFFFFA657),
+                new Preset("樱花粉", 0xFFF472B6),
+                new Preset("月光白", 0xFFE5E7EB));
+        private static final List<Preset> SPECTRUM_PRESETS = List.of(
+                new Preset("经典灰", 0xC87D7D7D),
+                new Preset("网易云红", 0xD0C30218),
+                new Preset("纯白", 0xD0FFFFFF),
+                new Preset("晴空蓝", 0xC858A6FF),
+                new Preset("薄荷绿", 0xC871E096));
+        private final PreferenceValue<Integer> preference;
+        private final boolean alphaEnabled;
+        private final List<Preset> presets;
+        private final ColorPickerWidget picker;
+        private boolean expanded;
+
+        private ColorRow(String label, PreferenceValue<Integer> preference, boolean alphaEnabled) {
+            super(label, 104);
             this.preference = preference;
-            this.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
-                if (mouseButton == 0 || mouseButton == 1) {
-                    cycle(mouseButton == 0 ? 1 : -1);
+            this.alphaEnabled = alphaEnabled;
+            this.presets = alphaEnabled ? SPECTRUM_PRESETS : THEME_PRESETS;
+            this.picker = new ColorPickerWidget(preference.getValue(), alphaEnabled, preference::setValue);
+            this.addChild(picker);
+            picker.setHidden(true);
+            picker.setBeforeRenderCallback(() -> picker.setBounds(16, 108, Math.max(1, getWidth() - 32), picker.getHeight()));
+            this.setOnClickCallback((x, y, button) -> {
+                if (button != 0) return false;
+                for (int i = 0; i < presets.size(); i++) {
+                    if (isHovered(x, y, presetX(i) - 3, 45, 32, 32)) {
+                        preference.setValue(presets.get(i).color());
+                        picker.setArgb(preference.getValue());
+                        return true;
+                    }
                 }
-                return true;
+                if (y <= 40) {
+                    expanded = !expanded;
+                    picker.setHidden(!expanded);
+                    setBounds(getWidth(), expanded ? 124 + picker.getHeight() : 104);
+                    return true;
+                }
+                return false;
             });
+        }
+
+        private double presetX(int index) {
+            return 16 + index * Math.min(40, Math.max(0, (getWidth() - 58) / (presets.size() - 1)));
         }
 
         @Override
         public void onRender(double mouseX, double mouseY) {
             super.onRender(mouseX, mouseY);
             int color = preference.getValue();
-            String hex = String.format(Locale.ROOT, "#%08X", color);
-            double swatchSize = 24;
-            double textWidth = FontManager.pf14bold.getStringWidthD(hex);
-            double x = rightInset(swatchSize + 10 + textWidth);
-            double y = this.getY() + this.getHeight() * .5 - swatchSize * .5;
-            roundedRect(x, y, swatchSize, swatchSize, 5, RenderSystem.reAlpha(color, this.getAlpha()));
-            roundedRect(x, y, swatchSize, swatchSize, 5, RenderSystem.reAlpha(0x33FFFFFF, this.getAlpha()));
-            FontManager.pf14bold.drawString(hex, x + swatchSize + 10,
-                    this.getY() + this.getHeight() * .5 - FontManager.pf14bold.getHeight() * .5,
-                    RenderSystem.reAlpha(0xFFFFFFFF, this.getAlpha() * .72f));
-        }
+            picker.setArgb(color);
+            String hex = alphaEnabled ? String.format(Locale.ROOT, "#%08X", color)
+                    : String.format(Locale.ROOT, "#%06X", color & 0xFFFFFF);
+            String value = hex + (expanded ? "  收起" : "  自定义");
+            double valueWidth = FontManager.pf14bold.getStringWidthD(value);
+            double valueX = rightInset(valueWidth);
+            double swatchX = valueX - 32;
+            if (alphaEnabled) {
+                picker.drawCheckerboard(swatchX, getY() + 13, 20, 20);
+            }
+            roundedRect(swatchX, getY() + 13, 20, 20, 4,
+                    RenderSystem.reAlpha(color, getAlpha() * (alphaEnabled ? (color >>> 24) / 255f : 1)));
+            FontManager.pf14bold.drawString(value, valueX, getY() + 14,
+                    RenderSystem.reAlpha(0xFFFFFFFF, getAlpha() * .8f));
 
-        private void cycle(int direction) {
-            int index = 0;
-            for (int i = 0; i < COLORS.length; i++) {
-                if (COLORS[i] == preference.getValue()) {
-                    index = i;
-                    break;
+            String name = "自定义颜色";
+            String hoveredName = null;
+            for (int i = 0; i < presets.size(); i++) {
+                Preset preset = presets.get(i);
+                double x = getX() + presetX(i), y = getY() + 48;
+                boolean selected = preset.color() == color;
+                if (selected) {
+                    name = preset.name();
+                    roundedRect(x - 3, y - 3, 32, 32, 16, reAlpha(0xFFFFFFFF, getAlpha()));
+                    roundedRect(x - 1, y - 1, 28, 28, 14, reAlpha(0xFF242424, getAlpha()));
                 }
+                roundedRect(x, y, 26, 26, 13, reAlpha(preset.color(), getAlpha()));
+                if (isHovered(mouseX, mouseY, x, y, 26, 26)) hoveredName = preset.name();
             }
-            int next = (index + direction) % COLORS.length;
-            if (next < 0) {
-                next += COLORS.length;
-            }
-            preference.setValue(COLORS[next]);
+            String hint = expanded ? " · 拖动面板和色相条调整颜色" : " · 点击色板应用，点击自定义展开";
+            FontManager.pf12bold.drawString((hoveredName == null ? name : hoveredName) + hint, getX() + 16, getY() + 84,
+                    RenderSystem.reAlpha(0xFFFFFFFF, getAlpha() * .5f));
         }
     }
 }

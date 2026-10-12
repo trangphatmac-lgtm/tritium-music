@@ -433,6 +433,17 @@ public abstract class AbstractWidget<SELF extends AbstractWidget<SELF>> implemen
 
     }
 
+    /** Releases captured drags even when the pointer has left the widget or its clip. */
+    public void onMouseReleaseReceived(double mouseX, double mouseY, int mouseButton) {
+        for (AbstractWidget<?> child : this.getChildren()) {
+            child.onMouseReleaseReceived(mouseX, mouseY, mouseButton);
+        }
+        this.onMouseReleased(mouseX - this.getX(), mouseY - this.getY(), mouseButton);
+    }
+
+    public void onMouseReleased(double relativeX, double relativeY, int mouseButton) {
+    }
+
     public void onDWheelReceived(double mouseX, double mouseY, int dWheel) {
         if (!this.shouldClickChildren(mouseX, mouseY))
             return;

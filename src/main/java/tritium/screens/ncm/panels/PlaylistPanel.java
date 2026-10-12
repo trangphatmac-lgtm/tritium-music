@@ -65,7 +65,7 @@ public class PlaylistPanel extends NCMPanel {
                 btnPlay.setPosition(cover.getRelativeX() + cover.getWidth() + 12, cover.getRelativeY() + cover.getHeight() - btnPlay.getHeight());
                 btnPlay.setRadius(3);
                 btnPlay.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
-                btnPlay.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+                btnPlay.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
             });
 
             btnPlay.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
@@ -85,7 +85,7 @@ public class PlaylistPanel extends NCMPanel {
                 btnPlayRandomOrder.setPosition(cover.getRelativeX() + cover.getWidth() + 12 + btnPlay.getWidth() + 8, cover.getRelativeY() + cover.getHeight() - btnPlayRandomOrder.getHeight());
                 btnPlayRandomOrder.setRadius(3);
                 btnPlayRandomOrder.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
-                btnPlayRandomOrder.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+                btnPlayRandomOrder.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
             });
 
             btnPlayRandomOrder.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
@@ -109,7 +109,7 @@ public class PlaylistPanel extends NCMPanel {
                 btnCoverflow.setPosition(cover.getRelativeX() + cover.getWidth() + 12 + btnPlay.getWidth() + 8 + btnPlayRandomOrder.getWidth() + 8, cover.getRelativeY() + cover.getHeight() - btnCoverflow.getHeight());
                 btnCoverflow.setRadius(3);
                 btnCoverflow.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
-                btnCoverflow.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+                btnCoverflow.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
             });
 
             btnCoverflow.setOnClickCallback((relativeX, relativeY, mouseButton) -> {

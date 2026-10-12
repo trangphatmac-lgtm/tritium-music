@@ -55,6 +55,7 @@ public class MusicWidget extends RoundedRectWidget {
             rrPlayingIndicator.setAlpha(1f);
         }
         rrPlayingIndicator.setBeforeRenderCallback(() -> rrPlayingIndicator
+                .setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT))
                 .setMargin(0)
                 .setRadius(this.getRadius()));
 
@@ -116,7 +117,7 @@ public class MusicWidget extends RoundedRectWidget {
 
         lblMusicIndex.setBeforeRenderCallback(() -> {
             if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId())
-                lblMusicIndex.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+                lblMusicIndex.setColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
             else
                 lblMusicIndex.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
             lblMusicIndex.centerVertically();
@@ -129,7 +130,7 @@ public class MusicWidget extends RoundedRectWidget {
         this.addChild(lblMusicDuration);
         lblMusicDuration.setBeforeRenderCallback(() -> {
             if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId())
-                lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+                lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
             else
                 lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
             lblMusicDuration.centerVertically();
@@ -140,8 +141,8 @@ public class MusicWidget extends RoundedRectWidget {
         FavoriteButton favoriteButton = new FavoriteButton(20, () -> this.music);
         this.addChild(favoriteButton);
         favoriteButton.setBeforeRenderCallback(() -> favoriteButton
-                .setMonochrome(CloudMusic.currentlyPlaying != null
-                        && CloudMusic.currentlyPlaying.getId() == this.music.getId())
+                .setMonochrome(isPlaying())
+                .setOnAccent(isPlaying())
                 .setPosition(this.getWidth() - RIGHT_PADDING - DURATION_COLUMN_WIDTH - ACTION_GAP - favoriteButton.getWidth(),
                         (this.getHeight() - favoriteButton.getHeight()) * .5));
 
@@ -156,7 +157,8 @@ public class MusicWidget extends RoundedRectWidget {
         lblMusicName
                 .setWidthLimitType(LabelWidget.WidthLimitType.TRIM_TO_WIDTH)
                 .setBeforeRenderCallback(() -> {
-                    lblMusicName.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+                    lblMusicName.setColor(NCMScreen.getColor(isPlaying()
+                            ? NCMScreen.ColorType.ON_ACCENT : NCMScreen.ColorType.PRIMARY_TEXT));
                     lblMusicName.centerVertically();
                     lblMusicName.setPosition(cover.getRelativeX() + cover.getWidth() + 4, lblMusicName.getRelativeY() - lblMusicName.getHeight() * .5 - 2);
                     lblMusicName.setMaxWidth(Math.max(0, favoriteButton.getRelativeX() - 8
@@ -193,7 +195,7 @@ public class MusicWidget extends RoundedRectWidget {
                 .setWidthLimitType(LabelWidget.WidthLimitType.TRIM_TO_WIDTH)
                 .setBeforeRenderCallback(() -> {
                     if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId())
-                        lblMusicArtist.setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+                        lblMusicArtist.setColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
                     else
                         lblMusicArtist.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
                     lblMusicArtist.centerVertically();
@@ -202,6 +204,10 @@ public class MusicWidget extends RoundedRectWidget {
                 });
 
         lblMusicArtist.setClickable(false);
+    }
+
+    private boolean isPlaying() {
+        return CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId();
     }
 
     private String formatDuration(long totalMillis) {

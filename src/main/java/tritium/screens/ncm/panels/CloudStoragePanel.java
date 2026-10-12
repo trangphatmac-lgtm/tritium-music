@@ -74,7 +74,7 @@ public class CloudStoragePanel extends NCMPanel {
             boolean enabled = snapshot != null && !snapshot.musics.isEmpty();
             play.setBounds(24, 78, 68, 22);
             play.setRadius(3).setColor(getColor(NCMScreen.ColorType.ACCENT));
-            play.setTextColor(getColor(NCMScreen.ColorType.PRIMARY_TEXT));
+            play.setTextColor(getColor(NCMScreen.ColorType.ON_ACCENT));
             play.setClickable(enabled).setAlpha(enabled ? 1f : .45f);
         });
         play.setOnClickCallback((x, y, button) -> {

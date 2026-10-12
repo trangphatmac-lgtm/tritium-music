@@ -11,6 +11,8 @@ public class MusicPreferences {
     static final String QUALITY_KEY = "music.quality";
     static final String MUSIC_TOAST_KEY = "music.toast";
     static final String SHOW_WIDGET_BOUNDARY_KEY = "ui.showWidgetBoundary";
+    static final String SHOW_FPS_KEY = "ui.showFps";
+    static final String ACCENT_COLOR_KEY = "ui.accentColor";
     static final String LYRIC_DEBUG_KEY = "lyrics.debug";
     static final String VOLUME_KEY = "player.volume";
     static final String SHOW_TRANSLATION_KEY = "lyrics.showTranslation";
@@ -22,6 +24,8 @@ public class MusicPreferences {
             new String[]{"Standard", "Higher", "ExHigh", "LossLess", "HiRes", "JyEffect", "Sky", "JyMaster"});
     private final PreferenceValue<Boolean> musicToast = new PreferenceValue<>("Music Toast", true);
     private final PreferenceValue<Boolean> showWidgetBoundary = new PreferenceValue<>("Show UI Widget Boundary", false);
+    private final PreferenceValue<Boolean> showFps = new PreferenceValue<>("Show FPS", false);
+    private final PreferenceValue<Integer> accentColor = new PreferenceValue<>("Accent Color", AppTheme.DEFAULT_ACCENT);
     private final PreferenceValue<Boolean> lyricDebug = new PreferenceValue<>("Per-word lyrics debug", false);
     private final NumberPreference volume = new NumberPreference("Volume", 0.1, 0.0, 1.0, 0.01);
     private final PreferenceValue<Boolean> showTranslation = new PreferenceValue<>("Show Translation", true);
@@ -39,6 +43,8 @@ public class MusicPreferences {
             fireChanged();
         });
         musicToast.setValueCallback(value -> fireChanged());
+        showFps.setValueCallback(value -> fireChanged());
+        accentColor.setValueCallback(value -> fireChanged());
         showWidgetBoundary.setValueCallback(value -> {
             ClientSettings.SHOW_WIDGET_BOUNDARY = value;
             fireChanged();
@@ -90,6 +96,8 @@ public class MusicPreferences {
         json.addProperty(QUALITY_KEY, quality.getValue());
         json.addProperty(MUSIC_TOAST_KEY, musicToast.getValue());
         json.addProperty(SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary.getValue());
+        json.addProperty(SHOW_FPS_KEY, showFps.getValue());
+        json.addProperty(ACCENT_COLOR_KEY, accentColor.getValue());
         json.addProperty(LYRIC_DEBUG_KEY, lyricDebug.getValue());
         json.addProperty(VOLUME_KEY, volume.getValue());
         json.addProperty(SHOW_TRANSLATION_KEY, showTranslation.getValue());
@@ -110,6 +118,8 @@ public class MusicPreferences {
             applyMode(json, QUALITY_KEY, quality);
             applyBoolean(json, MUSIC_TOAST_KEY, musicToast);
             applyBoolean(json, SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary);
+            applyBoolean(json, SHOW_FPS_KEY, showFps);
+            applyAccentColor(json);
             applyBoolean(json, LYRIC_DEBUG_KEY, lyricDebug);
             applyNumber(json, VOLUME_KEY, volume);
             applyBoolean(json, SHOW_TRANSLATION_KEY, showTranslation);
@@ -122,6 +132,21 @@ public class MusicPreferences {
             }
         } finally {
             loading = false;
+        }
+    }
+
+    private void applyAccentColor(JsonObject json) {
+        JsonElement element = json.get(ACCENT_COLOR_KEY);
+        if (element == null || !element.isJsonPrimitive()) {
+            return;
+        }
+        try {
+            long color = Long.parseLong(element.getAsString());
+            if (color >= Integer.MIN_VALUE && color <= 0xFFFFFFFFL) {
+                accentColor.setValue((int) color | 0xFF000000);
+            }
+        } catch (NumberFormatException ignored) {
+            // Keep the default and continue loading the other settings.
         }
     }
 
@@ -161,6 +186,14 @@ public class MusicPreferences {
 
     public PreferenceValue<Boolean> showWidgetBoundary() {
         return showWidgetBoundary;
+    }
+
+    public PreferenceValue<Boolean> showFps() {
+        return showFps;
+    }
+
+    public PreferenceValue<Integer> accentColor() {
+        return accentColor;
     }
 
     public PreferenceValue<Boolean> lyricDebug() {

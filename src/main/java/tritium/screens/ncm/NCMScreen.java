@@ -4,6 +4,7 @@ import lombok.Getter;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import tritium.desktop.DesktopScreen;
+import tritium.desktop.AppTheme;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
@@ -271,13 +272,13 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         double cardY = centerY - cardHeight * .5;
 
         Rect.draw(cardX, cardY, cardWidth, cardHeight, hexColor(34, 34, 34, 230));
-        Rect.draw(cardX, cardY, 4, cardHeight, hexColor(195, 2, 24, 255));
+        Rect.draw(cardX, cardY, 4, cardHeight, AppTheme.accent());
 
         long elapsed = Math.max(0L, System.currentTimeMillis() - CloudMusic.loadingSessionStartedAt);
         double progress = ((elapsed % 1800L) / 1800.0);
         double barWidth = cardWidth - 48;
         Rect.draw(cardX + 24, cardY + cardHeight - 28, barWidth, 4, hexColor(70, 70, 70, 255));
-        Rect.draw(cardX + 24, cardY + cardHeight - 28, Math.max(24, barWidth * progress), 4, hexColor(195, 2, 24, 255));
+        Rect.draw(cardX + 24, cardY + cardHeight - 28, Math.max(24, barWidth * progress), 4, AppTheme.accent());
 
         FontManager.pf25bold.drawCenteredString("正在加载登录状态", centerX, centerY - FontManager.pf25bold.getHeight(), hexColor(1, 1, 1, alpha));
         if (!CloudMusic.sessionStatusText.isBlank()) {
@@ -427,9 +428,18 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     }
 
+    @Override
+    public void mouseReleased(int mouseX, int mouseY, int mouseButton) {
+        basePanel.onMouseReleaseReceived(mouseX, mouseY, mouseButton);
+        if (currentPanel != null) currentPanel.onMouseReleaseReceived(mouseX, mouseY, mouseButton);
+        if (prevAnimatingPanel != null) prevAnimatingPanel.onMouseReleaseReceived(mouseX, mouseY, mouseButton);
+        if (controlsBar != null) controlsBar.onMouseReleaseReceived(mouseX, mouseY, mouseButton);
+    }
+
     public enum ColorType {
 
         ACCENT,
+        ON_ACCENT,
         GENERIC_BACKGROUND,
         ELEMENT_BACKGROUND,
         ELEMENT_HOVER,
@@ -441,7 +451,8 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
     public static int getColor(ColorType type) {
 
         return switch (type) {
-            case ACCENT -> 0xD60017;
+            case ACCENT -> AppTheme.accent();
+            case ON_ACCENT -> AppTheme.onAccent();
             case GENERIC_BACKGROUND -> 0x1E1E1E;
             case ELEMENT_BACKGROUND -> 0x232323;
             case ELEMENT_HOVER -> 0x353535;

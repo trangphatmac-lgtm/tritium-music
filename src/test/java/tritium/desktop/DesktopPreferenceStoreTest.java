@@ -29,6 +29,9 @@ class DesktopPreferenceStoreTest {
         preferences.showRoman().setValue(true);
         preferences.lyricHeight().setValue(32.5);
         preferences.spectrumAbsoluteVolume().setValue(false);
+        preferences.showFps().setValue(true);
+        preferences.accentColor().setValue(0xFF2DD4BF);
+        preferences.hud().musicSpectrum().color().setValue(0x803B719A);
 
         store.save(preferences);
 
@@ -42,6 +45,9 @@ class DesktopPreferenceStoreTest {
         assertTrue(loaded.showRoman().getValue());
         assertEquals(32.5, loaded.lyricHeight().getValue(), 0.0001);
         assertFalse(loaded.spectrumAbsoluteVolume().getValue());
+        assertTrue(loaded.showFps().getValue());
+        assertEquals(0xFF2DD4BF, loaded.accentColor().getValue());
+        assertEquals(0x803B719A, loaded.hud().musicSpectrum().color().getValue());
     }
 
     @Test
@@ -63,5 +69,31 @@ class DesktopPreferenceStoreTest {
         assertEquals(1.0, loaded.volume().getValue(), 0.0001);
         assertEquals(14.0, loaded.lyricHeight().getValue(), 0.0001);
         assertFalse(loaded.showTranslation().getValue());
+        assertFalse(loaded.showFps().getValue());
+        assertEquals(AppTheme.DEFAULT_ACCENT, loaded.accentColor().getValue());
+    }
+
+    @Test
+    void invalidAccentDoesNotPreventOtherPreferencesFromLoading() throws IOException {
+        Path file = tempDir.resolve("preferences.json");
+        for (String color : new String[]{"\"oops\"", "4294967296", "-2147483649", "1.5", "null", "{}"}) {
+            Files.writeString(file, "{\"ui.accentColor\":" + color + ",\"ui.showFps\":true,\"player.volume\":0.42}");
+            MusicPreferences loaded = new MusicPreferences();
+            new DesktopPreferenceStore(file).load(loaded);
+            assertEquals(AppTheme.DEFAULT_ACCENT, loaded.accentColor().getValue());
+            assertTrue(loaded.showFps().getValue());
+            assertEquals(.42, loaded.volume().getValue(), .0001);
+        }
+    }
+
+    @Test
+    void acceptsRgbAndUnsignedArgbAndKeepsThemeOpaque() throws IOException {
+        Path file = tempDir.resolve("preferences.json");
+        for (long color : new long[]{0x2DD4BF, 0x802DD4BFL, 0xFF2DD4BFL}) {
+            Files.writeString(file, "{\"ui.accentColor\":" + color + "}");
+            MusicPreferences loaded = new MusicPreferences();
+            new DesktopPreferenceStore(file).load(loaded);
+            assertEquals(0xFF2DD4BF, loaded.accentColor().getValue());
+        }
     }
 }

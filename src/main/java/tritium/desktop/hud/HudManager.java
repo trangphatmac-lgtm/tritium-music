@@ -1,6 +1,7 @@
 package tritium.desktop.hud;
 
 import tritium.desktop.DesktopAppState;
+import tritium.desktop.AppTheme;
 import tritium.desktop.HudElementPreferences;
 import tritium.desktop.MusicPreferences;
 
@@ -392,15 +393,15 @@ public final class HudManager {
         }
 
         private void drawEditFrame(Graphics2D graphics, HudRenderer renderer, Rectangle2D bounds, boolean enabled) {
-            int frameColor = enabled ? 0xD0C30218 : 0x80777777;
+            int frameColor = enabled ? (AppTheme.accent() & 0xFFFFFF) | 0xD0000000 : 0x80777777;
             HudRenderUtil.strokeRound(graphics, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(),
                     6, frameColor, 1.5f);
             HudRenderUtil.fillRound(graphics, bounds.getX(), bounds.getY() - 22, 112, 20, 6,
-                    enabled ? 0xD0C30218 : 0x80606060);
+                    enabled ? (AppTheme.accent() & 0xFFFFFF) | 0xD0000000 : 0x80606060);
             Font font = HudRenderUtil.fontBold(12);
             FontMetrics metrics = HudRenderUtil.metrics(graphics, font);
             HudRenderUtil.drawText(graphics, renderer.displayName(), font, bounds.getX() + 7,
-                    bounds.getY() - 22 + 10 + metrics.getAscent() * .35, 0xFFFFFFFF);
+                    bounds.getY() - 22 + 10 + metrics.getAscent() * .35, enabled ? AppTheme.onAccent() : 0xFFFFFFFF);
             HudRenderUtil.fillRound(graphics, bounds.getMaxX() - 12, bounds.getMaxY() - 12, 12, 12, 4,
                     enabled ? 0xE0FFFFFF : 0xA0FFFFFF);
         }

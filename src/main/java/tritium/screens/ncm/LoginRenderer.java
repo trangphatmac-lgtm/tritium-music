@@ -96,7 +96,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
 //        RenderSystem.doScissor((inta) x, (int) y, (int) pWidth, (int) pHeight);
 
         Rect.draw(x, y, pWidth, pHeight, hexColor(34, 34, 34, (int) (Math.max(alpha, 0.85f) * 255)));
-        Rect.draw(x, y, 4, pHeight, hexColor(195, 2, 24, (int) (Math.max(alpha, 0.85f) * 255)));
+        Rect.draw(x, y, 4, pHeight, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ACCENT), Math.max(alpha, 0.85f)));
 
         double qWidth = 96, qHeight = 96;
 

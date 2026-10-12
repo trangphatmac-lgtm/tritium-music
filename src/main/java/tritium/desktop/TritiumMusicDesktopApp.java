@@ -22,6 +22,7 @@ public final class TritiumMusicDesktopApp {
     private static final int DEFAULT_WIDTH = 1650;
     private static final int DEFAULT_HEIGHT = 1080;
     private static volatile Throwable lastRenderError;
+    private static final FrameRateCounter FRAME_RATE = new FrameRateCounter();
 
     private TritiumMusicDesktopApp() {
     }
@@ -117,6 +118,7 @@ public final class TritiumMusicDesktopApp {
             handleInput();
             renderFrame();
             Display.update();
+            FRAME_RATE.recordFrame(System.nanoTime());
             Display.sync(60);
         }
     }
@@ -167,7 +169,19 @@ public final class TritiumMusicDesktopApp {
             }
         }
 
+        if (DesktopAppState.preferences().showFps().getValue()) {
+            renderFpsOverlay();
+        }
         CursorUtils.setOverride();
+    }
+
+    private static void renderFpsOverlay() {
+        String text = FRAME_RATE.fps() + " FPS";
+        double width = FontManager.pf14bold.getStringWidthD(text) + 20;
+        double x = RenderSystem.getWidth() - width - 10;
+        Rect.draw(x, 10, width, 26, 0xDD181818);
+        FontManager.pf14bold.drawString(text, x + 10, 23 - FontManager.pf14bold.getHeight() * .5,
+                0xFFFFFFFF);
     }
 
     private static void renderFatalOverlay(Throwable throwable) {

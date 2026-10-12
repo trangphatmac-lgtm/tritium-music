@@ -75,7 +75,7 @@ public class NavigateBar extends NCMPanel {
             } else {
                 searchBarFocusAnimation.setAlpha(Interpolations.interpolate(searchBarFocusAnimation.getAlpha(), 1f, .3f));
                 searchBarFocusAnimation.setRadius(4);
-                searchBarFocusAnimation.setColor(0xff780C17);
+                searchBarFocusAnimation.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
                 searchBarFocusAnimation.setBounds(searchBar.getRelativeX(), searchBar.getRelativeY(), searchBar.getWidth(), searchBar.getHeight());
                 searchBarFocusAnimation.expand(1 + 5 * (1 - searchBarFocusAnimation.getAlpha()));
             }
@@ -176,7 +176,7 @@ public class NavigateBar extends NCMPanel {
         this.playlistPanel.addChild(lbl);
 
         {
-            PlaylistItem item = new PlaylistItem("A", () -> 0xFFC30218, () -> "主页", () -> NCMScreen.getInstance().setCurrentPanel(new HomePanel()));
+            PlaylistItem item = new PlaylistItem("A", () -> NCMScreen.getColor(NCMScreen.ColorType.ACCENT), () -> "主页", () -> NCMScreen.getInstance().setCurrentPanel(new HomePanel()));
 
             item.setShouldOverrideMouseCursor(true);
 
