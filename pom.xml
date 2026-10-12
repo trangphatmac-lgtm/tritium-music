@@ -292,6 +292,24 @@
 
     <profiles>
         <profile>
+            <id>rendering-tests</id>
+            <activation>
+                <property><name>tritium.testRendering</name><value>true</value></property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <!-- Static GL handles belong to one native context. Each rendering
+                                 test class creates/destroys its own display, so isolate their VMs. -->
+                            <reuseForks>false</reuseForks>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>jpackage-macos-arm64</id>
             <build>
                 <plugins>

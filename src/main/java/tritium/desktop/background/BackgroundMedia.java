@@ -168,12 +168,17 @@ final class BackgroundMedia implements Runnable {
             long origin = System.nanoTime();
             long firstTimestamp = Long.MIN_VALUE;
             long lastPublished = Long.MIN_VALUE;
+            long lastTimestamp = 0;
+            double rate = grabber.getFrameRate();
+            long frameDuration = Math.round(1_000_000 / (Double.isFinite(rate) && rate > 0 ? rate : 30));
             boolean hadFrame = false;
             while (!cancelled) {
                 origin += waitUntilVisible();
                 Frame frame = grabber.grabImage();
                 if (frame == null) {
                     if (!hadFrame) throw new IOException("视频没有可解码的画面");
+                    // Preserve the final frame's duration, including single-frame videos.
+                    waitForPresentation(origin + (lastTimestamp + frameDuration) * 1000);
                     // Keep the last frame displayed across the loop boundary.
                     grabber.setVideoTimestamp(0);
                     origin = System.nanoTime();
@@ -185,13 +190,16 @@ final class BackgroundMedia implements Runnable {
                 hadFrame = true;
                 if (firstTimestamp == Long.MIN_VALUE) firstTimestamp = frame.timestamp;
                 long timestamp = Math.max(0, frame.timestamp - firstTimestamp);
+                lastTimestamp = timestamp;
                 long due = origin + timestamp * 1000;
-                while (!cancelled && System.nanoTime() < due) {
-                    long pause = waitUntilVisible();
-                    origin += pause;
-                    due += pause;
-                    long remaining = due - System.nanoTime();
-                    if (remaining > 0) Thread.sleep(Math.min(20, Math.max(1, remaining / 1_000_000)));
+                long pause = waitForPresentation(due);
+                origin += pause;
+                due += pause;
+                long lateness = System.nanoTime() - due;
+                if (lateness > 250_000_000) {
+                    // A slow decoder must not drop every subsequent frame until the next loop.
+                    origin += lateness;
+                    due += lateness;
                 }
                 if (cancelled) return;
                 // Decode at source speed, but upload at most 30 frames/s and drop overdue frames.
@@ -202,6 +210,19 @@ final class BackgroundMedia implements Runnable {
                 status = "视频 · 静音循环 · " + path.getFileName();
             }
         }
+    }
+
+    private long waitForPresentation(long due) throws InterruptedException {
+        long totalPause = 0;
+        while (!cancelled) {
+            long pause = waitUntilVisible();
+            totalPause += pause;
+            due += pause;
+            long remaining = due - System.nanoTime();
+            if (remaining <= 0) return totalPause;
+            Thread.sleep(Math.min(20, Math.max(1, remaining / 1_000_000)));
+        }
+        throw new InterruptedException();
     }
 
     private static Pixels copyFrame(Frame frame) {

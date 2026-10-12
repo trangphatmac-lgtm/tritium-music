@@ -1,0 +1,76 @@
+package tritium.desktop.background;
+
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
+import tritium.rendering.shader.ShaderProgram;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+/** GLSL 1.20 keeps the built-in themes compatible with the app's desktop OpenGL context. */
+final class BackgroundShader implements AutoCloseable {
+    private final int program;
+    private final int resolutionUniform;
+    private final int timeUniform;
+
+    BackgroundShader(String theme) throws IOException {
+        String file = switch (theme) {
+            case "aurora" -> "aurora.frag";
+            case "waves" -> "waves.frag";
+            default -> "nebula.frag";
+        };
+        String fragment;
+        try (var input = BackgroundShader.class.getResourceAsStream("/tritium/shaders/background/" + file)) {
+            if (input == null) throw new IOException("Missing background shader: " + file);
+            fragment = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        int vertex = 0, pixel = 0, linked = 0;
+        try {
+            vertex = compile(GL20.GL_VERTEX_SHADER, "#version 120\nvoid main(){gl_Position=ftransform();}");
+            pixel = compile(GL20.GL_FRAGMENT_SHADER, fragment);
+            linked = GL20.glCreateProgram();
+            GL20.glAttachShader(linked, vertex);
+            GL20.glAttachShader(linked, pixel);
+            GL20.glLinkProgram(linked);
+            if (GL20.glGetProgrami(linked, GL20.GL_LINK_STATUS) == GL11.GL_FALSE) {
+                throw new IOException(GL20.glGetProgramInfoLog(linked, 4096));
+            }
+            program = linked;
+            resolutionUniform = GL20.glGetUniformLocation(program, "r");
+            timeUniform = GL20.glGetUniformLocation(program, "t");
+        } catch (IOException | RuntimeException e) {
+            if (linked != 0) GL20.glDeleteProgram(linked);
+            throw e;
+        } finally {
+            if (vertex != 0) GL20.glDeleteShader(vertex);
+            if (pixel != 0) GL20.glDeleteShader(pixel);
+        }
+    }
+
+    private static int compile(int type, String source) throws IOException {
+        int shader = GL20.glCreateShader(type);
+        GL20.glShaderSource(shader, source);
+        GL20.glCompileShader(shader);
+        if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
+            String log = GL20.glGetShaderInfoLog(shader, 4096);
+            GL20.glDeleteShader(shader);
+            throw new IOException(log);
+        }
+        return shader;
+    }
+
+    void draw(double width, double height, int framebufferWidth, int framebufferHeight, float time) {
+        int previous = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+        GL20.glUseProgram(program);
+        try {
+            GL20.glUniform2f(resolutionUniform, framebufferWidth, framebufferHeight);
+            GL20.glUniform1f(timeUniform, time);
+            ShaderProgram.drawQuad(0, 0, width, height);
+        } finally {
+            GL20.glUseProgram(previous);
+        }
+    }
+
+    @Override
+    public void close() { GL20.glDeleteProgram(program); }
+}

@@ -29,6 +29,13 @@ class HudAppearanceTest {
     private static int[] render(HudRenderer renderer, HudStateSnapshot snapshot, String mode) {
         MusicPreferences preferences = new MusicPreferences();
         preferences.appearance().setValue(mode);
+        // Custom main backgrounds must not leak into any of the desktop HUD renderers.
+        if (mode.equals("Light")) {
+            preferences.background().mode().setValue("shader");
+            preferences.background().shader().setValue("aurora");
+            preferences.background().strength().setValue(1.0);
+            preferences.background().panelOpacity().setValue(0.0);
+        }
         Rectangle bounds = new Rectangle(0, 0, 640, 240);
         HudRenderContext context = new HudRenderContext(preferences, snapshot, bounds, bounds, false);
         BufferedImage image = new BufferedImage(640, 280, BufferedImage.TYPE_INT_ARGB);

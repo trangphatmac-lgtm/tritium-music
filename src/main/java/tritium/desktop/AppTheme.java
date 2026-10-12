@@ -27,6 +27,12 @@ public final class AppTheme {
         return color(0xFFFFFFFF, 0xFF000000);
     }
 
+    /** Used only by main-window panels; lyric and HUD palettes do not consult it. */
+    public static float backgroundPanelOpacity() {
+        return DesktopAppState.background().isActive()
+                ? DesktopAppState.preferences().background().panelOpacity().getValue().floatValue() : 1f;
+    }
+
     public static int surface() {
         return color(0xFF232323, 0xFFF7F7F7);
     }

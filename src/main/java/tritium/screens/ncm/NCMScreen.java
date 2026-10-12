@@ -4,6 +4,8 @@ import lombok.Getter;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import tritium.desktop.DesktopScreen;
+import tritium.desktop.DesktopAppState;
+import org.lwjgl.opengl.Display;
 import tritium.desktop.AppTheme;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
@@ -96,6 +98,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
     @Override
     public void onGuiClosed() {
         Keyboard.enableRepeatEvents(false);
+        DesktopAppState.background().pause();
     }
 
     public void layout() {
@@ -114,6 +117,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         this.currentPanelBg.setBeforeRenderCallback(() -> {
             this.currentPanelBg.setBounds(playlistsPanel.getWidth(), 0, this.currentPanelBg.getParentWidth() - playlistsPanel.getWidth(), this.getPanelHeight() * 0.93);
             this.currentPanelBg.setColor(getColor(ColorType.GENERIC_BACKGROUND));
+            this.currentPanelBg.setAlpha(DesktopAppState.background().isActive() ? 0f : 1f);
         });
 
         this.controlsBar = new ControlsBar();
@@ -154,7 +158,8 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         double mouseX = mX;
         double mouseY = mY;
 
-        Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), getColor(ColorType.GENERIC_BACKGROUND));
+        DesktopAppState.background().render(Display.isVisible()
+                && (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha < .999f));
 
         boolean loggedIn = CloudMusic.profile != null;
         if (!loggedIn) {

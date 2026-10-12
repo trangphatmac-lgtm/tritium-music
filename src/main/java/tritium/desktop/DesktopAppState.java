@@ -1,6 +1,7 @@
 package tritium.desktop;
 
 import tritium.desktop.hud.HudManager;
+import tritium.desktop.background.MainBackgroundRenderer;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -10,6 +11,7 @@ import java.util.function.Supplier;
 public final class DesktopAppState {
     private static final DesktopApi API = new DesktopApi();
     private static final MusicPreferences PREFERENCES = new MusicPreferences();
+    private static final MainBackgroundRenderer BACKGROUND = new MainBackgroundRenderer(PREFERENCES.background());
     private static final DesktopPreferenceStore PREFERENCE_STORE = DesktopPreferenceStore.defaultStore();
     private static final ScreenManager SCREEN_MANAGER = new ScreenManager();
     private static final DownloadStatus DOWNLOAD_STATUS = new DownloadStatus();
@@ -28,6 +30,10 @@ public final class DesktopAppState {
 
     public static MusicPreferences preferences() {
         return PREFERENCES;
+    }
+
+    public static MainBackgroundRenderer background() {
+        return BACKGROUND;
     }
 
     public static void loadPreferences() {

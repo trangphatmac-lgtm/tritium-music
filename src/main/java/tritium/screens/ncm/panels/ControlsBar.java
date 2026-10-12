@@ -31,7 +31,8 @@ public class ControlsBar extends NCMPanel {
         this.addChild(bg);
 
         bg.setAlpha(.95f)
-          .setBeforeRenderCallback(() -> bg.setMargin(0).setColor(AppTheme.color(0xFF1D1D1D, 0xFFFFFFFF)));
+          .setBeforeRenderCallback(() -> bg.setMargin(0).setColor(AppTheme.color(0xFF1D1D1D, 0xFFFFFFFF))
+                  .setAlpha(.95f * AppTheme.backgroundPanelOpacity()));
 
         RoundedImageWidget playingCover = new RoundedImageWidget(() -> {
             if (CloudMusic.currentlyPlaying == null)

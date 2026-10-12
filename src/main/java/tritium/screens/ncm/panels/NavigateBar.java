@@ -50,7 +50,7 @@ public class NavigateBar extends NCMPanel {
 
             bg.setMargin(0);
             bg.setColor(this.getColor(NCMScreen.ColorType.GENERIC_BACKGROUND));
-            bg.setAlpha(0.9f);
+            bg.setAlpha(.9f * AppTheme.backgroundPanelOpacity());
         });
 
         this.setOnKeyTypedCallback((character, keyCode) -> {

@@ -244,6 +244,7 @@ public final class TritiumMusicDesktopApp {
             t.printStackTrace();
         }
         if (Display.isCreated()) {
+            DesktopAppState.background().close();
             Display.destroy();
         }
     }

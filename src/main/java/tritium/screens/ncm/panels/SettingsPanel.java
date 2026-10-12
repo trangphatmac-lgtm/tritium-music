@@ -8,6 +8,8 @@ import tritium.desktop.ModePreference;
 import tritium.desktop.MusicPreferences;
 import tritium.desktop.NumberPreference;
 import tritium.desktop.PreferenceValue;
+import tritium.desktop.BackgroundPreferences;
+import tritium.desktop.background.BackgroundFilePicker;
 import tritium.management.FontManager;
 import tritium.rendering.animation.Interpolations;
 import tritium.rendering.rendersystem.RenderSystem;
@@ -21,6 +23,10 @@ import tritium.utils.other.multithreading.MultiThreadingUtil;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import java.util.function.Function;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
@@ -28,10 +34,12 @@ import java.awt.Rectangle;
 public class SettingsPanel extends NCMPanel {
     private static final int MARGIN = 24;
     private final MusicPreferences preferences = DesktopAppState.preferences();
+    private final Map<AbstractWidget<?>, BooleanSupplier> backgroundRows = new LinkedHashMap<>();
 
     @Override
     public void onInit() {
         this.getChildren().clear();
+        backgroundRows.clear();
 
         LabelWidget title = new LabelWidget("设置", FontManager.pf32);
         this.addChild(title);
@@ -49,6 +57,7 @@ public class SettingsPanel extends NCMPanel {
         this.addChild(scrollPanel);
         scrollPanel.setSpacing(8);
         scrollPanel.setBeforeRenderCallback(() -> {
+            backgroundRows.forEach((row, visible) -> row.setHidden(!visible.getAsBoolean()));
             double top = subtitle.getRelativeY() + subtitle.getHeight() + 22;
             scrollPanel.setBounds(MARGIN, top, this.getWidth() - MARGIN * 2.0, this.getHeight() - top - MARGIN);
         });
@@ -57,6 +66,8 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new ChoiceRow("显示模式", preferences.appearance(),
                 mode -> mode.equals("Light") ? "浅色" : "深色"));
         scrollPanel.addChild(new ColorRow("主题色", preferences.accentColor(), false));
+
+        addBackgroundSettings(scrollPanel);
 
         scrollPanel.addChild(new SectionHeader("播放"));
         scrollPanel.addChild(new ChoiceRow("音质", preferences.quality()));
@@ -114,6 +125,113 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new ToggleRow("逐字歌词", preferences.lyricDebug()));
     }
 
+    private void addBackgroundSettings(ScrollPanel scroll) {
+        BackgroundPreferences background = preferences.background();
+        BooleanSupplier picture = () -> background.mode().getValue().equals("picture");
+        BooleanSupplier folder = () -> picture.getAsBoolean() && background.pictureSource().getValue().equals("folder");
+        BooleanSupplier video = () -> background.mode().getValue().equals("video");
+        BooleanSupplier shader = () -> background.mode().getValue().equals("shader");
+        BooleanSupplier custom = () -> !background.mode().getValue().equals("static");
+        scroll.addChild(new SectionHeader("主界面背景"));
+        scroll.addChild(new ChoiceRow("背景模式", background.mode(), mode -> switch (mode) {
+            case "picture" -> "picture · 图片";
+            case "video" -> "video · 视频";
+            case "shader" -> "shader · 着色器";
+            default -> "static · 纯色";
+        }));
+        scroll.addChild(new BackgroundStatusRow(DesktopAppState.background()::status));
+        backgroundRow(scroll, new ChoiceRow("图片来源", background.pictureSource(),
+                value -> value.equals("folder") ? "文件夹轮播" : "单张图片"), picture);
+        backgroundRow(scroll, new FileRow("背景图片", background.pictureFile(), false, false),
+                () -> picture.getAsBoolean() && !folder.getAsBoolean());
+        backgroundRow(scroll, new FileRow("轮播文件夹", background.pictureFolder(), true, false), folder);
+        backgroundRow(scroll, new SliderRow("轮播间隔", background.interval(), value -> Math.round(value) + " 秒"), folder);
+        backgroundRow(scroll, new ToggleRow("随机轮播", background.shuffle()), folder);
+        backgroundRow(scroll, new FileRow("背景视频（静音循环）", background.videoFile(), false, true), video);
+        backgroundRow(scroll, new ChoiceRow("缩放方式", background.fit(), value -> switch (value) {
+            case "contain" -> "完整显示";
+            case "stretch" -> "拉伸";
+            default -> "填充裁切";
+        }), () -> picture.getAsBoolean() || video.getAsBoolean());
+        backgroundRow(scroll, new ChoiceRow("着色器主题", background.shader(), value -> switch (value) {
+            case "aurora" -> "极光 · Aurora";
+            case "waves" -> "流光 · Waves";
+            default -> "星云 · Nebula";
+        }), shader);
+        backgroundRow(scroll, new SliderRow("动画速度", background.shaderSpeed(),
+                value -> String.format(Locale.ROOT, "%.1fx", value)), shader);
+        backgroundRow(scroll, new SliderRow("背景强度", background.strength(), value -> Math.round(value * 100) + "%"), custom);
+        backgroundRow(scroll, new SliderRow("面板不透明度", background.panelOpacity(), value -> Math.round(value * 100) + "%"), custom);
+        backgroundRow(scroll, new ActionRow("重新加载背景 / 刷新文件夹", DesktopAppState.background()::reload), custom);
+    }
+
+    private void backgroundRow(ScrollPanel scroll, AbstractWidget<?> row, BooleanSupplier visible) {
+        backgroundRows.put(row, visible);
+        row.setHidden(!visible.getAsBoolean());
+        scroll.addChild(row);
+    }
+
+    private static String shorten(String text, double width) {
+        if (FontManager.pf12bold.getStringWidthD(text) <= width) return text;
+        int end = text.length();
+        while (end > 0 && FontManager.pf12bold.getStringWidthD(text.substring(0, end) + "…") > width) end--;
+        return text.substring(0, end) + "…";
+    }
+
+    private static final class BackgroundStatusRow extends AbstractWidget<BackgroundStatusRow> {
+        private final Supplier<String> status;
+
+        private BackgroundStatusRow(Supplier<String> status) {
+            this.status = status;
+            setBounds(0, 0, 100, 34);
+            setClickable(false);
+            setBeforeRenderCallback(() -> setBounds(getParentWidth(), 34));
+        }
+
+        @Override
+        public void onRender(double mouseX, double mouseY) {
+            FontManager.pf12bold.drawString(shorten(status.get(), getWidth() - 8), getX() + 2, getY() + 8,
+                    reAlpha(AppTheme.foreground(), getAlpha() * .65f));
+        }
+    }
+
+    private static final class FileRow extends SettingsRow<FileRow> {
+        private final PreferenceValue<String> path;
+        private String error = "";
+
+        private FileRow(String label, PreferenceValue<String> path, boolean folder, boolean video) {
+            super(label, 76);
+            this.path = path;
+            setOnClickCallback((x, y, button) -> {
+                if (button != 0) return false;
+                if (x >= getWidth() - 130 && x < getWidth() - 80 && y <= 38) {
+                    path.setValue("");
+                    error = "";
+                } else {
+                    BackgroundFilePicker.choose(label, path.getValue(), folder, video, selected -> {
+                        path.setValue(selected.toString());
+                        error = "";
+                        DesktopAppState.background().reload();
+                    }, message -> error = message);
+                }
+                return true;
+            });
+        }
+
+        @Override
+        public void onRender(double mouseX, double mouseY) {
+            super.onRender(mouseX, mouseY);
+            roundedRect(rightInset(56), getY() + 10, 56, 26, 5, reAlpha(AppTheme.accent(), getAlpha()));
+            FontManager.pf14bold.drawCenteredString(BackgroundFilePicker.isOpen() ? "选择中" : "选择",
+                    rightInset(56) + 28, getY() + 16, reAlpha(AppTheme.onAccent(), getAlpha()));
+            FontManager.pf12bold.drawString("清除", rightInset(110), getY() + 17,
+                    reAlpha(AppTheme.foreground(), getAlpha() * .65f));
+            String value = !error.isEmpty() ? error : path.getValue().isBlank() ? "尚未选择 · 点击打开文件选择器" : path.getValue();
+            FontManager.pf12bold.drawString(shorten(value, getWidth() - 32), getX() + 16, getY() + 49,
+                    reAlpha(AppTheme.foreground(), getAlpha() * .6f));
+        }
+    }
+
     private static final class SectionHeader extends AbstractWidget<SectionHeader> {
         private final String title;
 
@@ -146,7 +264,9 @@ public class SettingsPanel extends NCMPanel {
         public void onRender(double mouseX, double mouseY) {
             hoverAnimation = Interpolations.interpolate(hoverAnimation, this.isHovering() ? 1f : 0f, .25f);
             int bg = blend(AppTheme.settingsSurface(), AppTheme.settingsHover(), hoverAnimation);
-            roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 6, RenderSystem.reAlpha(bg, this.getAlpha()));
+            float surfaceAlpha = DesktopAppState.background().isActive()
+                    ? .5f + .5f * AppTheme.backgroundPanelOpacity() : 1f;
+            roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 6, RenderSystem.reAlpha(bg, this.getAlpha() * surfaceAlpha));
             FontManager.pf16bold.drawString(label, this.getX() + 16, this.getY() + 13,
                     RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
         }

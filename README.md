@@ -19,6 +19,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Music download cache and cache size display
 - Light and dark modes in Settings → Appearance, with smooth transitions and a saved preference; lyrics and system HUDs keep their existing appearance
 - Live accent colors with eight presets and an HSV picker in Settings → Appearance
+- Custom main-window backgrounds in Settings → Main Background: static, picture, video, and shader; lyrics and system HUDs retain their existing appearance
 - Saturation/brightness, hue, and spectrum opacity controls with saved custom colors
 - Optional FPS overlay in Settings → Debug → Show FPS
 - M4A/MP4 cloud music playback (AAC and 16/24-bit Apple Lossless)
@@ -61,6 +62,19 @@ target/tritium-music-1.x.x-portable.tar.gz
 ```
 
 ## Running 
+
+### Custom backgrounds
+
+Open **设置 → 主界面背景** and click **背景模式** to cycle through the modes (right-click cycles backwards). Changes apply immediately and are saved automatically.
+
+- **static**: the existing solid background, following the dark/light appearance setting.
+- **picture**: choose a JPG, PNG, BMP, or GIF file (GIF uses its first frame), or a folder for a slideshow. Folder playback uses supported files directly in that folder, with a 5–300 second interval and optional shuffle. Unreadable images are skipped. Use **重新加载背景 / 刷新文件夹** after changing folder contents.
+- **video**: choose a local MP4, M4V, MOV, WebM, MKV, or AVI. Playback loops silently, independently of music playback. FFmpeg is bundled for the supported desktop platforms; no separate installation is needed.
+- **shader**: choose **星云 / Nebula** (based on the supplied shader), **极光 / Aurora**, or **流光 / Waves**, with adjustable animation speed.
+
+Images and videos support fill/crop, fit, and stretch. **背景强度** controls visibility against the current dark/light background; **面板不透明度** controls the navigation and player panels, with a readability tint on settings cards. File paths are saved as references, so the selected files must remain available. Missing or unsupported media falls back to the solid background and displays a status message; choose another file or reload to retry.
+
+Media loads off the render thread. Images are bounded to 2560 pixels on their longest edge; video textures are bounded to 1920×1080 and uploaded at up to 30 fps. Videos, slideshows, and shader animation pause while the main background is hidden by the lyrics page or the window is minimized.
 
 ### Windows
 

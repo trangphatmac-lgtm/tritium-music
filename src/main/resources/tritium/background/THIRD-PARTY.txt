@@ -1,0 +1,16 @@
+Background video runtime
+
+JavaCV 1.5.11 and JavaCPP 1.5.11
+Project and source: https://github.com/bytedeco/javacv/tree/1.5.11
+JavaCPP source: https://github.com/bytedeco/javacpp/tree/1.5.11
+License: Apache License 2.0 (with an alternative GPLv2 + Classpath exception option).
+
+JavaCPP FFmpeg presets 7.1-1.5.11
+Build configuration and dependency sources:
+https://github.com/bytedeco/javacpp-presets/tree/1.5.11/ffmpeg
+FFmpeg source: https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz
+FFmpeg licensing and build-dependent components: https://ffmpeg.org/legal.html
+
+The packaged runtime includes the standard FFmpeg preset binaries for macosx-arm64,
+windows-x86_64 and linux-x86_64, not the separately distributed GPL preset variant.
+Upstream license notices are included in the native dependency resources.
