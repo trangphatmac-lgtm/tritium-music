@@ -13,6 +13,7 @@ public class MusicPreferences {
     static final String SHOW_WIDGET_BOUNDARY_KEY = "ui.showWidgetBoundary";
     static final String SHOW_FPS_KEY = "ui.showFps";
     static final String ACCENT_COLOR_KEY = "ui.accentColor";
+    static final String APPEARANCE_KEY = "ui.appearance";
     static final String LYRIC_DEBUG_KEY = "lyrics.debug";
     static final String VOLUME_KEY = "player.volume";
     static final String SHOW_TRANSLATION_KEY = "lyrics.showTranslation";
@@ -26,6 +27,7 @@ public class MusicPreferences {
     private final PreferenceValue<Boolean> showWidgetBoundary = new PreferenceValue<>("Show UI Widget Boundary", false);
     private final PreferenceValue<Boolean> showFps = new PreferenceValue<>("Show FPS", false);
     private final PreferenceValue<Integer> accentColor = new PreferenceValue<>("Accent Color", AppTheme.DEFAULT_ACCENT);
+    private final ModePreference appearance = new ModePreference("Appearance", "Dark", new String[]{"Dark", "Light"});
     private final PreferenceValue<Boolean> lyricDebug = new PreferenceValue<>("Per-word lyrics debug", false);
     private final NumberPreference volume = new NumberPreference("Volume", 0.1, 0.0, 1.0, 0.01);
     private final PreferenceValue<Boolean> showTranslation = new PreferenceValue<>("Show Translation", true);
@@ -33,6 +35,7 @@ public class MusicPreferences {
     private final NumberPreference lyricHeight = new NumberPreference("Lyric Height", 20.0, 14.0, 50.0, 0.5);
     private final PreferenceValue<Boolean> spectrumAbsoluteVolume = new PreferenceValue<>("Absolute Volume", true);
     private final HudPreferences hud = new HudPreferences(spectrumAbsoluteVolume);
+    private final BackgroundPreferences background = new BackgroundPreferences();
     private Runnable changeCallback = () -> {
     };
     private boolean loading;
@@ -45,6 +48,7 @@ public class MusicPreferences {
         musicToast.setValueCallback(value -> fireChanged());
         showFps.setValueCallback(value -> fireChanged());
         accentColor.setValueCallback(value -> fireChanged());
+        appearance.setValueCallback(value -> fireChanged());
         showWidgetBoundary.setValueCallback(value -> {
             ClientSettings.SHOW_WIDGET_BOUNDARY = value;
             fireChanged();
@@ -64,6 +68,7 @@ public class MusicPreferences {
         lyricHeight.setValueCallback(value -> fireChanged());
         spectrumAbsoluteVolume.setValueCallback(value -> fireChanged());
         hud.setChangeCallback(this::fireChanged);
+        background.setChangeCallback(this::fireChanged);
 
         applyQuality(quality.getValue());
         ClientSettings.SHOW_WIDGET_BOUNDARY = showWidgetBoundary.getValue();
@@ -98,6 +103,7 @@ public class MusicPreferences {
         json.addProperty(SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary.getValue());
         json.addProperty(SHOW_FPS_KEY, showFps.getValue());
         json.addProperty(ACCENT_COLOR_KEY, accentColor.getValue());
+        json.addProperty(APPEARANCE_KEY, appearance.getValue());
         json.addProperty(LYRIC_DEBUG_KEY, lyricDebug.getValue());
         json.addProperty(VOLUME_KEY, volume.getValue());
         json.addProperty(SHOW_TRANSLATION_KEY, showTranslation.getValue());
@@ -105,6 +111,7 @@ public class MusicPreferences {
         json.addProperty(LYRIC_HEIGHT_KEY, lyricHeight.getValue());
         json.addProperty(SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume.getValue());
         json.add(HudPreferences.HUD_KEY, hud.toJsonObject());
+        json.add("background", background.toJsonObject());
         return json;
     }
 
@@ -120,6 +127,11 @@ public class MusicPreferences {
             applyBoolean(json, SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary);
             applyBoolean(json, SHOW_FPS_KEY, showFps);
             applyAccentColor(json);
+            applyMode(json, APPEARANCE_KEY, appearance);
+            JsonElement backgroundElement = json.get("background");
+            if (backgroundElement != null && backgroundElement.isJsonObject()) {
+                background.loadFromJsonObject(backgroundElement.getAsJsonObject());
+            }
             applyBoolean(json, LYRIC_DEBUG_KEY, lyricDebug);
             applyNumber(json, VOLUME_KEY, volume);
             applyBoolean(json, SHOW_TRANSLATION_KEY, showTranslation);
@@ -180,6 +192,10 @@ public class MusicPreferences {
         return quality;
     }
 
+    public BackgroundPreferences background() {
+        return background;
+    }
+
     public PreferenceValue<Boolean> musicToast() {
         return musicToast;
     }
@@ -194,6 +210,10 @@ public class MusicPreferences {
 
     public PreferenceValue<Integer> accentColor() {
         return accentColor;
+    }
+
+    public ModePreference appearance() {
+        return appearance;
     }
 
     public PreferenceValue<Boolean> lyricDebug() {

@@ -2,6 +2,7 @@ package tritium.screens.ncm.panels;
 
 import org.lwjgl.input.Keyboard;
 import tritium.management.FontManager;
+import tritium.desktop.AppTheme;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.dto.Music;
 import tritium.ncm.music.dto.PlayList;
@@ -159,7 +160,7 @@ public class PlaylistPanel extends NCMPanel {
                                 .setMargin(.5)
                                 .setAlpha(.6f)
                                 .setRadius(searchBar.getRadius() - .5);
-                        searchBar.setColor(0xFF292727);
+                        searchBarBg.setColor(AppTheme.inputBackground());
                     });
 
             LabelWidget lblSearchIcon = new LabelWidget("K", FontManager.music18);

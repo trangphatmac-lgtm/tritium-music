@@ -1,6 +1,7 @@
 package tritium.rendering.ui.widgets;
 
 import org.lwjgl.input.Mouse;
+import tritium.desktop.AppTheme;
 import tritium.management.FontManager;
 import tritium.rendering.Rect;
 import tritium.rendering.rendersystem.RenderSystem;
@@ -79,7 +80,7 @@ public final class ColorPickerWidget extends AbstractWidget<ColorPickerWidget> {
             else dragging = null;
         }
         double x = getX(), y = getY(), width = Math.max(1, getWidth());
-        int textColor = reAlpha(0xFFFFFFFF, getAlpha() * .65f);
+        int textColor = reAlpha(AppTheme.foreground(), getAlpha() * .65f);
         FontManager.pf12bold.drawString("饱和度 / 明度", x, y, textColor);
         Shaders.RQG_SHADER.draw(x, y + PLANE_Y, width, PLANE_HEIGHT, 4, getAlpha(),
                 Color.BLACK, Color.WHITE, Color.BLACK, Color.getHSBColor(color.hue(), 1, 1));

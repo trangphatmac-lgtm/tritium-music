@@ -208,7 +208,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
         if (this.musicLyricsPanel != null) {
             StencilClipManager.beginClip(() -> Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), -1));
-            Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), getColor(ColorType.GENERIC_BACKGROUND) | ((int) (this.musicLyricsPanel.alpha * 255)) << 24);
+            Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), RenderSystem.reAlpha(0xFF1E1E1E, this.musicLyricsPanel.alpha));
             this.musicLyricsPanel.onRender(mouseX, mouseY, basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), dWheel);
             StencilClipManager.endClip();
 
@@ -271,7 +271,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         double cardX = centerX - cardWidth * .5;
         double cardY = centerY - cardHeight * .5;
 
-        Rect.draw(cardX, cardY, cardWidth, cardHeight, hexColor(34, 34, 34, 230));
+        Rect.draw(cardX, cardY, cardWidth, cardHeight, RenderSystem.reAlpha(AppTheme.color(0xFF222222, 0xFFF5F5F5), 230 / 255f));
         Rect.draw(cardX, cardY, 4, cardHeight, AppTheme.accent());
 
         long elapsed = Math.max(0L, System.currentTimeMillis() - CloudMusic.loadingSessionStartedAt);
@@ -280,7 +280,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         Rect.draw(cardX + 24, cardY + cardHeight - 28, barWidth, 4, hexColor(70, 70, 70, 255));
         Rect.draw(cardX + 24, cardY + cardHeight - 28, Math.max(24, barWidth * progress), 4, AppTheme.accent());
 
-        FontManager.pf25bold.drawCenteredString("正在加载登录状态", centerX, centerY - FontManager.pf25bold.getHeight(), hexColor(1, 1, 1, alpha));
+        FontManager.pf25bold.drawCenteredString("正在加载登录状态", centerX, centerY - FontManager.pf25bold.getHeight(), RenderSystem.reAlpha(AppTheme.foreground(), alpha));
         if (!CloudMusic.sessionStatusText.isBlank()) {
             FontManager.pf18.drawCenteredString(CloudMusic.sessionStatusText, centerX, centerY + 10, hexColor(180, 180, 180, alpha));
         }
@@ -304,13 +304,15 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         double progressBarHeight = 8;
 
         double offsetY = 8 + -(8 + downloadPanelHeight) * (1 - downloadPanelAlpha);
-        Rect.draw(RenderSystem.getWidth() * .5 - downloadPanelWidth * .5, offsetY, downloadPanelWidth, downloadPanelHeight, RenderSystem.reAlpha(0x202020, downloadPanelAlpha * alpha));
-        FontManager.pf34bold.drawCenteredString("Downloading...", RenderSystem.getWidth() * .5, offsetY + 8, hexColor(1, 1, 1, downloadPanelAlpha * alpha));
-        FontManager.pf25bold.drawCenteredString(String.valueOf(downloadSpeed), RenderSystem.getWidth() * .5, offsetY + 8 + FontManager.pf34bold.getHeight(), hexColor(1, 1, 1, downloadPanelAlpha * alpha));
-        roundedRect(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, hexColor(1, 1, 1, .5f * downloadPanelAlpha * alpha));
+        int background = musicLyricsPanel != null ? 0xFF202020 : AppTheme.color(0xFF202020, 0xFFF5F5F5);
+        int foreground = musicLyricsPanel != null ? 0xFFFFFFFF : AppTheme.foreground();
+        Rect.draw(RenderSystem.getWidth() * .5 - downloadPanelWidth * .5, offsetY, downloadPanelWidth, downloadPanelHeight, RenderSystem.reAlpha(background, downloadPanelAlpha * alpha));
+        FontManager.pf34bold.drawCenteredString("Downloading...", RenderSystem.getWidth() * .5, offsetY + 8, RenderSystem.reAlpha(foreground, downloadPanelAlpha * alpha));
+        FontManager.pf25bold.drawCenteredString(String.valueOf(downloadSpeed), RenderSystem.getWidth() * .5, offsetY + 8 + FontManager.pf34bold.getHeight(), RenderSystem.reAlpha(foreground, downloadPanelAlpha * alpha));
+        roundedRect(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, RenderSystem.reAlpha(foreground, .5f * downloadPanelAlpha * alpha));
 
         StencilClipManager.beginClip(() -> Rect.draw(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth * downloadProgress, progressBarHeight, -1));
-        roundedRect(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, hexColor(1, 1, 1, downloadPanelAlpha * alpha));
+        roundedRect(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, RenderSystem.reAlpha(foreground, downloadPanelAlpha * alpha));
         StencilClipManager.endClip();
     }
 
@@ -453,10 +455,10 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         return switch (type) {
             case ACCENT -> AppTheme.accent();
             case ON_ACCENT -> AppTheme.onAccent();
-            case GENERIC_BACKGROUND -> 0x1E1E1E;
-            case ELEMENT_BACKGROUND -> 0x232323;
-            case ELEMENT_HOVER -> 0x353535;
-            case PRIMARY_TEXT -> 0xFFFFFF;
+            case GENERIC_BACKGROUND -> AppTheme.background();
+            case ELEMENT_BACKGROUND -> AppTheme.surface();
+            case ELEMENT_HOVER -> AppTheme.hover();
+            case PRIMARY_TEXT -> AppTheme.foreground();
             case SECONDARY_TEXT -> 0x6B6B6B;
         };
 

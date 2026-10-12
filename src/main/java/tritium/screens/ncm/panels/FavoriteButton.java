@@ -15,6 +15,13 @@ public class FavoriteButton extends IconWidget {
 
     private volatile Feedback feedback;
     private final Supplier<Music> songSupplier;
+    private boolean followTheme = true;
+
+    public FavoriteButton setFollowTheme(boolean followTheme) {
+        this.followTheme = followTheme;
+        return this;
+    }
+
     private boolean monochrome;
     private boolean onAccent;
 
@@ -53,8 +60,10 @@ public class FavoriteButton extends IconWidget {
         boolean pending = song != null && CloudMusic.isLikePending(song.getId());
         boolean available = song != null && CloudMusic.profile != null && CloudMusic.likeList != null;
         setIcon(liked ? "S" : "e");
-        setColor(NCMScreen.getColor(onAccent ? NCMScreen.ColorType.ON_ACCENT : liked && !monochrome
-                ? NCMScreen.ColorType.ACCENT : NCMScreen.ColorType.PRIMARY_TEXT));
+        int color = onAccent ? NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT)
+                : liked && !monochrome ? NCMScreen.getColor(NCMScreen.ColorType.ACCENT)
+                : followTheme ? NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT) : 0xFFFFFFFF;
+        setColor(color);
         float alpha = getAlpha();
         float widgetAlpha = getWidgetAlpha();
         setAlpha(widgetAlpha * (!available || pending ? .45f : 1f));

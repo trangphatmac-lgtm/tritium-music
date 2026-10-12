@@ -31,6 +31,7 @@ class DesktopPreferenceStoreTest {
         preferences.spectrumAbsoluteVolume().setValue(false);
         preferences.showFps().setValue(true);
         preferences.accentColor().setValue(0xFF2DD4BF);
+        preferences.appearance().setValue("Light");
         preferences.hud().musicSpectrum().color().setValue(0x803B719A);
 
         store.save(preferences);
@@ -47,6 +48,7 @@ class DesktopPreferenceStoreTest {
         assertFalse(loaded.spectrumAbsoluteVolume().getValue());
         assertTrue(loaded.showFps().getValue());
         assertEquals(0xFF2DD4BF, loaded.accentColor().getValue());
+        assertEquals("Light", loaded.appearance().getValue());
         assertEquals(0x803B719A, loaded.hud().musicSpectrum().color().getValue());
     }
 
@@ -56,6 +58,7 @@ class DesktopPreferenceStoreTest {
         Files.writeString(file, """
                 {
                   "music.quality": "DefinitelyNotAQuality",
+                  "ui.appearance": "Unknown",
                   "player.volume": 8.0,
                   "lyrics.height": -4.0,
                   "lyrics.showTranslation": false
@@ -66,6 +69,7 @@ class DesktopPreferenceStoreTest {
         new DesktopPreferenceStore(file).load(loaded);
 
         assertEquals("Standard", loaded.quality().getValue());
+        assertEquals("Dark", loaded.appearance().getValue());
         assertEquals(1.0, loaded.volume().getValue(), 0.0001);
         assertEquals(14.0, loaded.lyricHeight().getValue(), 0.0001);
         assertFalse(loaded.showTranslation().getValue());

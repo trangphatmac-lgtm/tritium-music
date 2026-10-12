@@ -6,6 +6,8 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 import tritium.management.FontManager;
+import tritium.ncm.music.CloudMusic;
+import tritium.ncm.music.dto.User;
 import tritium.rendering.Framebuffer;
 import tritium.rendering.Rect;
 import tritium.rendering.animation.Interpolations;
@@ -14,6 +16,10 @@ import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.rendering.ui.widgets.ColorPickerWidget;
 import tritium.screens.ncm.panels.SettingsPanel;
+import tritium.screens.ncm.NCMScreen;
+import tritium.screens.ncm.panels.ControlsBar;
+import tritium.screens.ncm.panels.PlayModeButton;
+import tritium.screens.ncm.panels.FavoriteButton;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -32,7 +38,9 @@ class SettingsAppearanceRenderingTest {
         int originalAccent = DesktopAppState.preferences().accentColor().getValue();
         int originalSpectrum = DesktopAppState.preferences().hud().musicSpectrum().color().getValue();
         boolean originalFps = DesktopAppState.preferences().showFps().getValue();
+        String originalAppearance = DesktopAppState.preferences().appearance().getValue();
         try {
+            DesktopAppState.preferences().appearance().setValue("Dark");
             invokeApp("createDisplay");
             Display.update();
             invokeApp("initializeOpenGL");
@@ -44,7 +52,52 @@ class SettingsAppearanceRenderingTest {
             settings.onInit();
             renderStable(settings);
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
-            AbstractWidget<?> theme = scroll.getChildren().get(1);
+            AbstractWidget<?> mode = scroll.getChildren().get(1);
+            assertRgb(8, 8, 30, 30, 30, 1);
+            savePreview("settings-dark");
+            click(settings, mode.getX() + 20, mode.getY() + 20);
+            assertEquals("Light", DesktopAppState.preferences().appearance().getValue());
+            Thread.sleep(90);
+            render(settings);
+            int transitionBackground = AppTheme.background() & 255;
+            assertTrue(transitionBackground > 30 && transitionBackground < 255);
+            savePreview("settings-transition");
+            renderStable(settings);
+            assertRgb(8, 8, 255, 255, 255, 1);
+            assertEquals(0xFF000000, AppTheme.foreground());
+            assertEquals(0x6B6B6B, NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
+            assertRgb(mode.getX() + 8, mode.getY() + 30, 245, 245, 245, 1);
+            assertContainsBlackText(24, 24, 60, 30);
+            savePreview("settings-light");
+
+            ControlsBar controls = new ControlsBar();
+            controls.setBounds(0, RenderSystem.getHeight() - 75, RenderSystem.getWidth(), 75);
+            controls.onInit();
+            for (int i = 0; i < 40; i++) {
+                render(settings);
+                controls.renderWidget(-1, -1, 0);
+                Display.processMessages();
+                Thread.sleep(10);
+            }
+            assertRgb(4, RenderSystem.getHeight() - 4, 255, 255, 255, 1);
+            PlayModeButton mainMode = controls.getChildren().stream().filter(PlayModeButton.class::isInstance)
+                    .map(PlayModeButton.class::cast).findFirst().orElseThrow();
+            assertEquals(0, mainMode.getHexColor() & 0xFFFFFF);
+            // Lyrics reuse these controls, but explicitly retain their original palette.
+            PlayModeButton lyricMode = new PlayModeButton(32).setFollowTheme(false);
+            FavoriteButton lyricFavorite = new FavoriteButton(32).setFollowTheme(false);
+            lyricMode.onRender(-1, -1);
+            lyricFavorite.onRender(-1, -1);
+            assertEquals(0xFFFFFF, lyricMode.getHexColor() & 0xFFFFFF);
+            assertEquals(0xFFFFFF, lyricFavorite.getHexColor() & 0xFFFFFF);
+            savePreview("settings-light-controls");
+            verifyMainWindow();
+
+            click(settings, mode.getX() + 20, mode.getY() + 20);
+            renderStable(settings);
+            assertEquals("Dark", DesktopAppState.preferences().appearance().getValue());
+            assertRgb(8, 8, 30, 30, 30, 1);
+            AbstractWidget<?> theme = scroll.getChildren().get(2);
             click(settings, theme.getX() + 68, theme.getY() + 61);
             assertEquals(0xFF58A6FF, DesktopAppState.preferences().accentColor().getValue());
             click(settings, theme.getX() + theme.getWidth() - 40, theme.getY() + 20);
@@ -103,6 +156,7 @@ class SettingsAppearanceRenderingTest {
             DesktopAppState.preferences().accentColor().setValue(originalAccent);
             DesktopAppState.preferences().hud().musicSpectrum().color().setValue(originalSpectrum);
             DesktopAppState.preferences().showFps().setValue(originalFps);
+            DesktopAppState.preferences().appearance().setValue(originalAppearance);
             if (Display.isCreated()) {
                 FontManager.deleteLoadedTextures();
                 Display.destroy();
@@ -115,6 +169,34 @@ class SettingsAppearanceRenderingTest {
         settings.onMouseClickReceived(x, y, 0);
         settings.onMouseReleaseReceived(x, y, 0);
         render(settings);
+    }
+
+    private static void verifyMainWindow() throws Exception {
+        User originalProfile = CloudMusic.profile;
+        NCMScreen screen = new NCMScreen();
+        try {
+            // Build without an account to avoid network requests in the render test.
+            CloudMusic.profile = null;
+            screen.initGui();
+            CloudMusic.profile = new User(1, "Tritium Music", "", 0, "");
+            screen.setCurrentPanel(new SettingsPanel());
+            for (int i = 0; i < 45; i++) {
+                DesktopAppState.pumpMainThreadTasks();
+                Interpolations.calcFrameDelta();
+                AppTheme.beginFrame();
+                invokeApp("prepareFrameState");
+                GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+                screen.drawScreen(-1, -1);
+                Display.processMessages();
+                Thread.sleep(10);
+            }
+            assertRgb(4, 200, 255, 255, 255, 1);
+            assertRgb(RenderSystem.getWidth() - 4, RenderSystem.getHeight() - 4, 255, 255, 255, 1);
+            savePreview("main-window-light");
+        } finally {
+            CloudMusic.profile = originalProfile;
+            screen.onGuiClosed();
+        }
     }
 
     private static void render(SettingsPanel settings) throws Exception {
@@ -133,9 +215,10 @@ class SettingsAppearanceRenderingTest {
     private static void render(SettingsPanel settings, double x, double y) throws Exception {
         DesktopAppState.pumpMainThreadTasks();
         Interpolations.calcFrameDelta();
+        AppTheme.beginFrame();
         invokeApp("prepareFrameState");
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-        Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), 0xFF1E1E1E);
+        Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), AppTheme.background());
         settings.renderWidget(x, y, 0);
     }
 
@@ -147,6 +230,20 @@ class SettingsAppearanceRenderingTest {
         assertEquals(r, pixel.get(0) & 255, tolerance, "red at " + x + "," + y);
         assertEquals(g, pixel.get(1) & 255, tolerance, "green at " + x + "," + y);
         assertEquals(b, pixel.get(2) & 255, tolerance, "blue at " + x + "," + y);
+    }
+
+    private static void assertContainsBlackText(int x, int y, int width, int height) {
+        float scale = RenderSystem.getUiScaleFactor();
+        int w = (int) (width * scale), h = (int) (height * scale);
+        ByteBuffer pixels = BufferUtils.createByteBuffer(w * h * 4);
+        GL11.glReadPixels((int) (x * scale), RenderSystem.getFramebufferHeight() - (int) ((y + height) * scale),
+                w, h, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        int black = 0;
+        for (int i = 0; i < w * h; i++) {
+            if ((pixels.get(i * 4) & 255) < 10 && (pixels.get(i * 4 + 1) & 255) < 10
+                    && (pixels.get(i * 4 + 2) & 255) < 10) black++;
+        }
+        assertTrue(black > 20, "Expected actual black glyph pixels in the light-mode title");
     }
 
     private static void savePreview(String name) throws Exception {

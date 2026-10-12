@@ -149,6 +149,7 @@ public final class TritiumMusicDesktopApp {
     private static void renderFrame() {
         Framebuffer.updateMcFramebuffer();
         Interpolations.calcFrameDelta();
+        AppTheme.beginFrame();
         CursorUtils.resetOverride();
 
         prepareFrameState();

@@ -1,6 +1,7 @@
 package tritium.screens.ncm;
 
 import lombok.Getter;
+import tritium.desktop.AppTheme;
 import org.lwjgl.input.Keyboard;
 import tritium.interfaces.SharedConstants;
 import tritium.ncm.music.QRCodeGenerator;
@@ -95,7 +96,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
 
 //        RenderSystem.doScissor((inta) x, (int) y, (int) pWidth, (int) pHeight);
 
-        Rect.draw(x, y, pWidth, pHeight, hexColor(34, 34, 34, (int) (Math.max(alpha, 0.85f) * 255)));
+        Rect.draw(x, y, pWidth, pHeight, reAlpha(AppTheme.color(0xFF222222, 0xFFF5F5F5), Math.max(alpha, 0.85f)));
         Rect.draw(x, y, 4, pHeight, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ACCENT), Math.max(alpha, 0.85f)));
 
         double qWidth = 96, qHeight = 96;

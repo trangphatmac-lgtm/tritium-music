@@ -1,11 +1,10 @@
 package tritium.screens.ncm.panels;
 
 import tritium.management.FontManager;
+import tritium.desktop.AppTheme;
 import tritium.ncm.music.CloudMusic;
 import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.ui.widgets.IconWidget;
-
-import java.awt.Color;
 
 /** Separate from the favorite action: this heart contains a pulse. */
 public class HeartbeatButton extends IconWidget {
@@ -30,7 +29,7 @@ public class HeartbeatButton extends IconWidget {
     public void onRender(double mouseX, double mouseY) {
         boolean loading = CloudMusic.isHeartbeatLoading();
         boolean active = CloudMusic.playMode == CloudMusic.PlayMode.Heartbeat;
-        setColor(Color.WHITE);
+        setColor(AppTheme.foreground());
         super.onRender(mouseX, mouseY);
         boolean showFeedback = feedback != null && System.currentTimeMillis() < feedbackUntil;
         }

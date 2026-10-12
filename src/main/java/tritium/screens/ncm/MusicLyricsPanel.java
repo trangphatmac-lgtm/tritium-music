@@ -70,8 +70,8 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     IconWidget playPauseButton = new IconWidget("G", FontManager.music40, 0, 0, 24, 24);
     IconWidget prev = new IconWidget("E", FontManager.music40, 0, 0, 32, 32);
     IconWidget next = new IconWidget("H", FontManager.music40, 0, 0, 32, 32);
-    PlayModeButton playModeButton = new PlayModeButton(32);
-    FavoriteButton favoriteButton = new FavoriteButton(32);
+    PlayModeButton playModeButton = new PlayModeButton(32).setFollowTheme(false);
+    FavoriteButton favoriteButton = new FavoriteButton(32).setFollowTheme(false);
     IconWidget translationButton = new IconWidget("译", FontManager.pf20bold, 0, 0, 32, 32);
 
     private final Music music;

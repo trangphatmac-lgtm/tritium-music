@@ -4,10 +4,17 @@ import tritium.management.FontManager;
 import tritium.ncm.music.CloudMusic;
 import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.ui.widgets.IconWidget;
-import java.awt.Color;
+import tritium.desktop.AppTheme;
 
 /** Shared playback mode control for the compact player and lyrics view. */
 public class PlayModeButton extends IconWidget {
+    private boolean followTheme = true;
+
+    public PlayModeButton setFollowTheme(boolean followTheme) {
+        this.followTheme = followTheme;
+        return this;
+    }
+
     private volatile String feedback;
     private volatile long feedbackUntil;
 
@@ -34,7 +41,7 @@ public class PlayModeButton extends IconWidget {
         boolean heartbeat = loading || mode == CloudMusic.PlayMode.Heartbeat;
         setIcon(loading ? CloudMusic.PlayMode.Heartbeat.getIcon() : mode.getIcon());
         fr = heartbeat ? FontManager.icon24 : FontManager.icon30;
-        setColor(Color.WHITE);
+        setColor(followTheme ? AppTheme.foreground() : 0xFFFFFFFF);
         super.onRender(mouseX, mouseY);
 
         boolean showFeedback = feedback != null && System.currentTimeMillis() < feedbackUntil;
@@ -53,7 +60,7 @@ public class PlayModeButton extends IconWidget {
         double x = Math.max(4, Math.min(getX() + (getWidth() - width) * .5,
                 RenderSystem.getWidth() - width - 4));
         double y = Math.max(4, getY() - height - 6);
-        roundedRect(x, y, width, height, 4, hexColor(0, 0, 0, getAlpha() * .85f));
-        FontManager.pf14.drawString(text, x + 6, y + 4, hexColor(1, 1, 1, getAlpha()));
+        roundedRect(x, y, width, height, 4, RenderSystem.reAlpha(followTheme ? AppTheme.inputBackground() : 0xFF000000, getAlpha() * .85f));
+        FontManager.pf14.drawString(text, x + 6, y + 4, RenderSystem.reAlpha(followTheme ? AppTheme.foreground() : 0xFFFFFFFF, getAlpha()));
     }
 }

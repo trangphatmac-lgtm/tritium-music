@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.lwjgl.input.Keyboard;
 import tritium.management.FontManager;
+import tritium.desktop.AppTheme;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.dto.Music;
 import tritium.ncm.music.dto.PlayList;
@@ -97,7 +98,7 @@ public class NavigateBar extends NCMPanel {
         searchBarBg.setBeforeRenderCallback(() -> {
             searchBarBg.setMargin(.5);
             searchBarBg.setAlpha(.6f);
-            searchBar.setColor(0xFF292727);
+            searchBarBg.setColor(AppTheme.inputBackground());
             searchBarBg.setRadius(searchBar.getRadius() - .5);
         });
 

@@ -10,6 +10,7 @@ import tritium.desktop.DesktopScreen;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
+import tritium.desktop.AppTheme;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.dto.Album;
 import tritium.ncm.music.dto.Music;
@@ -198,7 +199,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         if (!Mouse.isButtonDown(1) && rmbPressed)
             rmbPressed = false;
 
-        Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), RGBA.color(0, 0, 0, alpha * 0.5f));
+        Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), AppTheme.color(RGBA.color(0, 0, 0, alpha * 0.5f), RGBA.color(1, 1, 1, alpha)));
 
         if (albumList.isEmpty())
             return;
@@ -207,7 +208,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         textBox.width = 240;
         textBox.height = 34;
         textBox.setFontRenderer(FontManager.pf40bold);
-        textBox.setTextColor(-1);
+        textBox.setTextColor(AppTheme.foreground());
         textBox.setDisabledTextColour(Color.GRAY.getRGB());
         textBox.setPlaceholder("Search (Ctrl + F)");
         textBox.setCallback(this::filterAlbums);
@@ -360,14 +361,14 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                 double y = -coverSize * 0.5f;
 
                 Image.drawLinearFlippedX(al.getCoverLocation(), offsetX, y, coverSize, coverSize, Image.Type.Normal);
-                Rect.draw(offsetX, y, coverSize, coverSize, RGBA.color(0, 0, 0, 200));
+                Rect.draw(offsetX, y, coverSize, coverSize, AppTheme.color(0xC8000000, 0xE6FFFFFF));
 
                 double imgSpacing = 1;
                 double imgSize = 16;
                 Image.draw(offsetX + coverSize - imgSize - imgSpacing, y + imgSpacing, imgSize, imgSize, Image.Type.Normal);
 
                 CFontRenderer fr = FontManager.pf28bold;
-                fr.drawString(fr.trim(albumName(al), (coverSize - imgSpacing * 2 - 2 - imgSize) / fontScale), offsetX + 2, y + 2, fontScale, -1);
+                fr.drawString(fr.trim(albumName(al), (coverSize - imgSpacing * 2 - 2 - imgSize) / fontScale), offsetX + 2, y + 2, fontScale, AppTheme.foreground());
 
                 double contentSpacing = 2;
 
@@ -377,7 +378,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                 double contentPaneHeight = coverSize - (imgSpacing * 2 + imgSize + contentSpacing * 2);
 
                 StencilClipManager.beginClip(() -> Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, -1));
-                Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, RGBA.color(255, 255, 255, 20));
+                Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, AppTheme.color(0x14FFFFFF, 0xFFF5F5F5));
 
                 double yAdd = 5;
 
@@ -410,22 +411,22 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                     Music music = musics.get(j);
 
                     if ((j + 1) % 2 == 0) {
-                        Rect.draw(contentPaneX, yOffset, contentPaneWidth, entryHeight, RGBA.color(0, 0, 0, 60));
+                        Rect.draw(contentPaneX, yOffset, contentPaneWidth, entryHeight, AppTheme.color(0x3C000000, 0x14000000));
                     }
 
-                    fr.drawString((j + 1) + ".", contentPaneX + 2, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, -1);
-                    fr.drawString(fr.trim(musicName(music), 58 / fontScale), contentPaneX + 4 + 12, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, -1);
+                    fr.drawString((j + 1) + ".", contentPaneX + 2, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, AppTheme.foreground());
+                    fr.drawString(fr.trim(musicName(music), 58 / fontScale), contentPaneX + 4 + 12, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, AppTheme.foreground());
 
                     long tMin = (music.getDuration() / 1000) / 60;
                     long tSec = ((music.getDuration() / 1000) - ((music.getDuration() / 1000) / 60) * 60);
                     String duration = (tMin < 10 ? "0" + tMin : tMin) + ":" + (tSec < 10 ? "0" + tSec : tSec);
 
-                    fr.drawString(duration, contentPaneX + 4 + 74, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, -1);
+                    fr.drawString(duration, contentPaneX + 4 + 74, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, AppTheme.foreground());
 
                     MusicRenderingData musicData = musicRenderingData.computeIfAbsent(music, m -> new MusicRenderingData());
 
                     if (musicData.hoverAlpha > 0.05f) {
-                        Rect.draw(contentPaneX, yOffset, contentPaneWidth, entryHeight, RGBA.color(1, 1, 1, musicData.hoverAlpha));
+                        Rect.draw(contentPaneX, yOffset, contentPaneWidth, entryHeight, RenderSystem.reAlpha(AppTheme.foreground(), musicData.hoverAlpha));
                     }
 
                     boolean hovered = RenderSystem.isHovered(mouseX, mouseY, contentPaneX, yOffset, contentPaneWidth, entryHeight);
@@ -472,7 +473,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
             CFontRenderer fr = FontManager.pf50bold;
 
-            fr.drawCenteredStringWithShadow(albumName(al), RenderSystem.getWidth() * 0.5, RenderSystem.getHeight() * 0.5 + (coverSize - paneHeight * 0.225) / paneHeight * RenderSystem.getHeight(), -1);
+            fr.drawCenteredStringWithShadow(albumName(al), RenderSystem.getWidth() * 0.5, RenderSystem.getHeight() * 0.5 + (coverSize - paneHeight * 0.225) / paneHeight * RenderSystem.getHeight(), AppTheme.foreground());
 //            fr.drawCenteredString(al.getA, RenderSystem.getWidth() * 0.5, RenderSystem.getHeight() * 0.5 + (coverSize - paneHeight * 0.25) / paneHeight * RenderSystem.getHeight() + fr.getHeight(), -1);
 
             this.setupProjectionTransformation();

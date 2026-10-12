@@ -16,6 +16,7 @@ class MusicPreferencesTest {
         MusicPreferences preferences = new MusicPreferences();
 
         assertEquals("Standard", preferences.quality().getValue());
+        assertEquals("Dark", preferences.appearance().getValue());
         assertTrue(preferences.musicToast().getValue());
         assertFalse(preferences.showWidgetBoundary().getValue());
         assertFalse(preferences.lyricDebug().getValue());
@@ -37,6 +38,7 @@ class MusicPreferencesTest {
         preferences.quality().setValue("HiRes");
         assertEquals(Quality.HIRES, CloudMusic.quality);
         assertThrows(IllegalArgumentException.class, () -> preferences.quality().setValue("Unknown"));
+        assertThrows(IllegalArgumentException.class, () -> preferences.appearance().setValue("Unknown"));
     }
 
     @Test

@@ -2,6 +2,8 @@ package tritium.screens.ncm.panels;
 
 import org.lwjgl.input.Mouse;
 import tritium.desktop.DesktopAppState;
+import tritium.desktop.AppTheme;
+import tritium.rendering.rendersystem.RenderSystem;
 import tritium.management.FontManager;
 import tritium.ncm.music.AudioPlayer;
 import tritium.ncm.music.CloudMusic;
@@ -28,9 +30,8 @@ public class ControlsBar extends NCMPanel {
 
         this.addChild(bg);
 
-        bg.setColor(0xFF1D1D1D)
-          .setAlpha(.95f)
-          .setBeforeRenderCallback(() -> bg.setMargin(0));
+        bg.setAlpha(.95f)
+          .setBeforeRenderCallback(() -> bg.setMargin(0).setColor(AppTheme.color(0xFF1D1D1D, 0xFFFFFFFF)));
 
         RoundedImageWidget playingCover = new RoundedImageWidget(() -> {
             if (CloudMusic.currentlyPlaying == null)
@@ -156,11 +157,10 @@ public class ControlsBar extends NCMPanel {
 
         progressBarBg.addChild(progressBar);
         progressBar
-                .setColor(-1)
                 .setWidth(0)
                 .setClickable(false)
                 .setBeforeRenderCallback(() -> {
-                    progressBar.setMargin(0);
+                    progressBar.setMargin(0).setColor(AppTheme.foreground());
 
                     AudioPlayer player = CloudMusic.player;
                     if (player == null)
@@ -269,8 +269,7 @@ public class ControlsBar extends NCMPanel {
         playModeButton.setBeforeRenderCallback(() -> playModeButton
                 .setPosition(
                         lblVolumeMin.getRelativeX() - playModeButton.getWidth() - 3,
-                        this.getHeight() * .5 - playModeButton.getHeight() * .5)
-                .setColor(Color.WHITE));
+                        this.getHeight() * .5 - playModeButton.getHeight() * .5));
 
         RoundedRectWidget volumeBarBg = new RoundedRectWidget() {
             @Override
@@ -278,10 +277,10 @@ public class ControlsBar extends NCMPanel {
                 double volume = DesktopAppState.preferences().volume().getValue();
                 volume = Math.max(0, Math.min(1, volume));
 
-                this.roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 1.5, 1, 1, 1, this.getAlpha() * .5f);
+                this.roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 1.5, RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha() * .5f));
                 double filledWidth = this.getWidth() * volume;
                 if (filledWidth > 0) {
-                    this.roundedRect(this.getX(), this.getY(), filledWidth, this.getHeight(), 1.5, 1, 1, 1, this.getAlpha());
+                    this.roundedRect(this.getX(), this.getY(), filledWidth, this.getHeight(), 1.5, RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
                 }
 
                 if (this.testHovered(mouseX, mouseY, 2) && Mouse.isButtonDown(0)) {
@@ -298,7 +297,6 @@ public class ControlsBar extends NCMPanel {
         this.addChild(volumeBarBg);
 
         volumeBarBg
-                .setColor(Color.WHITE)
                 .setRadius(1.5)
                 .setShouldOverrideMouseCursor(true)
                 .setBeforeRenderCallback(() -> volumeBarBg
