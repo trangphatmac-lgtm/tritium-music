@@ -24,11 +24,11 @@ public class StencilShader implements SharedConstants {
         api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE0);
         api.getGLStateManager().bindTexture(stencilTexture);
         RenderSystem.linearFilter();
-        api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE16);
+        api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE1);
         api.getGLStateManager().bindTexture(baseTexture);
         RenderSystem.linearFilter();
 
-        this.mixTexture.setValue(16);
+        this.mixTexture.setValue(1);
         this.stencilTexture.setValue(0);
 
         api.getGLStateManager().enableBlend();
@@ -37,7 +37,7 @@ public class StencilShader implements SharedConstants {
         ShaderProgram.drawQuadFlipped();
         ShaderProgram.stop();
 
-        api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE16);
+        api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE1);
         api.getGLStateManager().bindTexture(0);
         api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE0);
     }
@@ -49,11 +49,11 @@ public class StencilShader implements SharedConstants {
         api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE0);
         api.getGLStateManager().bindTexture(stencilTexture);
         RenderSystem.linearFilter();
-        api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE16);
+        api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE1);
         api.getGLStateManager().bindTexture(baseTexture);
         RenderSystem.linearFilter();
 
-        this.mixTexture.setValue(16);
+        this.mixTexture.setValue(1);
         this.stencilTexture.setValue(0);
 
         api.getGLStateManager().enableBlend();
@@ -62,7 +62,7 @@ public class StencilShader implements SharedConstants {
         ShaderProgram.drawQuadFlipped(x, y, width, height);
         ShaderProgram.stop();
 
-        api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE16);
+        api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE1);
         api.getGLStateManager().bindTexture(0);
         api.getGLStateManager().setActiveTexture(GL13.GL_TEXTURE0);
     }

@@ -11,6 +11,7 @@ import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
 import tritium.desktop.AppTheme;
+import tritium.rendering.material.UiMaterials;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.dto.Album;
 import tritium.ncm.music.dto.Music;
@@ -199,7 +200,10 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         if (!Mouse.isButtonDown(1) && rmbPressed)
             rmbPressed = false;
 
+        UiMaterials.beginFrame(mouseX, mouseY);
         Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), AppTheme.color(RGBA.color(0, 0, 0, alpha * 0.5f), RGBA.color(1, 1, 1, alpha)));
+
+        UiMaterials.captureBackdrop(false);
 
         if (albumList.isEmpty())
             return;
@@ -214,6 +218,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         textBox.setCallback(this::filterAlbums);
 //        textBox.yOffset = -4f;
 
+        if (UiMaterials.enabled()) UiMaterials.control(4, 4, textBox.width + 8, textBox.height + 8, 12, AppTheme.inputBackground());
         textBox.drawTextBox((int) mouseX, (int) mouseY);
 
         this.setupProjectionTransformation();
@@ -361,7 +366,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                 double y = -coverSize * 0.5f;
 
                 Image.drawLinearFlippedX(al.getCoverLocation(), offsetX, y, coverSize, coverSize, Image.Type.Normal);
-                Rect.draw(offsetX, y, coverSize, coverSize, AppTheme.color(0xC8000000, 0xE6FFFFFF));
+                UiMaterials.panel(offsetX, y, coverSize, coverSize, AppTheme.color(0xC8000000, 0xE6FFFFFF));
 
                 double imgSpacing = 1;
                 double imgSize = 16;
@@ -378,7 +383,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                 double contentPaneHeight = coverSize - (imgSpacing * 2 + imgSize + contentSpacing * 2);
 
                 StencilClipManager.beginClip(() -> Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, -1));
-                Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, AppTheme.color(0x14FFFFFF, 0xFFF5F5F5));
+                UiMaterials.panel(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, AppTheme.color(0x14FFFFFF, 0xFFF5F5F5));
 
                 double yAdd = 5;
 
@@ -411,7 +416,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                     Music music = musics.get(j);
 
                     if ((j + 1) % 2 == 0) {
-                        Rect.draw(contentPaneX, yOffset, contentPaneWidth, entryHeight, AppTheme.color(0x3C000000, 0x14000000));
+                        UiMaterials.panel(contentPaneX, yOffset, contentPaneWidth, entryHeight, AppTheme.color(0x3C000000, 0x14000000));
                     }
 
                     fr.drawString((j + 1) + ".", contentPaneX + 2, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, AppTheme.foreground());
@@ -426,7 +431,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                     MusicRenderingData musicData = musicRenderingData.computeIfAbsent(music, m -> new MusicRenderingData());
 
                     if (musicData.hoverAlpha > 0.05f) {
-                        Rect.draw(contentPaneX, yOffset, contentPaneWidth, entryHeight, RenderSystem.reAlpha(AppTheme.foreground(), musicData.hoverAlpha));
+                        UiMaterials.panel(contentPaneX, yOffset, contentPaneWidth, entryHeight, RenderSystem.reAlpha(AppTheme.foreground(), musicData.hoverAlpha));
                     }
 
                     boolean hovered = RenderSystem.isHovered(mouseX, mouseY, contentPaneX, yOffset, contentPaneWidth, entryHeight);

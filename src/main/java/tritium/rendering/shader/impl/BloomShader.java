@@ -79,7 +79,11 @@ public class BloomShader extends Shader {
             }
 
             u_diffuse_sampler.setValue(0);
-            u_other_sampler.setValue(20);
+            // Use a low texture unit supported by the OpenGL 2.1 desktop profile.
+            u_other_sampler.setValue(1);
+            GL13.glActiveTexture(GL13.GL_TEXTURE1);
+            inputFramebuffer.bindFramebufferTexture();
+            GL13.glActiveTexture(GL13.GL_TEXTURE0);
             u_texel_size.setValue(1.0F / RenderSystem.getFramebufferWidth(), 1.0F / RenderSystem.getFramebufferHeight());
             u_direction.setValue(compression, 0.0F);
 
@@ -95,7 +99,7 @@ public class BloomShader extends Shader {
 
             u_direction.setValue(0.0F, compression);
             outputFramebuffer.bindFramebufferTexture();
-            GL13.glActiveTexture(GL13.GL_TEXTURE20);
+            GL13.glActiveTexture(GL13.GL_TEXTURE1);
             inputFramebuffer.bindFramebufferTexture();
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
             ShaderProgram.drawQuadFlipped();

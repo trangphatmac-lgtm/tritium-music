@@ -1,5 +1,6 @@
 package tritium.rendering.ui.widgets;
 
+import tritium.rendering.material.UiMaterials;
 import tritium.rendering.Rect;
 import tritium.rendering.ui.AbstractWidget;
 
@@ -13,12 +14,20 @@ public class RectWidget extends AbstractWidget<RectWidget> {
         this.setBounds(x, y, width, height);
     }
 
+    private boolean material;
+
+    public RectWidget setMaterial(boolean material) {
+        this.material = material;
+        return this;
+    }
+
     public RectWidget() {
     }
 
     @Override
     public void onRender(double mouseX, double mouseY) {
-        Rect.draw(this.getX(), this.getY(), this.getWidth(), this.getHeight(), this.getHexColor());
+        if (material) UiMaterials.panel(getX(), getY(), getWidth(), getHeight(), getHexColor());
+        else Rect.draw(this.getX(), this.getY(), this.getWidth(), this.getHeight(), this.getHexColor());
     }
 
 }

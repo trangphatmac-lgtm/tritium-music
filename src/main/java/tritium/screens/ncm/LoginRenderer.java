@@ -1,5 +1,6 @@
 package tritium.screens.ncm;
 
+import tritium.rendering.material.UiMaterials;
 import lombok.Getter;
 import tritium.desktop.AppTheme;
 import org.lwjgl.input.Keyboard;
@@ -96,7 +97,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
 
 //        RenderSystem.doScissor((inta) x, (int) y, (int) pWidth, (int) pHeight);
 
-        Rect.draw(x, y, pWidth, pHeight, reAlpha(AppTheme.color(0xFF222222, 0xFFF5F5F5), Math.max(alpha, 0.85f)));
+        UiMaterials.panel(x, y, pWidth, pHeight, reAlpha(AppTheme.color(0xFF222222, 0xFFF5F5F5), Math.max(alpha, 0.85f)));
         Rect.draw(x, y, 4, pHeight, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ACCENT), Math.max(alpha, 0.85f)));
 
         double qWidth = 96, qHeight = 96;
@@ -160,8 +161,8 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
         double inputX = posX + width / 2.0 - inputWidth / 2.0;
         double inputY = posY + heightAnchor(0.43);
 
-        Rect.draw(inputX, inputY, inputWidth, inputHeight, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_BACKGROUND), alpha));
-        roundedRect(inputX, inputY, inputWidth, inputHeight, 4, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_BACKGROUND), alpha));
+        if (!UiMaterials.enabled()) Rect.draw(inputX, inputY, inputWidth, inputHeight, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_BACKGROUND), alpha));
+        UiMaterials.control(inputX, inputY, inputWidth, inputHeight, 4, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_BACKGROUND), alpha));
 
         String preview = cookieInput.isEmpty() ? "MUSIC_U=...; __csrf=..." : "Cookie length: " + cookieInput.length();
         FontManager.pf14.drawString(preview, inputX + 10, inputY + 9, cookieInput.isEmpty() ? secondaryTextColor : textColor);
@@ -184,12 +185,12 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
 
     private void drawModeTab(double x, double y, double width, double height, String text, boolean selected, float alpha) {
         int bg = selected ? NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_HOVER) : NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_BACKGROUND);
-        roundedRect(x, y, width, height, 4, reAlpha(bg, alpha));
+        UiMaterials.control(x, y, width, height, 4, reAlpha(bg, alpha));
         FontManager.pf14bold.drawCenteredString(text, x + width / 2.0, y + 8, reAlpha(NCMScreen.getColor(PRIMARY_TEXT), alpha));
     }
 
     private void drawButton(double x, double y, double width, double height, String text, float alpha, int textColor) {
-        roundedRect(x, y, width, height, 4, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_HOVER), alpha));
+        UiMaterials.control(x, y, width, height, 4, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_HOVER), alpha));
         FontManager.pf14bold.drawCenteredString(text, x + width / 2.0, y + 8, textColor);
     }
 

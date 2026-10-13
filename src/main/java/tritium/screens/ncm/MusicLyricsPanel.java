@@ -1,5 +1,6 @@
 package tritium.screens.ncm;
 
+import tritium.rendering.material.UiMaterials;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
@@ -288,7 +289,8 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         scaleAtPos(posX + width * .5, posY + height * .5, 1.1 - (alpha * 0.1));
 
         this.renderBackground(posX, posY, width, height, alpha);
-        this.renderControlsPart(mouseX, mouseY, posX, posY, width, height, alpha);
+        UiMaterials.captureBackdrop(true);
+        UiMaterials.withoutMaterials(() -> this.renderControlsPart(mouseX, mouseY, posX, posY, width, height, alpha));
         this.renderLyrics(mouseX, mouseY, posX, posY, width, height, dWheel, alpha);
         this.renderTranslationButton(mouseX, mouseY, posX, posY, width, height, alpha);
         api.getGLStateManager().popMatrix();
@@ -399,8 +401,17 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
                 resetLyricStatus();
             }
 
-            if (lyric.hoveringAlpha >= .02f)
-                roundedRect(lyricRenderOffsetX - 4, lyric.posY + scrollOffset + lyric.reboundAnimation, lyricsWidth + lyric.reboundAnimation, lyric.height + 2, 8, 4 + 2 * Easing.EASE_IN_OUT_QUAD.getFunction().apply((double) lyric.hoveringAlpha), 1, 1, 1, alpha * lyric.hoveringAlpha * .15f);
+            if (lyric.hoveringAlpha >= .02f) {
+                double expand = 4 + 2 * Easing.EASE_IN_OUT_QUAD.getFunction().apply((double) lyric.hoveringAlpha);
+                if (UiMaterials.enabled()) {
+                    UiMaterials.surface(lyricRenderOffsetX - 4 - expand, lyric.posY + scrollOffset + lyric.reboundAnimation - expand,
+                            lyricsWidth + lyric.reboundAnimation + expand * 2, lyric.height + 2 + expand * 2, 8,
+                            reAlpha(0xFF404652, alpha * lyric.hoveringAlpha
+                                    * DesktopAppState.preferences().lyricHoverOpacity().getValue().floatValue()));
+                } else {
+                    roundedRect(lyricRenderOffsetX - 4, lyric.posY + scrollOffset + lyric.reboundAnimation, lyricsWidth + lyric.reboundAnimation, lyric.height + 2, 8, expand, 1, 1, 1, alpha * lyric.hoveringAlpha * .15f);
+                }
+            }
 
             double renderX = lyricRenderOffsetX + lyric.reboundAnimation;
             double renderY = lyric.posY + lyric.reboundAnimation + scrollOffset;

@@ -1,5 +1,6 @@
 package tritium.desktop;
 
+import tritium.rendering.material.UiMaterials;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
@@ -244,6 +245,7 @@ public final class TritiumMusicDesktopApp {
             t.printStackTrace();
         }
         if (Display.isCreated()) {
+            UiMaterials.release();
             DesktopAppState.background().close();
             Display.destroy();
         }

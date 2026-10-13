@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.rendering.material.UiMaterials;
 import org.lwjgl.input.Mouse;
 import tritium.desktop.DesktopAppState;
 import tritium.desktop.AppTheme;
@@ -26,7 +27,7 @@ public class ControlsBar extends NCMPanel {
 
     @Override
     public void onInit() {
-        RectWidget bg = new RectWidget();
+        RectWidget bg = new RectWidget().setMaterial(true);
 
         this.addChild(bg);
 
@@ -63,6 +64,7 @@ public class ControlsBar extends NCMPanel {
 
         IconWidget playPause = new IconWidget("B", FontManager.icon30, 0, 0, 20, 20);
 
+        playPause.setInheritMaterial(true);
         this.addChild(playPause);
 
         playPause
@@ -88,6 +90,7 @@ public class ControlsBar extends NCMPanel {
 
         IconWidget prev = new IconWidget("H", FontManager.icon30, 0, 0, 20, 20);
 
+        prev.setInheritMaterial(true);
         this.addChild(prev);
 
         prev
@@ -103,6 +106,7 @@ public class ControlsBar extends NCMPanel {
                         .setPosition(prev.getRelativeX() - 20 - prev.getWidth() * .5, prev.getRelativeY() + buttonsYOffset));
 
         IconWidget next = new IconWidget("E", FontManager.icon30, 0, 0, 20, 20);
+        next.setInheritMaterial(true);
         this.addChild(next);
 
         next
@@ -209,6 +213,7 @@ public class ControlsBar extends NCMPanel {
                         .setPosition(progressBarBg.getRelativeX() + progressBarBg.getWidth() + 4, lblCurTime.getRelativeY()));
 
         FavoriteButton favoriteButton = new FavoriteButton(20).setMonochrome(true);
+        favoriteButton.setInheritMaterial(true);
         this.addChild(favoriteButton);
         favoriteButton.setBeforeRenderCallback(() -> favoriteButton
                 .setPosition(playingCover.getRelativeX() + playingCover.getWidth() + 4,
@@ -266,6 +271,7 @@ public class ControlsBar extends NCMPanel {
                         ));
 
         PlayModeButton playModeButton = new PlayModeButton(20);
+        playModeButton.setInheritMaterial(true);
         this.addChild(playModeButton);
         playModeButton.setBeforeRenderCallback(() -> playModeButton
                 .setPosition(
@@ -278,10 +284,10 @@ public class ControlsBar extends NCMPanel {
                 double volume = DesktopAppState.preferences().volume().getValue();
                 volume = Math.max(0, Math.min(1, volume));
 
-                this.roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 1.5, RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha() * .5f));
+                UiMaterials.control(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 1.5, RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha() * .5f));
                 double filledWidth = this.getWidth() * volume;
                 if (filledWidth > 0) {
-                    this.roundedRect(this.getX(), this.getY(), filledWidth, this.getHeight(), 1.5, RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
+                    UiMaterials.control(this.getX(), this.getY(), filledWidth, this.getHeight(), 1.5, RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
                 }
 
                 if (this.testHovered(mouseX, mouseY, 2) && Mouse.isButtonDown(0)) {

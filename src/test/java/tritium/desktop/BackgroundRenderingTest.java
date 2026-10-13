@@ -67,7 +67,7 @@ class BackgroundRenderingTest {
             settle();
             assertPixel(RenderSystem.getWidth() - 3, 150, 30, 30, 30);
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
-            AbstractWidget<?> modeRow = scroll.getChildren().get(4);
+            AbstractWidget<?> modeRow = scroll.getChildren().get(6);
             scroll.actualScrollOffset = scroll.targetScrollOffset = modeRow.getRelativeY() - 8;
             render();
             render(modeRow.getX() + 20, modeRow.getY() + 20);

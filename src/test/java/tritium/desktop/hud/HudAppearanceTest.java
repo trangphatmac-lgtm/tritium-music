@@ -19,16 +19,20 @@ class HudAppearanceTest {
         List<Supplier<HudRenderer>> renderers = List.of(
                 MusicInfoHudRenderer::new, MusicLyricsHudRenderer::new, MusicSpectrumHudRenderer::new);
         for (Supplier<HudRenderer> factory : renderers) {
-            int[] dark = render(factory.get(), snapshot, "Dark");
-            int[] light = render(factory.get(), snapshot, "Light");
+            int[] dark = render(factory.get(), snapshot, "Dark", "Static");
             assertTrue(java.util.Arrays.stream(dark).anyMatch(pixel -> pixel != 0));
-            assertArrayEquals(dark, light);
+            for (String appearance : new String[]{"Dark", "Light"}) {
+                for (String style : new String[]{"Static", "Blur", "LiquidGlass"}) {
+                    assertArrayEquals(dark, render(factory.get(), snapshot, appearance, style), appearance + "/" + style);
+                }
+            }
         }
     }
 
-    private static int[] render(HudRenderer renderer, HudStateSnapshot snapshot, String mode) {
+    private static int[] render(HudRenderer renderer, HudStateSnapshot snapshot, String mode, String style) {
         MusicPreferences preferences = new MusicPreferences();
         preferences.appearance().setValue(mode);
+        preferences.interfaceStyle().setValue(style);
         // Custom main backgrounds must not leak into any of the desktop HUD renderers.
         if (mode.equals("Light")) {
             preferences.background().mode().setValue("shader");

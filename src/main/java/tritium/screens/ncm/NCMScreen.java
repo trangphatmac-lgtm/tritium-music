@@ -1,5 +1,6 @@
 package tritium.screens.ncm;
 
+import tritium.rendering.material.UiMaterials;
 import lombok.Getter;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
@@ -117,7 +118,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         this.currentPanelBg.setBeforeRenderCallback(() -> {
             this.currentPanelBg.setBounds(playlistsPanel.getWidth(), 0, this.currentPanelBg.getParentWidth() - playlistsPanel.getWidth(), this.getPanelHeight() * 0.93);
             this.currentPanelBg.setColor(getColor(ColorType.GENERIC_BACKGROUND));
-            this.currentPanelBg.setAlpha(DesktopAppState.background().isActive() ? 0f : 1f);
+            this.currentPanelBg.setAlpha((DesktopAppState.background().isActive() || UiMaterials.enabled()) ? 0f : 1f);
         });
 
         this.controlsBar = new ControlsBar();
@@ -158,8 +159,13 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         double mouseX = mX;
         double mouseY = mY;
 
+        UiMaterials.beginFrame(mouseX, mouseY);
         DesktopAppState.background().render(Display.isVisible()
                 && (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha < .999f));
+
+        if (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha <= .9f) {
+            UiMaterials.captureBackdrop(false);
+        }
 
         boolean loggedIn = CloudMusic.profile != null;
         if (!loggedIn) {
@@ -276,7 +282,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         double cardX = centerX - cardWidth * .5;
         double cardY = centerY - cardHeight * .5;
 
-        Rect.draw(cardX, cardY, cardWidth, cardHeight, RenderSystem.reAlpha(AppTheme.color(0xFF222222, 0xFFF5F5F5), 230 / 255f));
+        UiMaterials.panel(cardX, cardY, cardWidth, cardHeight, RenderSystem.reAlpha(AppTheme.color(0xFF222222, 0xFFF5F5F5), 230 / 255f));
         Rect.draw(cardX, cardY, 4, cardHeight, AppTheme.accent());
 
         long elapsed = Math.max(0L, System.currentTimeMillis() - CloudMusic.loadingSessionStartedAt);
@@ -311,13 +317,13 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         double offsetY = 8 + -(8 + downloadPanelHeight) * (1 - downloadPanelAlpha);
         int background = musicLyricsPanel != null ? 0xFF202020 : AppTheme.color(0xFF202020, 0xFFF5F5F5);
         int foreground = musicLyricsPanel != null ? 0xFFFFFFFF : AppTheme.foreground();
-        Rect.draw(RenderSystem.getWidth() * .5 - downloadPanelWidth * .5, offsetY, downloadPanelWidth, downloadPanelHeight, RenderSystem.reAlpha(background, downloadPanelAlpha * alpha));
+        UiMaterials.panel(RenderSystem.getWidth() * .5 - downloadPanelWidth * .5, offsetY, downloadPanelWidth, downloadPanelHeight, RenderSystem.reAlpha(background, downloadPanelAlpha * alpha));
         FontManager.pf34bold.drawCenteredString("Downloading...", RenderSystem.getWidth() * .5, offsetY + 8, RenderSystem.reAlpha(foreground, downloadPanelAlpha * alpha));
         FontManager.pf25bold.drawCenteredString(String.valueOf(downloadSpeed), RenderSystem.getWidth() * .5, offsetY + 8 + FontManager.pf34bold.getHeight(), RenderSystem.reAlpha(foreground, downloadPanelAlpha * alpha));
-        roundedRect(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, RenderSystem.reAlpha(foreground, .5f * downloadPanelAlpha * alpha));
+        UiMaterials.control(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, RenderSystem.reAlpha(foreground, .5f * downloadPanelAlpha * alpha));
 
         StencilClipManager.beginClip(() -> Rect.draw(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth * downloadProgress, progressBarHeight, -1));
-        roundedRect(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, RenderSystem.reAlpha(foreground, downloadPanelAlpha * alpha));
+        UiMaterials.control(RenderSystem.getWidth() * .5 - progressBarWidth * .5, offsetY + downloadPanelHeight - 8 - progressBarHeight, progressBarWidth, progressBarHeight, 3, RenderSystem.reAlpha(foreground, downloadPanelAlpha * alpha));
         StencilClipManager.endClip();
     }
 

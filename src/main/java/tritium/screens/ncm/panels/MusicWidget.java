@@ -1,6 +1,9 @@
 package tritium.screens.ncm.panels;
 
 import tritium.desktop.DesktopChatColor;
+import tritium.desktop.AppTheme;
+import tritium.desktop.DesktopAppState;
+import tritium.rendering.material.UiMaterials;
 import tritium.management.FontManager;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.dto.Music;
@@ -29,6 +32,7 @@ public class MusicWidget extends RoundedRectWidget {
     public PlayList playList;
     public Music music;
     boolean coverLoaded = false;
+    private float materialHover;
 
     public MusicWidget(Music music, PlayList playList, int index) {
         super(0, 0, 0, 30);
@@ -89,6 +93,11 @@ public class MusicWidget extends RoundedRectWidget {
                     rrHoverIndicator.setHidden(true);
             }
 
+            // The glass row is painted once; legacy state layers would stack opaque materials.
+            if (UiMaterials.enabled()) {
+                rrHoverIndicator.setHidden(true);
+                rrPlayingIndicator.setHidden(true);
+            }
             this.setRadius(2);
         });
 
@@ -116,7 +125,7 @@ public class MusicWidget extends RoundedRectWidget {
         this.addChild(lblMusicIndex);
 
         lblMusicIndex.setBeforeRenderCallback(() -> {
-            if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId())
+            if (useAccentText())
                 lblMusicIndex.setColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
             else
                 lblMusicIndex.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
@@ -129,7 +138,7 @@ public class MusicWidget extends RoundedRectWidget {
         LabelWidget lblMusicDuration = new LabelWidget(formatDuration(music.getDuration()), FontManager.pf14bold);
         this.addChild(lblMusicDuration);
         lblMusicDuration.setBeforeRenderCallback(() -> {
-            if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId())
+            if (useAccentText())
                 lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
             else
                 lblMusicDuration.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
@@ -139,10 +148,11 @@ public class MusicWidget extends RoundedRectWidget {
         lblMusicDuration.setClickable(false);
 
         FavoriteButton favoriteButton = new FavoriteButton(20, () -> this.music);
+        favoriteButton.setInheritMaterial(true);
         this.addChild(favoriteButton);
         favoriteButton.setBeforeRenderCallback(() -> favoriteButton
                 .setMonochrome(isPlaying())
-                .setOnAccent(isPlaying())
+                .setOnAccent(useAccentText())
                 .setPosition(this.getWidth() - RIGHT_PADDING - DURATION_COLUMN_WIDTH - ACTION_GAP - favoriteButton.getWidth(),
                         (this.getHeight() - favoriteButton.getHeight()) * .5));
 
@@ -157,7 +167,7 @@ public class MusicWidget extends RoundedRectWidget {
         lblMusicName
                 .setWidthLimitType(LabelWidget.WidthLimitType.TRIM_TO_WIDTH)
                 .setBeforeRenderCallback(() -> {
-                    lblMusicName.setColor(NCMScreen.getColor(isPlaying()
+                    lblMusicName.setColor(NCMScreen.getColor(useAccentText()
                             ? NCMScreen.ColorType.ON_ACCENT : NCMScreen.ColorType.PRIMARY_TEXT));
                     lblMusicName.centerVertically();
                     lblMusicName.setPosition(cover.getRelativeX() + cover.getWidth() + 4, lblMusicName.getRelativeY() - lblMusicName.getHeight() * .5 - 2);
@@ -194,7 +204,7 @@ public class MusicWidget extends RoundedRectWidget {
         lblMusicArtist
                 .setWidthLimitType(LabelWidget.WidthLimitType.TRIM_TO_WIDTH)
                 .setBeforeRenderCallback(() -> {
-                    if (CloudMusic.currentlyPlaying != null && CloudMusic.currentlyPlaying.getId() == music.getId())
+                    if (useAccentText())
                         lblMusicArtist.setColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
                     else
                         lblMusicArtist.setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT));
@@ -204,6 +214,23 @@ public class MusicWidget extends RoundedRectWidget {
                 });
 
         lblMusicArtist.setClickable(false);
+    }
+
+    @Override
+    public void onRender(double mouseX, double mouseY) {
+        if (!UiMaterials.enabled()) {
+            super.onRender(mouseX, mouseY);
+            return;
+        }
+        materialHover = Interpolations.interpolate(materialHover, isHovering() ? 1f : 0f, .3f);
+        float baseOpacity = DesktopAppState.preferences().songRowOpacity().getValue().floatValue();
+        float opacity = Math.min(1f, baseOpacity * (1f + materialHover * .18f + (isPlaying() ? .36f : 0f)));
+        int tint = isPlaying() ? AppTheme.accent() : getHexColor();
+        UiMaterials.surface(getX(), getY(), getWidth(), getHeight(), getRadius(), reAlpha(tint, getAlpha() * opacity));
+    }
+
+    private boolean useAccentText() {
+        return isPlaying() && !UiMaterials.enabled();
     }
 
     private boolean isPlaying() {

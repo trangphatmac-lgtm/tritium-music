@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.rendering.material.UiMaterials;
 import org.lwjgl.input.Mouse;
 import tritium.desktop.DesktopCacheManager;
 import tritium.desktop.AppTheme;
@@ -66,6 +67,13 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new ChoiceRow("显示模式", preferences.appearance(),
                 mode -> mode.equals("Light") ? "浅色" : "深色"));
         scrollPanel.addChild(new ColorRow("主题色", preferences.accentColor(), false));
+
+        scrollPanel.addChild(new ChoiceRow("界面风格", preferences.interfaceStyle(), mode -> switch (mode) {
+            case "Blur" -> "Blur";
+            case "LiquidGlass" -> "Liquid Glass";
+            default -> "Static";
+        }));
+        scrollPanel.addChild(new BackgroundStatusRow(UiMaterials::status));
 
         addBackgroundSettings(scrollPanel);
 
@@ -134,10 +142,10 @@ public class SettingsPanel extends NCMPanel {
         BooleanSupplier custom = () -> !background.mode().getValue().equals("static");
         scroll.addChild(new SectionHeader("主界面背景"));
         scroll.addChild(new ChoiceRow("背景模式", background.mode(), mode -> switch (mode) {
-            case "picture" -> "picture · 图片";
-            case "video" -> "video · 视频";
-            case "shader" -> "shader · 着色器";
-            default -> "static · 纯色";
+            case "picture" -> "Picture";
+            case "video" -> "Video";
+            case "shader" -> "Shader";
+            default -> "Static";
         }));
         scroll.addChild(new BackgroundStatusRow(DesktopAppState.background()::status));
         backgroundRow(scroll, new ChoiceRow("图片来源", background.pictureSource(),
@@ -154,14 +162,19 @@ public class SettingsPanel extends NCMPanel {
             default -> "填充裁切";
         }), () -> picture.getAsBoolean() || video.getAsBoolean());
         backgroundRow(scroll, new ChoiceRow("着色器主题", background.shader(), value -> switch (value) {
-            case "aurora" -> "极光 · Aurora";
-            case "waves" -> "流光 · Waves";
-            default -> "星云 · Nebula";
+            case "aurora" -> "Aurora";
+            case "waves" -> "Waves";
+            default -> "Rise";
         }), shader);
         backgroundRow(scroll, new SliderRow("动画速度", background.shaderSpeed(),
                 value -> String.format(Locale.ROOT, "%.1fx", value)), shader);
         backgroundRow(scroll, new SliderRow("背景强度", background.strength(), value -> Math.round(value * 100) + "%"), custom);
         backgroundRow(scroll, new SliderRow("面板不透明度", background.panelOpacity(), value -> Math.round(value * 100) + "%"), custom);
+        BooleanSupplier glass = () -> !preferences.interfaceStyle().getValue().equals("Static");
+        backgroundRow(scroll, new SliderRow("歌曲行不透明度", preferences.songRowOpacity(),
+                value -> Math.round(value * 100) + "%"), glass);
+        backgroundRow(scroll, new SliderRow("歌词悬停高亮不透明度", preferences.lyricHoverOpacity(),
+                value -> Math.round(value * 100) + "%"), glass);
         backgroundRow(scroll, new ActionRow("重新加载背景 / 刷新文件夹", DesktopAppState.background()::reload), custom);
     }
 
@@ -196,6 +209,9 @@ public class SettingsPanel extends NCMPanel {
     }
 
     private static final class FileRow extends SettingsRow<FileRow> {
+        private static final double HEADER_HEIGHT = 46;
+        private static final double BUTTON_WIDTH = 56;
+        private static final double BUTTON_HEIGHT = 26;
         private final PreferenceValue<String> path;
         private String error = "";
 
@@ -221,14 +237,23 @@ public class SettingsPanel extends NCMPanel {
         @Override
         public void onRender(double mouseX, double mouseY) {
             super.onRender(mouseX, mouseY);
-            roundedRect(rightInset(56), getY() + 10, 56, 26, 5, reAlpha(AppTheme.accent(), getAlpha()));
+            double centerY = getY() + HEADER_HEIGHT * .5;
+            double buttonX = rightInset(BUTTON_WIDTH);
+            UiMaterials.control(buttonX, centerY - BUTTON_HEIGHT * .5, BUTTON_WIDTH, BUTTON_HEIGHT, 5,
+                    reAlpha(AppTheme.accent(), getAlpha()));
             FontManager.pf14bold.drawCenteredString(BackgroundFilePicker.isOpen() ? "选择中" : "选择",
-                    rightInset(56) + 28, getY() + 16, reAlpha(AppTheme.onAccent(), getAlpha()));
-            FontManager.pf12bold.drawString("清除", rightInset(110), getY() + 17,
+                    buttonX + BUTTON_WIDTH * .5, centerY - FontManager.pf14bold.getFontHeight() * .5,
+                    reAlpha(AppTheme.onAccent(), getAlpha()));
+            FontManager.pf12bold.drawCenteredStringVertical("清除", rightInset(110), centerY,
                     reAlpha(AppTheme.foreground(), getAlpha() * .65f));
             String value = !error.isEmpty() ? error : path.getValue().isBlank() ? "尚未选择 · 点击打开文件选择器" : path.getValue();
             FontManager.pf12bold.drawString(shorten(value, getWidth() - 32), getX() + 16, getY() + 49,
                     reAlpha(AppTheme.foreground(), getAlpha() * .6f));
+        }
+
+        @Override
+        protected double labelY() {
+            return getY() + (HEADER_HEIGHT - FontManager.pf16bold.getFontHeight()) * .5;
         }
     }
 
@@ -264,11 +289,16 @@ public class SettingsPanel extends NCMPanel {
         public void onRender(double mouseX, double mouseY) {
             hoverAnimation = Interpolations.interpolate(hoverAnimation, this.isHovering() ? 1f : 0f, .25f);
             int bg = blend(AppTheme.settingsSurface(), AppTheme.settingsHover(), hoverAnimation);
-            float surfaceAlpha = DesktopAppState.background().isActive()
+            float surfaceAlpha = !UiMaterials.enabled() && DesktopAppState.background().isActive()
                     ? .5f + .5f * AppTheme.backgroundPanelOpacity() : 1f;
-            roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 6, RenderSystem.reAlpha(bg, this.getAlpha() * surfaceAlpha));
-            FontManager.pf16bold.drawString(label, this.getX() + 16, this.getY() + 13,
+            UiMaterials.surface(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 6, RenderSystem.reAlpha(bg, this.getAlpha() * surfaceAlpha));
+            FontManager.pf16bold.drawString(label, this.getX() + 16, labelY(),
                     RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
+        }
+
+        protected double labelY() {
+            // Single-line rows share the vertical center of their control; taller rows have a detail area.
+            return getY() + (getHeight() == 52 ? (getHeight() - FontManager.pf16bold.getFontHeight()) * .5 : 13);
         }
 
         protected double rightInset(double width) {
@@ -312,11 +342,11 @@ public class SettingsPanel extends NCMPanel {
             double trackX = rightInset(trackWidth);
             double trackY = this.getY() + this.getHeight() * .5 - trackHeight * .5;
             int trackColor = blend(0xFF555555, AppTheme.accent(), toggleAnimation);
-            roundedRect(trackX, trackY, trackWidth, trackHeight, 10, RenderSystem.reAlpha(trackColor, this.getAlpha()));
+            UiMaterials.control(trackX, trackY, trackWidth, trackHeight, 10, RenderSystem.reAlpha(trackColor, this.getAlpha()));
 
             double knobSize = 16;
             double knobX = trackX + 2 + (trackWidth - knobSize - 4) * toggleAnimation;
-            roundedRect(knobX, trackY + 2, knobSize, knobSize, 8, RenderSystem.reAlpha(blend(AppTheme.foreground(), AppTheme.onAccent(), toggleAnimation), this.getAlpha()));
+            UiMaterials.control(knobX, trackY + 2, knobSize, knobSize, 8, RenderSystem.reAlpha(blend(AppTheme.foreground(), AppTheme.onAccent(), toggleAnimation), this.getAlpha()));
         }
     }
 
@@ -350,7 +380,7 @@ public class SettingsPanel extends NCMPanel {
             double valueHeight = 24;
             double valueX = rightInset(valueWidth);
             double valueY = this.getY() + this.getHeight() * .5 - valueHeight * .5;
-            roundedRect(valueX, valueY, valueWidth, valueHeight, 5, RenderSystem.reAlpha(AppTheme.accentMuted(), this.getAlpha()));
+            UiMaterials.control(valueX, valueY, valueWidth, valueHeight, 5, RenderSystem.reAlpha(AppTheme.accentMuted(), this.getAlpha()));
             FontManager.pf14bold.drawCenteredString(value, valueX + valueWidth * .5,
                     valueY + valueHeight * .5 - FontManager.pf14bold.getHeight() * .5,
                     RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
@@ -415,11 +445,11 @@ public class SettingsPanel extends NCMPanel {
             double progress = (preference.getValue() - preference.getMin()) / (preference.getMax() - preference.getMin());
             progress = Math.max(0, Math.min(1, progress));
 
-            roundedRect(barX, barY, barWidth, barHeight, 3, RenderSystem.reAlpha(0xFF555555, this.getAlpha()));
-            roundedRect(barX, barY, barWidth * progress, barHeight, 3, RenderSystem.reAlpha(AppTheme.accent(), this.getAlpha()));
+            UiMaterials.control(barX, barY, barWidth, barHeight, 3, RenderSystem.reAlpha(0xFF555555, this.getAlpha()));
+            UiMaterials.control(barX, barY, barWidth * progress, barHeight, 3, RenderSystem.reAlpha(AppTheme.accent(), this.getAlpha()));
 
             double knobSize = dragging || this.isHovering() ? 12 : 10;
-            roundedRect(barX + barWidth * progress - knobSize * .5,
+            UiMaterials.control(barX + barWidth * progress - knobSize * .5,
                     barY + barHeight * .5 - knobSize * .5,
                     knobSize,
                     knobSize,
@@ -466,7 +496,7 @@ public class SettingsPanel extends NCMPanel {
             double x = rightInset(width);
             double y = this.getY() + this.getHeight() * .5 - height * .5;
             int bg = blend(AppTheme.accent(), AppTheme.accentHover(), pressAnimation);
-            roundedRect(x, y, width, height, 5, RenderSystem.reAlpha(bg, this.getAlpha()));
+            UiMaterials.control(x, y, width, height, 5, RenderSystem.reAlpha(bg, this.getAlpha()));
             FontManager.pf14bold.drawCenteredString(label, x + width * .5,
                     y + height * .5 - FontManager.pf14bold.getHeight() * .5,
                     RenderSystem.reAlpha(AppTheme.onAccent(), this.getAlpha()));
@@ -508,7 +538,7 @@ public class SettingsPanel extends NCMPanel {
             double buttonX = buttonX(buttonWidth);
             double buttonY = this.getY() + this.getHeight() * .5 - buttonHeight * .5;
             int buttonBg = blend(clearing ? 0xFF555555 : AppTheme.accent(), clearing ? 0xFF666666 : AppTheme.accentHover(), pressAnimation);
-            roundedRect(buttonX, buttonY, buttonWidth, buttonHeight, 5, RenderSystem.reAlpha(buttonBg, this.getAlpha()));
+            UiMaterials.control(buttonX, buttonY, buttonWidth, buttonHeight, 5, RenderSystem.reAlpha(buttonBg, this.getAlpha()));
 
             String buttonLabel = clearing ? "清理中" : "清除";
             FontManager.pf14bold.drawCenteredString(buttonLabel, buttonX + buttonWidth * .5,

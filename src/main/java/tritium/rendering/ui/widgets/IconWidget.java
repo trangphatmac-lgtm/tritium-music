@@ -1,5 +1,6 @@
 package tritium.rendering.ui.widgets;
 
+import tritium.rendering.material.UiMaterials;
 import lombok.Getter;
 
 import tritium.rendering.animation.Interpolations;
@@ -29,6 +30,13 @@ public class IconWidget extends AbstractWidget<IconWidget> {
     public double fontOffsetX = 0, fontOffsetY = 0;
 
     boolean run = false;
+    private boolean inheritMaterial;
+
+    /** Nested actions share their parent's surface instead of adding another glass disc. */
+    public IconWidget setInheritMaterial(boolean inheritMaterial) {
+        this.inheritMaterial = inheritMaterial;
+        return this;
+    }
 
     @Override
     public void onRender(double mouseX, double mouseY) {
@@ -38,12 +46,17 @@ public class IconWidget extends AbstractWidget<IconWidget> {
 
         double size = this.getWidth() * .5;
 
-        if (alphaAnim != 0f) {
+        boolean glassFace = UiMaterials.enabled() && !inheritMaterial;
+        if (glassFace) {
+            UiMaterials.icon(getX(), getY(), getWidth(), getHeight(), getAlpha(), Math.min(1f, (alphaAnim + alphaAnim2) * 6f));
+        }
+
+        if (!glassFace && alphaAnim != 0f) {
             float a = Math.min(alphaAnim, alpha);
             roundedRect(this.getX() + this.getWidth() * 0.5 - size, this.getY() + this.getHeight() * 0.5 - size, size * 2, size * 2, size - 0.5, reAlpha(this.getHexColor(), a));
         }
 
-        if (alphaAnim2 != 0f) {
+        if (!glassFace && alphaAnim2 != 0f) {
             float a = Math.min(alphaAnim2, alpha);
             roundedRect(this.getX() + this.getWidth() * 0.5 - size, this.getY() + this.getHeight() * 0.5 - size, size * 2, size * 2, size - 0.5, reAlpha(this.getHexColor(), a));
         }

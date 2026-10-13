@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.rendering.material.UiMaterials;
 import lombok.Getter;
 import lombok.Setter;
 import org.lwjgl.input.Keyboard;
@@ -41,7 +42,7 @@ public class NavigateBar extends NCMPanel {
     }
 
     private void layout() {
-        RectWidget bg = new RectWidget();
+        RectWidget bg = new RectWidget().setMaterial(true);
         this.addChild(bg);
 
         this.setBeforeRenderCallback(() -> {
@@ -86,7 +87,7 @@ public class NavigateBar extends NCMPanel {
 //            .setShouldSetMouseCursor(true)
             .setBeforeRenderCallback(() -> {
                 searchBar.setAlpha(1f);
-                searchBar.setColor(0xFF5E5E5E);
+                searchBar.setColor(UiMaterials.enabled() ? AppTheme.inputBackground() : 0xFF5E5E5E);
                 searchBar.setMargin(8);
                 searchBar.setHeight(16);
                 searchBar.setRadius(3.5);
@@ -97,7 +98,7 @@ public class NavigateBar extends NCMPanel {
 
         searchBarBg.setBeforeRenderCallback(() -> {
             searchBarBg.setMargin(.5);
-            searchBarBg.setAlpha(.6f);
+            searchBarBg.setAlpha(UiMaterials.enabled() ? 0f : .6f);
             searchBarBg.setColor(AppTheme.inputBackground());
             searchBarBg.setRadius(searchBar.getRadius() - .5);
         });
@@ -209,6 +210,7 @@ public class NavigateBar extends NCMPanel {
                 if (CloudMusic.isLikedPlaylist(playList)) {
                     item.trailingWidth = 24;
                     HeartbeatButton heartbeatButton = new HeartbeatButton(16);
+                    heartbeatButton.setInheritMaterial(true);
                     item.addChild(heartbeatButton);
                     heartbeatButton.setBeforeRenderCallback(() -> heartbeatButton.setPosition(
                             item.getWidth() - heartbeatButton.getWidth() - 8, 0));

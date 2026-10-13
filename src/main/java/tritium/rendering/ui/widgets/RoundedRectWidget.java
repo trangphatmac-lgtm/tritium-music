@@ -1,5 +1,6 @@
 package tritium.rendering.ui.widgets;
 
+import tritium.rendering.material.UiMaterials;
 import tritium.rendering.ui.AbstractWidget;
 
 /**
@@ -19,7 +20,7 @@ public class RoundedRectWidget extends AbstractWidget<RoundedRectWidget> {
 
     @Override
     public void onRender(double mouseX, double mouseY) {
-        this.roundedRect(this.getX(), this.getY(), this.getWidth(), this.getHeight(), this.radius, this.getHexColor());
+        UiMaterials.control(this.getX(), this.getY(), this.getWidth(), this.getHeight(), this.radius, this.getHexColor());
     }
 
     public RoundedRectWidget setRadius(double radius) {

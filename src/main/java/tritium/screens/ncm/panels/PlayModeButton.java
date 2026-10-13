@@ -1,6 +1,7 @@
 package tritium.screens.ncm.panels;
 
 import tritium.management.FontManager;
+import tritium.rendering.material.UiMaterials;
 import tritium.ncm.music.CloudMusic;
 import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.ui.widgets.IconWidget;
@@ -60,7 +61,7 @@ public class PlayModeButton extends IconWidget {
         double x = Math.max(4, Math.min(getX() + (getWidth() - width) * .5,
                 RenderSystem.getWidth() - width - 4));
         double y = Math.max(4, getY() - height - 6);
-        roundedRect(x, y, width, height, 4, RenderSystem.reAlpha(followTheme ? AppTheme.inputBackground() : 0xFF000000, getAlpha() * .85f));
+        UiMaterials.surface(x, y, width, height, 4, RenderSystem.reAlpha(followTheme ? AppTheme.inputBackground() : 0xFF000000, getAlpha() * .85f));
         FontManager.pf14.drawString(text, x + 6, y + 4, RenderSystem.reAlpha(followTheme ? AppTheme.foreground() : 0xFFFFFFFF, getAlpha()));
     }
 }

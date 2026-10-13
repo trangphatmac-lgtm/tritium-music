@@ -22,6 +22,7 @@ public class GaussianBlurShader extends Shader {
     private final ShaderProgram blurProgram = new ShaderProgram("blur.frag", "vertex.vsh");
     private Framebuffer inputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
     private Framebuffer outputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
+    private Framebuffer sceneFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), false);
     private GaussianKernel gaussianKernel = new GaussianKernel(0);
 
     private final Uniform1i u_radius = new Uniform1i(blurProgram, "u_radius");
@@ -44,6 +45,10 @@ public class GaussianBlurShader extends Shader {
         this.setActive(this.isActive() || !runnable.isEmpty());
 
         if (this.isActive()) {
+            // The desktop back buffer has no sampleable texture attachment. Capture it before masking lyrics.
+            sceneFramebuffer.bindFramebufferTexture();
+            GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0,
+                    RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight());
             this.inputFramebuffer.bindFramebuffer(true);
             this.inputFramebuffer.setFramebufferColor(1, 1, 1, 0);
             this.inputFramebuffer.framebufferClearNoBinding();
@@ -74,7 +79,11 @@ public class GaussianBlurShader extends Shader {
             }
 
             u_diffuse_sampler.setValue(0);
-            u_other_sampler.setValue(20);
+            // Use a low texture unit supported by the OpenGL 2.1 desktop profile.
+            u_other_sampler.setValue(1);
+            GL13.glActiveTexture(GL13.GL_TEXTURE1);
+            inputFramebuffer.bindFramebufferTexture();
+            GL13.glActiveTexture(GL13.GL_TEXTURE0);
             u_texel_size.setValue((float) (1.0F / RenderSystem.getWidth()), (float) (1.0F / RenderSystem.getHeight()));
 //            u_texel_size.setValue((float) (1.0F / RenderSystem.getFramebufferWidth() * .5), (float) (1.0F / RenderSystem.getFramebufferHeight() * .5));
             u_direction.setValue(compression, 0.0F);
@@ -82,14 +91,14 @@ public class GaussianBlurShader extends Shader {
             api.getGLStateManager().enableBlend();
             api.getGLStateManager().tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
             api.getGLStateManager().disableAlpha();
-            Framebuffer.getMcFramebuffer().bindFramebufferTexture();
+            sceneFramebuffer.bindFramebufferTexture();
             ShaderProgram.drawQuadFlipped();
 
             Framebuffer.getMcFramebuffer().bindFramebuffer(true);
 
             u_direction.setValue(0.0F, compression);
             outputFramebuffer.bindFramebufferTexture();
-            GL13.glActiveTexture(GL13.GL_TEXTURE20);
+            GL13.glActiveTexture(GL13.GL_TEXTURE1);
             inputFramebuffer.bindFramebufferTexture();
             GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
@@ -112,6 +121,9 @@ public class GaussianBlurShader extends Shader {
 
             outputFramebuffer.deleteFramebuffer();
             outputFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
+
+            sceneFramebuffer.deleteFramebuffer();
+            sceneFramebuffer = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), false);
 
         } else {
 //            inputFramebuffer.framebufferClear();
