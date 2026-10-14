@@ -120,6 +120,22 @@ class CloudMusicHeartbeatTest {
     }
 
     @Test
+    void playNextSurvivesHeartbeatAdoptionAndThenResumesRecommendations() {
+        var thread = new CloudMusic.PlayThread(CloudMusic.playList, 0);
+        CloudMusic.playThread = thread;
+        CloudMusic.playNext(song(888));
+        CloudMusic.toggleHeartbeat((id, pid, sid) -> response(200, 200, 202, 303),
+                Runnable::run, CloudMusic::startHeartbeatPlayback).join();
+
+        thread.advanceAfterTrack(0);
+        assertEquals(List.of(101L, 888L, 202L, 303L), ids(CloudMusic.playList));
+        assertEquals(888, CloudMusic.playList.get(CloudMusic.curIdx).getId());
+        assertEquals(CloudMusic.PlayMode.Heartbeat, CloudMusic.playMode);
+        thread.advanceAfterTrack(CloudMusic.curIdx);
+        assertEquals(202, CloudMusic.playList.get(CloudMusic.curIdx).getId());
+    }
+
+    @Test
     void pendingRecommendationsUseTheTrackThatActuallyFinishesEvenIfPlaybackAdvancedDuringLoading() {
         Queue<Runnable> work = new ArrayDeque<>();
         CloudMusic.playList = new ArrayList<>(List.of(first, song(202), song(888)));

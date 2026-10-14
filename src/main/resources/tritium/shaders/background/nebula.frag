@@ -2,7 +2,6 @@
 uniform vec2 r;
 uniform float t;
 
-// Adapted from the user's supplied nebula shader for desktop GLSL.
 mat2 m(float a) { float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 float map(vec3 p) {
     p.xz *= m(t*.4); p.xy *= m(t*.1);

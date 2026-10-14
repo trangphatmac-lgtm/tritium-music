@@ -763,16 +763,17 @@ public class CloudMusic implements SharedConstants {
                 return;
             }
         }
-        updatePlayCountIfNeeded();
-        
-        if (!canPlayPrevious()) {
-            return;
-        }
-        
-        if (player != null && !playList.isEmpty()) {
-            prepareForTrackChange();
-            curIdx--;
-            stopCurrentPlayback();
+        synchronized (playThread == null ? playbackLock : playThread) {
+            updatePlayCountIfNeeded();
+
+            if (!canPlayPrevious()) return;
+
+            if (player != null && !playList.isEmpty()) {
+                prepareForTrackChange();
+                if (playThread instanceof PlayThread thread) thread.markPrevious();
+                curIdx--;
+                stopCurrentPlayback();
+            }
         }
     }
     
@@ -804,19 +805,21 @@ public class CloudMusic implements SharedConstants {
             }
             return;
         }
-        if (!canPlayNext()) {
-            return;
-        }
-        
-        if (player != null && !playList.isEmpty()) {
-            updatePlayCountIfNeeded();
-            prepareForTrackChange();
-            curIdx++;
-            stopCurrentPlayback();
+        synchronized (playThread == null ? playbackLock : playThread) {
+            if (!canPlayNext()) return;
+
+            if (player != null && !playList.isEmpty()) {
+                updatePlayCountIfNeeded();
+                prepareForTrackChange();
+                if (playThread instanceof PlayThread thread) thread.markNext();
+                curIdx++;
+                stopCurrentPlayback();
+            }
         }
     }
     
     private static boolean canPlayNext() {
+        if (playThread instanceof PlayThread thread && thread.hasQueuedNext()) return true;
         if (curIdx >= playList.size()) return false;
         if (curIdx + 1 > playList.size() - 1 && playMode == PlayMode.Sequential) {
             return false;
@@ -846,6 +849,23 @@ public class CloudMusic implements SharedConstants {
      * 播放来源, 用于记录播放时长
      */
     public static PlayList playedFrom = null;
+
+    /** Queue a song without touching the current audio, including while it is paused/loading. */
+    public static String playNext(Music song) {
+        return playNext(song, selected -> play(List.of(selected), 0));
+    }
+
+    static String playNext(Music song, Consumer<Music> startPlayback) {
+        if (song == null) return "请选择歌曲";
+        synchronized (playbackLock) {
+            if (playThread instanceof PlayThread thread) {
+                String result = thread.queueNext(song);
+                if (result != null) return result;
+            }
+            startPlayback.accept(song);
+            return "开始播放";
+        }
+    }
 
     /**
      * 播放给定的列表中的所有歌曲
@@ -920,11 +940,17 @@ public class CloudMusic implements SharedConstants {
         private HeartbeatSession heartbeat;
         private HeartbeatSession pendingHeartbeat;
         private boolean acceptingHeartbeat = true;
+        private boolean acceptingNext = true;
+        private final List<Music> nextSongs = new ArrayList<>();
+        private Music activeSong;
+        private boolean previousRequested;
+        private boolean queuedTrack;
 
         public PlayThread(List<Music> songs, int startIdx) {
             this.songs = songs;
             this.setName("Play Thread");
             this.startIdx = startIdx;
+            this.activeSong = startIdx < songs.size() ? songs.get(startIdx) : null;
             this.heartbeat = heartbeatSession != null && heartbeatSession.songs == songs ? heartbeatSession : null;
         }
 
@@ -941,6 +967,53 @@ public class CloudMusic implements SharedConstants {
             if (!acceptingHeartbeat || doBreak || isInterrupted()) return false;
             pendingHeartbeat = session;
             return true;
+        }
+
+        synchronized String queueNext(Music song) {
+            if (!acceptingNext || doBreak || isInterrupted()) return null;
+            if (activeSong != null && activeSong.getId() == song.getId()) return "正在播放";
+            nextSongs.removeIf(queued -> queued.getId() == song.getId());
+            nextSongs.addFirst(song);
+            return "已加入下一首";
+        }
+
+        synchronized boolean hasQueuedNext() {
+            return acceptingNext && !nextSongs.isEmpty();
+        }
+
+        synchronized void markPrevious() {
+            previousRequested = true;
+        }
+
+        synchronized void markNext() {
+            previousRequested = false;
+        }
+
+        /** Only the playback thread mutates its list; UI requests wait here until a track boundary. */
+        synchronized void advanceAfterTrack(int completedIndex) {
+            boolean previous = previousRequested;
+            previousRequested = false;
+            boolean manual = dontAdd;
+            boolean adopted = adoptHeartbeat(completedIndex);
+            if (!adopted) updateCurrentIndex();
+            queuedTrack = false;
+            if (!previous && !nextSongs.isEmpty()) {
+                // Natural completion in single-repeat mode still honors the explicit next song.
+                if (!adopted && !manual && playMode == PlayMode.LoopSingle) curIdx++;
+                insertNextSong();
+            }
+            activeSong = curIdx < songs.size() ? songs.get(curIdx) : null;
+            // Close the enqueue/EOF race: a later click starts playback through playNext instead.
+            if (curIdx >= songs.size() && !isHeartbeat()) acceptingNext = false;
+        }
+
+        private void insertNextSong() {
+            curIdx = Math.max(0, Math.min(curIdx, songs.size()));
+            Music next = nextSongs.removeFirst();
+            songs.subList(curIdx, songs.size()).removeIf(song -> song.getId() == next.getId());
+            songs.add(curIdx, next);
+            queuedTrack = true;
+            activeSong = next;
         }
 
         /** Called only between tracks; never closes, seeks, or resumes the current audio player. */
@@ -973,6 +1046,7 @@ public class CloudMusic implements SharedConstants {
             final HeartbeatSession pending;
             synchronized (this) {
                 acceptingHeartbeat = false;
+                acceptingNext = false;
                 pending = pendingHeartbeat;
                 pendingHeartbeat = null;
             }
@@ -1000,20 +1074,28 @@ public class CloudMusic implements SharedConstants {
 
                 int songIndex = curIdx;
                 Music currentSong = playList.get(songIndex);
+                synchronized (this) { activeSong = currentSong; }
                 prepareForPlayback();
                 
                 boolean started;
                 try {
                     started = playSong(currentSong);
                 } catch (RuntimeException e) {
-                    if (!isHeartbeat()) throw e;
+                    if (!isHeartbeat() && !queuedTrack && !hasQueuedNext()) throw e;
                     started = false;
                 }
                 if (!started) {
-                    if (isHeartbeat()) {
-                        curIdx++;
-                        if (++failedSongs < 5) continue;
-                        heartbeat.error = "连续多首推荐无法播放，点击下一首重试";
+                    synchronized (this) {
+                        if (queuedTrack || hasQueuedNext()) {
+                            skipUnavailableTrack(songIndex);
+                            continue;
+                        }
+                        if (isHeartbeat()) {
+                            curIdx++;
+                            if (++failedSongs < 5) continue;
+                            heartbeat.error = "连续多首推荐无法播放，点击下一首重试";
+                        }
+                        acceptingNext = false;
                     }
                     break;
                 }
@@ -1029,7 +1111,7 @@ public class CloudMusic implements SharedConstants {
                 preloadNextCover();
                 waitForPlaybackCompletion();
                 handlePlaybackCompletion();
-                if (!adoptHeartbeat(songIndex)) updateCurrentIndex();
+                advanceAfterTrack(songIndex);
             }
         }
 
@@ -1037,8 +1119,21 @@ public class CloudMusic implements SharedConstants {
             return isCurrentHeartbeat(heartbeat);
         }
 
+        synchronized void skipUnavailableTrack(int songIndex) {
+            // An unavailable inserted song must not stop the original queue or repeat forever.
+            curIdx = songIndex + 1;
+            dontAdd = true;
+            advanceAfterTrack(songIndex);
+        }
+
         private boolean ensureNextHeartbeatSong() {
             if (curIdx < songs.size() || !isHeartbeat()) return true;
+            synchronized (this) {
+                if (!nextSongs.isEmpty()) {
+                    insertNextSong();
+                    return true;
+                }
+            }
             try {
                 List<Music> batch = heartbeat.requestMore(songs.getLast().getId()).get();
                 if (!isHeartbeat() || doBreak || isInterrupted()) return false;
@@ -1057,6 +1152,13 @@ public class CloudMusic implements SharedConstants {
                 return false;
             } catch (Exception e) {
                 heartbeat.error = heartbeatFailureMessage(e) + " · 点击下一首重试";
+                synchronized (this) {
+                    if (!nextSongs.isEmpty()) {
+                        insertNextSong();
+                        return true;
+                    }
+                    acceptingNext = false;
+                }
                 return false;
             } finally {
                 heartbeat.consumed();

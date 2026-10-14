@@ -12,6 +12,7 @@ import tritium.rendering.TextureManager;
 import tritium.rendering.animation.Interpolations;
 import tritium.rendering.texture.Textures;
 import tritium.rendering.ui.widgets.LabelWidget;
+import tritium.rendering.ui.widgets.IconWidget;
 import tritium.rendering.ui.widgets.RoundedImageWidget;
 import tritium.rendering.ui.widgets.RoundedRectWidget;
 import tritium.screens.ncm.NCMScreen;
@@ -26,13 +27,14 @@ import java.awt.*;
 public class MusicWidget extends RoundedRectWidget {
 
     private static final double RIGHT_PADDING = 8;
-    private static final double DURATION_COLUMN_WIDTH = 44;
-    private static final double ACTION_GAP = -20;
+    private static final double ACTION_GAP = 6;
+    private static final double ACTION_SIZE = 20;
 
     public PlayList playList;
     public Music music;
     boolean coverLoaded = false;
     private float materialHover;
+    private long nextFeedbackUntil;
 
     public MusicWidget(Music music, PlayList playList, int index) {
         super(0, 0, 0, 30);
@@ -147,14 +149,32 @@ public class MusicWidget extends RoundedRectWidget {
         });
         lblMusicDuration.setClickable(false);
 
-        FavoriteButton favoriteButton = new FavoriteButton(20, () -> this.music);
+        FavoriteButton favoriteButton = new FavoriteButton(ACTION_SIZE, () -> this.music);
         favoriteButton.setInheritMaterial(true);
         this.addChild(favoriteButton);
         favoriteButton.setBeforeRenderCallback(() -> favoriteButton
                 .setMonochrome(isPlaying())
                 .setOnAccent(useAccentText())
-                .setPosition(this.getWidth() - RIGHT_PADDING - DURATION_COLUMN_WIDTH - ACTION_GAP - favoriteButton.getWidth(),
+                .setPosition(lblMusicDuration.getRelativeX() - 2 * (ACTION_SIZE + ACTION_GAP),
                         (this.getHeight() - favoriteButton.getHeight()) * .5));
+
+        // icomoon 'j': playlist-add, matching the neighboring favorite control.
+        IconWidget playNext = new IconWidget("j", FontManager.icon30, 0, 0, ACTION_SIZE, ACTION_SIZE);
+        playNext.setInheritMaterial(true);
+        this.addChild(playNext);
+        playNext.setBeforeRenderCallback(() -> {
+            playNext.setPosition(favoriteButton.getRelativeX() + favoriteButton.getWidth() + ACTION_GAP,
+                    (this.getHeight() - playNext.getHeight()) * .5);
+            playNext.setColor(NCMScreen.getColor(useAccentText() ? NCMScreen.ColorType.ON_ACCENT
+                    : System.currentTimeMillis() < nextFeedbackUntil ? NCMScreen.ColorType.ACCENT
+                    : NCMScreen.ColorType.PRIMARY_TEXT));
+        });
+        playNext.setOnClickCallback((x, y, button) -> {
+            if (button != 0) return false;
+            CloudMusic.playNext(this.music);
+            nextFeedbackUntil = System.currentTimeMillis() + 500;
+            return true;
+        });
 
         boolean musicDirty = music.isDirty();
         double dirtyIndicatorSize = 8;

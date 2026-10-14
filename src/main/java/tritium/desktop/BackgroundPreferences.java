@@ -19,7 +19,7 @@ public final class BackgroundPreferences {
     private final ModePreference fit = mode("fit", "cover", "cover", "contain", "stretch");
     private final NumberPreference strength = number("strength", .65, 0, 1, .01);
     private final NumberPreference panelOpacity = number("panelOpacity", .25, 0, 1, .01);
-    private final ModePreference shader = mode("shader", "nebula", "nebula", "aurora", "waves");
+    private final ModePreference shader = mode("shader", "rise", "rise", "aurora", "waves", "nebula", "liquid", "mandala", "torus");
     private final NumberPreference shaderSpeed = number("shaderSpeed", 1, .1, 3, .1);
     private Runnable onChange = () -> { };
 

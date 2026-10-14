@@ -65,28 +65,16 @@ target/tritium-music-1.x.x-portable.tar.gz
 
 ### Interface styles
 
-Open **设置 → 外观 → 界面风格** to switch between **Static**, **Blur · 毛玻璃**, and **Liquid Glass**. Left-click cycles forward; right-click cycles backward. The selection applies immediately and is saved automatically. Existing configurations default to Static.
-
-- **Static** keeps the original flat controls.
-- **Blur** uses frosted, softly tinted surfaces with diffused backgrounds.
-- **LiquidGlass** uses clearer surfaces, rounded refracting edges, subtle color dispersion, and highlights that respond to the pointer. The optical approach is inspired by [LiquidGlassRenderer](https://github.com/bakabaicai/PVPUtils/blob/main/src/client/java/com/pvp_utils/client/render/skia/LiquidGlassRenderer.java), implemented here for the existing OpenGL renderer.
-
-Materials apply to main-window panels, buttons, inputs, sliders, and switches. They work with dark/light appearance and custom backgrounds. On the lyrics page, only the translation button and the hovered lyric's highlight use the selected material; the album background, artwork, typography, transport controls, progress and volume bars retain their existing appearance. Desktop HUD appearance is unchanged. If glass shaders are unavailable, the app falls back to flat controls; switching styles retries initialization.
+- Blur
+- Liquid Glass
+- Static
 
 ### Custom backgrounds
 
-Open **设置 → 主界面背景** and click **背景模式** to cycle through the modes (right-click cycles backwards). Changes apply immediately and are saved automatically.
-
-- **static**: the existing solid background, following the dark/light appearance setting.
-- **picture**: choose a JPG, PNG, BMP, or GIF file (GIF uses its first frame), or a folder for a slideshow. Folder playback uses supported files directly in that folder, with a 5–300 second interval and optional shuffle. Unreadable images are skipped. Use **重新加载背景 / 刷新文件夹** after changing folder contents.
-- **video**: choose a local MP4, M4V, MOV, WebM, MKV, or AVI. Playback loops silently, independently of music playback. FFmpeg is bundled for the supported desktop platforms; no separate installation is needed.
-- **shader**: choose **星云 / Nebula** (based on the supplied shader), **极光 / Aurora**, or **流光 / Waves**, with adjustable animation speed.
-
-Images and videos support fill/crop, fit, and stretch. **背景强度** controls visibility against the current dark/light background; **面板不透明度** controls the navigation and player panels, with a readability tint on settings cards. File paths are saved as references, so the selected files must remain available. Missing or unsupported media falls back to the solid background and displays a status message; choose another file or reload to retry.
-
-In Blur and Liquid Glass, **歌曲行不透明度** (default 28%) and **歌词悬停高亮不透明度** (default 50%) appear beside the panel opacity setting. Both range from 0–100%, update immediately, and are saved independently. Song hover/playing states remain slightly stronger, while text and icons keep their visibility. These controls also work with a static background and do not affect Static interface style or the HUD.
-
-Media loads off the render thread. Images are bounded to 2560 pixels on their longest edge; video textures are bounded to 1920×1080 and uploaded at up to 30 fps. Videos, slideshows, and shader animation pause while the main background is hidden by the lyrics page or the window is minimized.
+- Picture
+- Video
+- Shader
+- Static
 
 ### Windows
 

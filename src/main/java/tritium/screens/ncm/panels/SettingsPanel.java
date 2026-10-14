@@ -164,7 +164,12 @@ public class SettingsPanel extends NCMPanel {
         backgroundRow(scroll, new ChoiceRow("着色器主题", background.shader(), value -> switch (value) {
             case "aurora" -> "Aurora";
             case "waves" -> "Waves";
-            default -> "Rise";
+            case "nebula" -> "Nebula";
+            case "liquid" -> "Liquid";
+            case "mandala" -> "Mandala";
+            case "torus" -> "Torus";
+            case "rise" -> "Rise";
+            default -> throw new IllegalStateException("Unexpected value: " + value);
         }), shader);
         backgroundRow(scroll, new SliderRow("动画速度", background.shaderSpeed(),
                 value -> String.format(Locale.ROOT, "%.1fx", value)), shader);

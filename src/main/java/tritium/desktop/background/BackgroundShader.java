@@ -15,9 +15,14 @@ final class BackgroundShader implements AutoCloseable {
 
     BackgroundShader(String theme) throws IOException {
         String file = switch (theme) {
-            case "aurora" -> "aurora.frag";
+            case "aurora" -> "01_aurora.frag";
+            case "nebula" -> "02_nebula.frag";
+            case "liquid" -> "03_liquid.frag";
+            case "mandala" -> "04_mandala.frag";
+            case "torus" -> "05_torus.frag";
             case "waves" -> "waves.frag";
-            default -> "nebula.frag";
+            case "rise" -> "nebula.frag";
+            default -> throw new IllegalStateException("Unexpected value: " + theme);
         };
         String fragment;
         try (var input = BackgroundShader.class.getResourceAsStream("/tritium/shaders/background/" + file)) {
