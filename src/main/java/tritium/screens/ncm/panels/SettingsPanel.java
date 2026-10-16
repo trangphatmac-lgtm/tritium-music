@@ -128,6 +128,8 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new ColorRow("频谱颜色", preferences.hud().musicSpectrum().color(), true));
 
         scrollPanel.addChild(new SectionHeader("调试"));
+        scrollPanel.addChild(new SliderRow("最大 FPS", preferences.maxFps(),
+                value -> Math.round(value) >= MusicPreferences.UNLIMITED_FPS ? "无限制" : Math.round(value) + " FPS"));
         scrollPanel.addChild(new ToggleRow("显示 FPS", preferences.showFps()));
         scrollPanel.addChild(new ToggleRow("UI 边界", preferences.showWidgetBoundary()));
         scrollPanel.addChild(new ToggleRow("逐字歌词", preferences.lyricDebug()));

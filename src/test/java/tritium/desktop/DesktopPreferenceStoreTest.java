@@ -30,6 +30,7 @@ class DesktopPreferenceStoreTest {
         preferences.lyricHeight().setValue(32.5);
         preferences.spectrumAbsoluteVolume().setValue(false);
         preferences.showFps().setValue(true);
+        preferences.maxFps().setValue(144.0);
         preferences.accentColor().setValue(0xFF2DD4BF);
         preferences.appearance().setValue("Light");
         preferences.hud().musicSpectrum().color().setValue(0x803B719A);
@@ -47,9 +48,15 @@ class DesktopPreferenceStoreTest {
         assertEquals(32.5, loaded.lyricHeight().getValue(), 0.0001);
         assertFalse(loaded.spectrumAbsoluteVolume().getValue());
         assertTrue(loaded.showFps().getValue());
+        assertEquals(144.0, loaded.maxFps().getValue());
         assertEquals(0xFF2DD4BF, loaded.accentColor().getValue());
         assertEquals("Light", loaded.appearance().getValue());
         assertEquals(0x803B719A, loaded.hud().musicSpectrum().color().getValue());
+
+        preferences.maxFps().setValue((double) MusicPreferences.UNLIMITED_FPS);
+        store.save(preferences);
+        store.load(loaded);
+        assertEquals((double) MusicPreferences.UNLIMITED_FPS, loaded.maxFps().getValue());
     }
 
     @Test
@@ -74,6 +81,7 @@ class DesktopPreferenceStoreTest {
         assertEquals(14.0, loaded.lyricHeight().getValue(), 0.0001);
         assertFalse(loaded.showTranslation().getValue());
         assertFalse(loaded.showFps().getValue());
+        assertEquals(60.0, loaded.maxFps().getValue());
         assertEquals(AppTheme.DEFAULT_ACCENT, loaded.accentColor().getValue());
     }
 

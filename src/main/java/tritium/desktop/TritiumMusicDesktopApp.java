@@ -120,7 +120,10 @@ public final class TritiumMusicDesktopApp {
             renderFrame();
             Display.update();
             FRAME_RATE.recordFrame(System.nanoTime());
-            Display.sync(60);
+            int maxFps = (int) Math.round(DesktopAppState.preferences().maxFps().getValue());
+            if (maxFps < MusicPreferences.UNLIMITED_FPS) {
+                Display.sync(maxFps);
+            }
         }
     }
 

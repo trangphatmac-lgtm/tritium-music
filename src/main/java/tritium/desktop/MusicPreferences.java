@@ -7,11 +7,14 @@ import tritium.ncm.music.Quality;
 import tritium.settings.ClientSettings;
 
 public class MusicPreferences {
+    // The slider's final position disables the frame-rate limit.
+    public static final int UNLIMITED_FPS = 241;
     static final String VERSION_KEY = "version";
     static final String QUALITY_KEY = "music.quality";
     static final String MUSIC_TOAST_KEY = "music.toast";
     static final String SHOW_WIDGET_BOUNDARY_KEY = "ui.showWidgetBoundary";
     static final String SHOW_FPS_KEY = "ui.showFps";
+    static final String MAX_FPS_KEY = "ui.maxFps";
     static final String ACCENT_COLOR_KEY = "ui.accentColor";
     static final String APPEARANCE_KEY = "ui.appearance";
     static final String INTERFACE_STYLE_KEY = "ui.interfaceStyle";
@@ -29,6 +32,7 @@ public class MusicPreferences {
     private final PreferenceValue<Boolean> musicToast = new PreferenceValue<>("Music Toast", true);
     private final PreferenceValue<Boolean> showWidgetBoundary = new PreferenceValue<>("Show UI Widget Boundary", false);
     private final PreferenceValue<Boolean> showFps = new PreferenceValue<>("Show FPS", false);
+    private final NumberPreference maxFps = new NumberPreference("Max FPS", 60, 30, UNLIMITED_FPS, 1);
     private final PreferenceValue<Integer> accentColor = new PreferenceValue<>("Accent Color", AppTheme.DEFAULT_ACCENT);
     private final ModePreference appearance = new ModePreference("Appearance", "Dark", new String[]{"Dark", "Light"});
     private final ModePreference interfaceStyle = new ModePreference("Interface Style", "Static",
@@ -54,6 +58,7 @@ public class MusicPreferences {
         });
         musicToast.setValueCallback(value -> fireChanged());
         showFps.setValueCallback(value -> fireChanged());
+        maxFps.setValueCallback(value -> fireChanged());
         accentColor.setValueCallback(value -> fireChanged());
         appearance.setValueCallback(value -> fireChanged());
         interfaceStyle.setValueCallback(value -> fireChanged());
@@ -112,6 +117,7 @@ public class MusicPreferences {
         json.addProperty(MUSIC_TOAST_KEY, musicToast.getValue());
         json.addProperty(SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary.getValue());
         json.addProperty(SHOW_FPS_KEY, showFps.getValue());
+        json.addProperty(MAX_FPS_KEY, maxFps.getValue());
         json.addProperty(ACCENT_COLOR_KEY, accentColor.getValue());
         json.addProperty(APPEARANCE_KEY, appearance.getValue());
         json.addProperty(INTERFACE_STYLE_KEY, interfaceStyle.getValue());
@@ -139,6 +145,7 @@ public class MusicPreferences {
             applyBoolean(json, MUSIC_TOAST_KEY, musicToast);
             applyBoolean(json, SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary);
             applyBoolean(json, SHOW_FPS_KEY, showFps);
+            applyNumber(json, MAX_FPS_KEY, maxFps);
             applyAccentColor(json);
             applyMode(json, APPEARANCE_KEY, appearance);
             applyMode(json, INTERFACE_STYLE_KEY, interfaceStyle);
@@ -233,6 +240,10 @@ public class MusicPreferences {
 
     public PreferenceValue<Boolean> showFps() {
         return showFps;
+    }
+
+    public NumberPreference maxFps() {
+        return maxFps;
     }
 
     public PreferenceValue<Integer> accentColor() {
