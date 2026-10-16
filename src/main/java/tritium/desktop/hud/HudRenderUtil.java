@@ -1,5 +1,6 @@
 package tritium.desktop.hud;
 
+import tritium.management.FontManager;
 import tritium.rendering.font.CFontRenderer;
 
 import java.awt.AlphaComposite;
@@ -12,15 +13,21 @@ import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Shape;
+import java.awt.font.FontRenderContext;
+import java.awt.font.LineMetrics;
+import java.awt.font.TextAttribute;
+import java.awt.font.TextLayout;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
+import java.text.AttributedString;
 import java.util.Map;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class HudRenderUtil {
     private static final Map<String, Long> SCROLL_START_TIMES = new ConcurrentHashMap<>();
+    private static final Map<Font, Font> FALLBACK_FONTS = new ConcurrentHashMap<>();
 
     private HudRenderUtil() {
     }
@@ -33,20 +40,23 @@ public final class HudRenderUtil {
         graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
     }
 
-    public static Font font(CFontRenderer renderer, int fallbackSize, boolean bold) {
-        // HUD text is rendered by Java2D, so use Java's logical composite font
-        // instead of the OpenGL renderer's physical SF Pro font. The physical
-        // font does not contain CJK glyphs, while SansSerif falls back to the
-        // platform CJK fonts on Windows and macOS.
-        return new Font(Font.SANS_SERIF, bold ? Font.BOLD : Font.PLAIN, fallbackSize);
+    private static Font font(int size, boolean bold) {
+        // Match the lyric page: SF Pro with the bundled Chinese fallback.
+        // The resources already carry their weight, so do not synthesize bold.
+        Font primary = FontManager.readFont("/tritium/fonts/" + (bold ? "sfbold.otf" : "sfregular.otf"))
+                .deriveFont((float) size);
+        FALLBACK_FONTS.computeIfAbsent(primary, ignored ->
+                FontManager.readFont("/tritium/fonts/" + (bold ? "pf_middleblack.ttf" : "pf_normal.ttf"))
+                        .deriveFont((float) size));
+        return primary;
     }
 
     public static Font fontRegular(int size) {
-        return font(null, size, false);
+        return font(size, false);
     }
 
     public static Font fontBold(int size) {
-        return font(null, size, true);
+        return font(size, true);
     }
 
     public static int withAlpha(int argb, double alphaMultiplier) {
@@ -146,13 +156,14 @@ public final class HudRenderUtil {
     }
 
     public static void drawText(Graphics2D graphics, String text, Font font, double x, double baseline, int argb) {
-        if (text == null || text.isEmpty()) {
+        TextLayout layout = textLayout(graphics.getFontRenderContext(), font, text);
+        if (layout == null) {
             return;
         }
 
         graphics.setFont(font);
         graphics.setColor(color(argb));
-        graphics.drawString(CFontRenderer.stripControlCodes(text), (float) x, (float) baseline);
+        layout.draw(graphics, (float) x, (float) baseline);
     }
 
     public static void drawTextWithShadow(Graphics2D graphics, String text, Font font, double x, double baseline, int argb) {
@@ -184,7 +195,7 @@ public final class HudRenderUtil {
     public static void drawTextClipped(Graphics2D graphics, String text, Font font, double drawX, double baseline,
                                        double clipX, double width, int argb, boolean shadow) {
         Shape oldClip = graphics.getClip();
-        FontMetrics metrics = graphics.getFontMetrics(font);
+        FontMetrics metrics = metrics(graphics, font);
         graphics.clip(new Rectangle2D.Double(clipX, baseline - metrics.getAscent() - 4, width, metrics.getHeight() + 8));
         if (shadow) {
             drawTextWithShadow(graphics, text, font, drawX, baseline, argb);
@@ -224,21 +235,92 @@ public final class HudRenderUtil {
     }
 
     private static String scrollKey(String text, Font font, double width) {
-        return text + "|" + font.getFamily() + "|" + font.getStyle() + "|"
+        return text + "|" + font.getFontName() + "|" + font.getStyle() + "|"
                 + Math.round(font.getSize2D() * 10) + "|" + Math.round(width);
     }
 
     public static double measure(Graphics2D graphics, Font font, String text) {
-        if (text == null || text.isEmpty()) {
-            return 0;
-        }
         graphics.setFont(font);
-        return graphics.getFontMetrics(font).getStringBounds(CFontRenderer.stripControlCodes(text), graphics).getWidth();
+        return measure(graphics.getFontRenderContext(), font, text);
+    }
+
+    private static double measure(FontRenderContext context, Font font, String text) {
+        TextLayout layout = textLayout(context, font, text);
+        return layout == null ? 0 : layout.getAdvance();
+    }
+
+    private static TextLayout textLayout(FontRenderContext context, Font font, String text) {
+        String plain = text == null ? "" : CFontRenderer.stripControlCodes(text);
+        if (plain.isEmpty()) {
+            return null;
+        }
+        Font fallback = FALLBACK_FONTS.get(font);
+        if (fallback == null || font.canDisplayUpTo(plain) == -1) {
+            return new TextLayout(plain, font, context);
+        }
+
+        AttributedString attributed = new AttributedString(plain);
+        attributed.addAttribute(TextAttribute.FONT, font);
+        int runStart = -1;
+        for (int offset = 0; offset < plain.length();) {
+            int codePoint = plain.codePointAt(offset);
+            boolean useFallback = !font.canDisplay(codePoint) && fallback.canDisplay(codePoint);
+            if (useFallback && runStart < 0) {
+                runStart = offset;
+            } else if (!useFallback && runStart >= 0) {
+                attributed.addAttribute(TextAttribute.FONT, fallback, runStart, offset);
+                runStart = -1;
+            }
+            offset += Character.charCount(codePoint);
+        }
+        if (runStart >= 0) {
+            attributed.addAttribute(TextAttribute.FONT, fallback, runStart, plain.length());
+        }
+        return new TextLayout(attributed.getIterator(), context);
     }
 
     public static FontMetrics metrics(Graphics2D graphics, Font font) {
         graphics.setFont(font);
-        return graphics.getFontMetrics(font);
+        return metrics(graphics.getFontMetrics(font));
+    }
+
+    public static FontMetrics metrics(FontMetrics primaryMetrics) {
+        Font font = primaryMetrics.getFont();
+        Font fallback = FALLBACK_FONTS.get(font);
+        if (fallback == null) {
+            return primaryMetrics;
+        }
+        // Swing component metrics may disable fractional advances; match configure()
+        // so sizing a toast before painting uses the same widths as its text layout.
+        FontRenderContext context = new FontRenderContext(primaryMetrics.getFontRenderContext().getTransform(),
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        LineMetrics fallbackMetrics = fallback.getLineMetrics("Ag国", context);
+        return new FontMetrics(font) {
+            @Override
+            public FontRenderContext getFontRenderContext() {
+                return context;
+            }
+
+            @Override
+            public int getAscent() {
+                return Math.max(primaryMetrics.getAscent(), (int) Math.ceil(fallbackMetrics.getAscent()));
+            }
+
+            @Override
+            public int getDescent() {
+                return Math.max(primaryMetrics.getDescent(), (int) Math.ceil(fallbackMetrics.getDescent()));
+            }
+
+            @Override
+            public int getLeading() {
+                return Math.max(primaryMetrics.getLeading(), (int) Math.ceil(fallbackMetrics.getLeading()));
+            }
+
+            @Override
+            public int stringWidth(String text) {
+                return (int) Math.ceil(measure(context, font, text));
+            }
+        };
     }
 
     public static String formatTime(float millis) {

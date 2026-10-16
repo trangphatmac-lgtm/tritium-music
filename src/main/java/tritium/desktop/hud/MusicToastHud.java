@@ -54,7 +54,8 @@ final class MusicToastHud {
         Rectangle screen = configuration.getBounds();
         Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(configuration);
         int available = Math.max(1, screen.width - insets.left - insets.right - 24);
-        int width = Math.min(available, Math.max(240, panel.getFontMetrics(TEXT_FONT).stringWidth(text) + 64));
+        int width = Math.min(available, Math.max(240,
+                HudRenderUtil.metrics(panel.getFontMetrics(TEXT_FONT)).stringWidth(text) + 64));
         Rectangle bounds = new Rectangle(screen.x + insets.left + 12, screen.y + insets.top + 12, width, HEIGHT);
         if (!bounds.equals(window.getBounds())) {
             window.setBounds(bounds);
@@ -135,11 +136,10 @@ final class MusicToastHud {
             }
             g.drawImage(tinted, 12, 8, 32, 32, null);
         }
-        g.setFont(TEXT_FONT);
-        g.setColor(Color.WHITE);
-        FontMetrics metrics = g.getFontMetrics();
+        FontMetrics metrics = HudRenderUtil.metrics(g, TEXT_FONT);
         String label = fitText(text, metrics, Math.max(0, width - 64));
-        g.drawString(label, 52, (HEIGHT - metrics.getHeight()) / 2 + metrics.getAscent());
+        HudRenderUtil.drawText(g, label, TEXT_FONT, 52,
+                (HEIGHT - metrics.getHeight()) / 2 + metrics.getAscent(), 0xFFFFFFFF);
     }
 
     static String fitText(String text, FontMetrics metrics, int available) {

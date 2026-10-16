@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -104,16 +105,14 @@ public class FontManager extends AbstractManager {
         waitUntilAllLoaded();
     }
     
-    private static final HashMap<String, Font> fonts = new HashMap<>();
+    private static final ConcurrentHashMap<String, Font> fonts = new ConcurrentHashMap<>();
     private static final HashMap<String, FontKerning> fontKernings = new HashMap<>();
     
-    private static Font readFont(String path) {
+    /** Loads shared font resources without requiring an OpenGL context. */
+    public static Font readFont(String path) {
         return fonts.computeIfAbsent(path, p -> {
-            try {
-                InputStream resourceAsStream = FontManager.class.getResourceAsStream(p);
-                Font font = Font.createFont(Font.TRUETYPE_FONT, resourceAsStream);
-                resourceAsStream.close();
-                return font;
+            try (InputStream resourceAsStream = FontManager.class.getResourceAsStream(p)) {
+                return Font.createFont(Font.TRUETYPE_FONT, resourceAsStream);
             } catch (Exception e) {
                 e.printStackTrace();
                 return null;
