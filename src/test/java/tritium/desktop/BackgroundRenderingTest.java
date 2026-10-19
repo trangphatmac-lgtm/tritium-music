@@ -14,8 +14,10 @@ import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.dto.Music;
 import tritium.ncm.music.dto.User;
 import tritium.rendering.Framebuffer;
+import tritium.rendering.TextureManager;
 import tritium.rendering.animation.Interpolations;
 import tritium.rendering.rendersystem.RenderSystem;
+import tritium.rendering.texture.DynamicTexture;
 import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.screens.ncm.MusicLyricsPanel;
@@ -41,9 +43,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class BackgroundRenderingTest {
     @TempDir Path temp;
     private NCMScreen screen;
+    private Music lyricsFixture;
 
     @Test
-    void rendersAllModesThroughTheRealMainWindowAndKeepsLyricsIsolated() throws Exception {
+    void rendersAllModesThroughTheRealMainWindowAndSupportsOptionalLyricsBackground() throws Exception {
         var original = DesktopAppState.preferences().toJsonObject();
         User profile = CloudMusic.profile;
         Music playing = CloudMusic.currentlyPlaying;
@@ -67,13 +70,22 @@ class BackgroundRenderingTest {
             settle();
             assertPixel(RenderSystem.getWidth() - 3, 150, 30, 30, 30);
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
-            AbstractWidget<?> modeRow = backgroundModeRow(scroll, bg.mode());
+            AbstractWidget<?> modeRow = preferenceRow(scroll, bg.mode());
+            AbstractWidget<?> lyricsToggle = preferenceRow(scroll, bg.applyToLyrics());
+            assertTrue(lyricsToggle.isHidden(), "Solid color has no lyrics-background option");
             scroll.actualScrollOffset = scroll.targetScrollOffset = modeRow.getRelativeY() - 8;
             render();
             render(modeRow.getX() + 20, modeRow.getY() + 20);
             settings.onMouseClickReceived(modeRow.getX() + 20, modeRow.getY() + 20, 0);
             settings.onMouseReleaseReceived(modeRow.getX() + 20, modeRow.getY() + 20, 0);
             assertEquals("picture", bg.mode().getValue(), "Background mode is reachable through settings input");
+            render();
+            assertFalse(lyricsToggle.isHidden());
+            render(lyricsToggle.getX() + 20, lyricsToggle.getY() + 20);
+            settings.onMouseClickReceived(lyricsToggle.getX() + 20, lyricsToggle.getY() + 20, 0);
+            settings.onMouseReleaseReceived(lyricsToggle.getX() + 20, lyricsToggle.getY() + 20, 0);
+            assertTrue(bg.applyToLyrics().getValue(), "Lyrics-background toggle is reachable through settings input");
+            bg.applyToLyrics().setValue(false);
 
             BufferedImage image = new BufferedImage(320, 180, BufferedImage.TYPE_INT_RGB);
             for (int y = 0; y < 180; y++) for (int x = 0; x < 320; x++) image.setRGB(x, y, 0x285080);
@@ -129,6 +141,10 @@ class BackgroundRenderingTest {
             CloudMusic.currentlyPlaying = new Gson().fromJson("""
                     {"id":-500,"name":"Background isolation","ar":[],"al":{"id":-500,"name":"Test"},"dt":60000}
                     """, Music.class);
+            lyricsFixture = CloudMusic.currentlyPlaying;
+            BufferedImage lyricBackdrop = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
+            for (int y = 0; y < 32; y++) for (int x = 0; x < 32; x++) lyricBackdrop.setRGB(x, y, 0xC02090);
+            TextureManager.getInstance().loadTexture(lyricsFixture.getBlurredCoverLocation(), new DynamicTexture(lyricBackdrop));
             screen.musicLyricsPanel = new MusicLyricsPanel(CloudMusic.currentlyPlaying);
             var alpha = MusicLyricsPanel.class.getDeclaredField("alpha");
             alpha.setAccessible(true);
@@ -143,6 +159,33 @@ class BackgroundRenderingTest {
                 assertArrayEquals(baseline, current, "Background mode must not change lyrics pixels: " + mode);
             }
             save("lyrics-unchanged");
+            bg.applyToLyrics().setValue(true);
+            for (String mode : new String[]{"picture", "video", "shader", "latent"}) {
+                bg.mode().setValue(mode);
+                await(() -> DesktopAppState.background().isActive());
+                settle();
+                assertTrue(DesktopAppState.background().isAppliedToLyrics(), mode);
+                int[] current = capture().getRGB(0, 0, RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), null, 0, RenderSystem.getFramebufferWidth());
+                assertFalse(Arrays.equals(baseline, current), "Selected background must replace the cover: " + mode);
+                if (mode.equals("picture")) assertPixel(RenderSystem.getWidth() - 3, 150, 26, 52, 83);
+                save("lyrics-background-" + mode);
+                assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+            }
+            // Invalid media and Solid Color both keep the established cover fallback.
+            bg.mode().setValue("picture");
+            bg.pictureFile().setValue(temp.resolve("missing-lyrics.png").toString());
+            settle();
+            assertFalse(DesktopAppState.background().isAppliedToLyrics());
+            assertArrayEquals(baseline, capture().getRGB(0, 0, RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), null, 0, RenderSystem.getFramebufferWidth()));
+            bg.mode().setValue("static");
+            settle();
+            assertFalse(DesktopAppState.background().isActive());
+            assertArrayEquals(baseline, capture().getRGB(0, 0, RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), null, 0, RenderSystem.getFramebufferWidth()));
+            bg.mode().setValue("latent");
+            bg.applyToLyrics().setValue(false);
+            settle();
+            assertFalse(DesktopAppState.background().isActive());
+            assertArrayEquals(baseline, capture().getRGB(0, 0, RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), null, 0, RenderSystem.getFramebufferWidth()));
             screen.musicLyricsPanel = null;
 
             // Optional supplied media smoke checks; no personal paths or media enter the repository.
@@ -164,6 +207,7 @@ class BackgroundRenderingTest {
             CloudMusic.currentlyPlaying = playing;
             DesktopAppState.preferences().loadFromJsonObject(original);
             if (Display.isCreated()) {
+                if (lyricsFixture != null) TextureManager.getInstance().deleteTexture(lyricsFixture.getBlurredCoverLocation());
                 DesktopAppState.background().reload();
                 if (screen != null) screen.onGuiClosed();
                 FontManager.deleteLoadedTextures();
@@ -176,15 +220,15 @@ class BackgroundRenderingTest {
         render(-1, -1);
     }
 
-    private static AbstractWidget<?> backgroundModeRow(ScrollPanel scroll, ModePreference mode) throws Exception {
+    private static AbstractWidget<?> preferenceRow(ScrollPanel scroll, PreferenceValue<?> preference) throws Exception {
         for (AbstractWidget<?> row : scroll.getChildren()) {
             try {
                 var field = row.getClass().getDeclaredField("preference");
                 field.setAccessible(true);
-                if (field.get(row) == mode) return row;
+                if (field.get(row) == preference) return row;
             } catch (NoSuchFieldException ignored) { }
         }
-        throw new AssertionError("Background mode row missing");
+        throw new AssertionError("Settings row missing: " + preference.getName());
     }
 
     private void verifyFilePicker(Path picture, BackgroundPreferences bg) throws Exception {

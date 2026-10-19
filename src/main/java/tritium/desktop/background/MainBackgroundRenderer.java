@@ -43,6 +43,9 @@ public final class MainBackgroundRenderer implements AutoCloseable {
 
     public boolean isActive() { return active; }
 
+    /** Keep the original cover background until the selected custom background has a usable frame. */
+    public boolean isAppliedToLyrics() { return active && preferences.appliesToLyrics(); }
+
     public String status() {
         if (preferences.mode().getValue().equals("static")) return I18n.text("background.staticHint");
         if (shaderError != null) return I18n.text(shaderError);

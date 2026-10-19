@@ -53,6 +53,7 @@ class BackgroundPreferencesTest {
         preferences.loadFromJsonObject(new JsonParser().parse("{\"ui.appearance\":\"Light\"}").getAsJsonObject());
         assertEquals("Light", preferences.appearance().getValue());
         assertEquals("static", preferences.background().mode().getValue());
+        assertFalse(preferences.background().applyToLyrics().getValue());
     }
 
     @Test
@@ -73,7 +74,8 @@ class BackgroundPreferencesTest {
         bg.panelOpacity().setValue(.15);
         bg.shader().setValue("aurora");
         bg.shaderSpeed().setValue(2.1);
-        assertEquals(12, changes.get());
+        bg.applyToLyrics().setValue(true);
+        assertEquals(13, changes.get());
 
         DesktopPreferenceStore store = new DesktopPreferenceStore(temp.resolve("preferences.json"));
         store.save(preferences);
@@ -91,7 +93,7 @@ class BackgroundPreferencesTest {
         preferences.loadFromJsonObject(new JsonParser().parse("""
                 {"background":{"mode":"remote", "pictureSource":[], "pictureFile":{},
                  "videoFile":"/good/video.mp4", "interval":"oops", "shaderSpeed":"NaN",
-                 "strength":4, "panelOpacity":-2, "shuffle":"maybe", "shader":"waves"},
+                 "strength":4, "panelOpacity":-2, "shuffle":"maybe", "applyToLyrics":"true", "shader":"waves"},
                  "lyrics.showTranslation":false}
                 """).getAsJsonObject());
         BackgroundPreferences bg = preferences.background();
@@ -103,7 +105,23 @@ class BackgroundPreferencesTest {
         assertEquals(1, bg.strength().getValue());
         assertEquals(0, bg.panelOpacity().getValue());
         assertFalse(bg.shuffle().getValue());
+        assertFalse(bg.applyToLyrics().getValue());
         assertEquals("waves", bg.shader().getValue());
         assertFalse(preferences.showTranslation().getValue());
+    }
+
+    @Test
+    void lyricsOptInAppliesToEveryNonSolidModeAndSurvivesModeChanges() {
+        var bg = new BackgroundPreferences();
+        for (String mode : bg.mode().getModes()) {
+            bg.mode().setValue(mode);
+            assertFalse(bg.appliesToLyrics());
+        }
+        bg.applyToLyrics().setValue(true);
+        for (String mode : bg.mode().getModes()) {
+            bg.mode().setValue(mode);
+            assertEquals(!mode.equals("static"), bg.appliesToLyrics());
+            assertTrue(bg.applyToLyrics().getValue());
+        }
     }
 }

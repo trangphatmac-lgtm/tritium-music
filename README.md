@@ -21,7 +21,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Simplified Chinese, Traditional Chinese, and English in Settings → General → Language; changes apply immediately and are saved automatically (default: Simplified Chinese)
 - Light and dark modes in Settings → Appearance, with smooth transitions and a saved preference; lyrics and system HUDs keep their existing appearance
 - Live accent colors with eight presets and an HSV picker in Settings → Appearance
-- Custom main-window backgrounds in Settings → Main Background: static, picture, video, shader, and Latent; lyrics and system HUDs retain their existing appearance
+- Custom main-window backgrounds in Settings → Main Background: static, picture, video, shader, and Latent. Enable “Apply background to lyrics page” to share any non-solid background with lyrics; the toggle is off by default and saved automatically. Lyrics retain their readability overlay, and system HUDs stay independent.
 - Saturation/brightness, hue, and spectrum opacity controls with saved custom colors
 - Optional FPS overlay in Settings → Debug → Show FPS
 - M4A/MP4 cloud music playback (AAC and 16/24-bit Apple Lossless)

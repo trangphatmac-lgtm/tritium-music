@@ -7,11 +7,12 @@ import tritium.desktop.background.latent.LatentPreferences;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Main-window backgrounds only; deliberately independent of lyric and HUD preferences. */
+/** Main-window backgrounds, optionally shared with the lyrics page; HUDs remain independent. */
 public final class BackgroundPreferences {
     private final Map<String, PreferenceValue<?>> values = new LinkedHashMap<>();
     private final ModePreference mode = mode("mode", "static", "static", "picture", "video", "shader", "latent");
     private final LatentPreferences latent = new LatentPreferences();
+    private final PreferenceValue<Boolean> applyToLyrics = add("applyToLyrics", new PreferenceValue<>("Apply to lyrics", false));
     private final ModePreference pictureSource = mode("pictureSource", "file", "file", "folder");
     private final PreferenceValue<String> pictureFile = add("pictureFile", new PreferenceValue<>("Picture", ""));
     private final PreferenceValue<String> pictureFolder = add("pictureFolder", new PreferenceValue<>("Folder", ""));
@@ -67,8 +68,9 @@ public final class BackgroundPreferences {
                 } else if (preference instanceof NumberPreference number) {
                     double value = element.getAsDouble();
                     if (Double.isFinite(value)) number.setValue(value);
-                } else if (preference == shuffle) {
-                    if (element.getAsJsonPrimitive().isBoolean()) shuffle.setValue(element.getAsBoolean());
+                } else if (preference.getValue() instanceof Boolean) {
+                    @SuppressWarnings("unchecked") PreferenceValue<Boolean> toggle = (PreferenceValue<Boolean>) preference;
+                    if (element.getAsJsonPrimitive().isBoolean()) toggle.setValue(element.getAsBoolean());
                 } else if (element.getAsJsonPrimitive().isString()) {
                     @SuppressWarnings("unchecked") PreferenceValue<String> path = (PreferenceValue<String>) preference;
                     path.setValue(element.getAsString());
@@ -81,6 +83,8 @@ public final class BackgroundPreferences {
 
     public ModePreference mode() { return mode; }
     public LatentPreferences latent() { return latent; }
+    public PreferenceValue<Boolean> applyToLyrics() { return applyToLyrics; }
+    public boolean appliesToLyrics() { return applyToLyrics.getValue() && !mode.getValue().equals("static"); }
     public ModePreference pictureSource() { return pictureSource; }
     public PreferenceValue<String> pictureFile() { return pictureFile; }
     public PreferenceValue<String> pictureFolder() { return pictureFolder; }

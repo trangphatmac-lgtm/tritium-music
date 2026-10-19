@@ -210,7 +210,8 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
         UiMaterials.beginFrame(mouseX, mouseY);
         DesktopAppState.background().render(Display.isVisible()
-                && (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha < .999f));
+                && (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha < .999f
+                    || DesktopAppState.preferences().background().appliesToLyrics()));
 
         if (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha <= .9f) {
             UiMaterials.captureBackdrop(false);
@@ -269,7 +270,9 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
         if (this.musicLyricsPanel != null) {
             StencilClipManager.beginClip(() -> Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), -1));
-            Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), RenderSystem.reAlpha(0xFF1E1E1E, this.musicLyricsPanel.alpha));
+            if (!DesktopAppState.background().isAppliedToLyrics()) {
+                Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), RenderSystem.reAlpha(0xFF1E1E1E, this.musicLyricsPanel.alpha));
+            }
             this.musicLyricsPanel.onRender(mouseX, mouseY, basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), dWheel);
             StencilClipManager.endClip();
 

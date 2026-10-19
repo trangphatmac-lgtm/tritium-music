@@ -954,7 +954,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
             coverAlpha = 0.0f;
         }
 
-        if (texBg != null || prevBg != null) {
+        if (!DesktopAppState.background().isAppliedToLyrics() && (texBg != null || prevBg != null)) {
 
             api.getGLStateManager().pushMatrix();
 
