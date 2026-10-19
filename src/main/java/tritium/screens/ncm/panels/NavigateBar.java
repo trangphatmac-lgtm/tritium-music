@@ -1,32 +1,22 @@
 package tritium.screens.ncm.panels;
 
 import tritium.i18n.I18n;
-import tritium.rendering.material.UiMaterials;
-import lombok.Getter;
-import lombok.Setter;
-import org.lwjgl.input.Keyboard;
 import tritium.management.FontManager;
 import tritium.desktop.AppTheme;
 import tritium.ncm.music.CloudMusic;
-import tritium.ncm.music.dto.Music;
 import tritium.ncm.music.dto.PlayList;
 import tritium.rendering.TextureManager;
-import tritium.rendering.animation.Interpolations;
-import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.texture.Textures;
 import tritium.rendering.ui.container.Panel;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.rendering.ui.widgets.*;
 import tritium.screens.ncm.NCMPanel;
 import tritium.screens.ncm.NCMScreen;
-import tritium.utils.KeyboardUtils;
 import tritium.utils.Location;
-import tritium.utils.json.JsonUtils;
-import tritium.utils.other.multithreading.MultiThreadingUtil;
 
 import java.awt.*;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /**
@@ -35,10 +25,17 @@ import java.util.function.Supplier;
  */
 public class NavigateBar extends NCMPanel {
 
-    TextFieldWidget searchField = new TextFieldWidget(FontManager.pf14bold);
+    private final NCMScreen screen;
+    private final MusicSearchBar searchBar;
     ScrollPanel playlistPanel = new ScrollPanel();
 
     public NavigateBar() {
+        this(NCMScreen.getInstance(), new MusicSearchBar(NCMScreen.getInstance()));
+    }
+
+    public NavigateBar(NCMScreen screen, MusicSearchBar searchBar) {
+        this.screen = screen;
+        this.searchBar = searchBar;
         this.layout();
     }
 
@@ -47,7 +44,7 @@ public class NavigateBar extends NCMPanel {
         this.addChild(bg);
 
         this.setBeforeRenderCallback(() -> {
-            this.setBounds(NCMScreen.getInstance().getPanelWidth() * .15, NCMScreen.getInstance().getPanelHeight());
+            this.setBounds(screen.getPanelWidth() * .15, screen.getPanelHeight());
             this.setPosition(0, 0);
 
             bg.setMargin(0);
@@ -55,111 +52,8 @@ public class NavigateBar extends NCMPanel {
             bg.setAlpha(.9f * AppTheme.backgroundPanelOpacity());
         });
 
-        this.setOnKeyTypedCallback((character, keyCode) -> {
-
-            if (KeyboardUtils.isKeyComboCtrl(keyCode, Keyboard.KEY_F)) {
-                this.searchField.setFocused(true);
-                this.searchField.getTextField().selectAll();
-                return true;
-            }
-
-            return false;
-        });
-
-        RoundedRectWidget searchBar = new RoundedRectWidget();
-        RoundedRectWidget searchBarFocusAnimation = new RoundedRectWidget();
-
-        this.addChild(searchBarFocusAnimation);
         this.addChild(searchBar);
-
-        searchBarFocusAnimation.setBeforeRenderCallback(() -> {
-            if (!searchField.isFocused()) {
-                searchBarFocusAnimation.setAlpha(0);
-            } else {
-                searchBarFocusAnimation.setAlpha(Interpolations.interpolate(searchBarFocusAnimation.getAlpha(), 1f, .3f));
-                searchBarFocusAnimation.setRadius(4);
-                searchBarFocusAnimation.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
-                searchBarFocusAnimation.setBounds(searchBar.getRelativeX(), searchBar.getRelativeY(), searchBar.getWidth(), searchBar.getHeight());
-                searchBarFocusAnimation.expand(1 + 5 * (1 - searchBarFocusAnimation.getAlpha()));
-            }
-        });
-
-        searchBar
-//            .setShouldSetMouseCursor(true)
-            .setBeforeRenderCallback(() -> {
-                searchBar.setAlpha(1f);
-                searchBar.setColor(UiMaterials.enabled() ? AppTheme.inputBackground() : 0xFF5E5E5E);
-                searchBar.setMargin(8);
-                searchBar.setHeight(16);
-                searchBar.setRadius(3.5);
-            });
-
-        RoundedRectWidget searchBarBg = new RoundedRectWidget();
-        searchBar.addChild(searchBarBg);
-
-        searchBarBg.setBeforeRenderCallback(() -> {
-            searchBarBg.setMargin(.5);
-            searchBarBg.setAlpha(UiMaterials.enabled() ? 0f : .6f);
-            searchBarBg.setColor(AppTheme.inputBackground());
-            searchBarBg.setRadius(searchBar.getRadius() - .5);
-        });
-
-        LabelWidget lblSearchIcon = new LabelWidget("K", FontManager.music18);
-        searchBar.addChild(lblSearchIcon);
-
-        lblSearchIcon.setBeforeRenderCallback(() -> {
-            lblSearchIcon.setColor(hexColor(100, 100, 100));
-            lblSearchIcon.centerVertically();
-            lblSearchIcon.setPosition(lblSearchIcon.getRelativeY(), lblSearchIcon.getRelativeY());
-        });
-
-        searchBar.addChild(searchField);
-
-        this.searchField.setPlaceholder(() -> I18n.text("nav.search"));
-
-        this.searchField.setOnKeyTypedCallback((character, keyCode) -> {
-            if (this.searchField.isFocused()) {
-                if (keyCode == Keyboard.KEY_ESCAPE)
-                    this.searchField.setFocused(false);
-
-                if (keyCode == Keyboard.KEY_RETURN || keyCode == Keyboard.KEY_NUMPADENTER) {
-
-                    // new instance
-                    PlayList playList = JsonUtils.parse("{}", PlayList.class);
-                    playList.setSearchMode(true);
-                    playList.musics = new CopyOnWriteArrayList<>();
-                    PlaylistPanel panel = new PlaylistPanel(playList);
-                    NCMScreen.getInstance().setCurrentPanel(panel);
-                    this.playlistPanel.getChildren().forEach(child -> {
-                        if (child instanceof PlaylistItem item)
-                            item.setSelected(false);
-                    });
-
-                    MultiThreadingUtil.runAsync(() -> {
-                        List<Music> search = CloudMusic.search(this.searchField.getText());
-                        playList.musics.addAll(search);
-                        panel.onInit();
-                    });
-//
-//                    System.out.println("SEARCH: " + this.searchField.getText());
-//                    CloudMusicApi.cloudSearch(this.searchField.getText(), CloudMusicApi.SearchType.Single).toJsonObject()
-                }
-
-                return true;
-            }
-
-            return false;
-        });
-
-        searchField.setBeforeRenderCallback(() -> {
-            searchField.drawUnderline(false);
-            searchField.setMargin(2);
-            double xSpacing = lblSearchIcon.getRelativeX() + lblSearchIcon.getWidth() + 4;
-            searchField.setBounds(xSpacing, searchField.getRelativeY(), searchField.getWidth() - xSpacing, searchField.getHeight());
-            searchField.setColor(this.getColor(NCMScreen.ColorType.PRIMARY_TEXT));
-            searchField.setDisabledTextColor(RenderSystem.reAlpha(this.getColor(NCMScreen.ColorType.PRIMARY_TEXT), .4f));
-//            Rect.draw(searchField.getX(), searchField.getY(), searchField.getWidth(), searchField.getHeight(), 0x800090ff);
-        });
+        searchBar.setBeforeRenderCallback(() -> searchBar.setBounds(8, 8, Math.max(0, getWidth() - 16), 20));
 
         this.addChild(playlistPanel);
         this.playlistPanel.setBeforeRenderCallback(() -> {
@@ -179,7 +73,8 @@ public class NavigateBar extends NCMPanel {
         this.playlistPanel.addChild(lbl);
 
         {
-            PlaylistItem item = new PlaylistItem("A", () -> NCMScreen.getColor(NCMScreen.ColorType.ACCENT), () -> I18n.text("nav.home"), () -> NCMScreen.getInstance().setCurrentPanel(new HomePanel()));
+            PlaylistItem item = new PlaylistItem("A", () -> NCMScreen.getColor(NCMScreen.ColorType.ACCENT), () -> I18n.text("nav.home"), () -> screen.setCurrentPanel(new HomePanel()));
+            item.selectedWhen = () -> screen.getCurrentPanel() instanceof HomePanel;
 
             item.setShouldOverrideMouseCursor(true);
 
@@ -195,8 +90,9 @@ public class NavigateBar extends NCMPanel {
         this.playlistPanel.addChild(lblPlaylists);
 
         PlaylistItem cloudStorage = new PlaylistItem("D", Color.GRAY::getRGB, () -> I18n.text("cloud.title"),
-                () -> NCMScreen.getInstance().setCurrentPanel(new CloudStoragePanel()));
+                () -> screen.setCurrentPanel(new CloudStoragePanel()));
         cloudStorage.setShouldOverrideMouseCursor(true);
+        cloudStorage.selectedWhen = () -> screen.getCurrentPanel() instanceof CloudStoragePanel;
         this.playlistPanel.addChild(cloudStorage);
 
         List<PlayList> pl = CloudMusic.playLists;
@@ -205,7 +101,8 @@ public class NavigateBar extends NCMPanel {
             List<PlayList> playLists = pl.stream().filter(playList -> !playList.isSubscribed()).toList();
             for (int i = 0; i < playLists.size(); i++) {
                 PlayList playList = playLists.get(i);
-                PlaylistItem item = new PlaylistItem(i == 0 ? "C" : "D", Color.GRAY::getRGB, playList::getName, () -> NCMScreen.getInstance().setCurrentPanel(new PlaylistPanel(playList)));
+                PlaylistItem item = new PlaylistItem(i == 0 ? "C" : "D", Color.GRAY::getRGB, playList::getName, () -> screen.setCurrentPanel(new PlaylistPanel(playList)));
+                item.selectedWhen = () -> isCurrentPlaylist(playList);
                 item.setShouldOverrideMouseCursor(true);
 
                 if (CloudMusic.isLikedPlaylist(playList)) {
@@ -231,7 +128,8 @@ public class NavigateBar extends NCMPanel {
 
         if (pl != null) {
             pl.stream().filter(PlayList::isSubscribed).forEach(playList -> {
-                PlaylistItem item = new PlaylistItem("D", Color.GRAY::getRGB, playList::getName, () -> NCMScreen.getInstance().setCurrentPanel(new PlaylistPanel(playList)));
+                PlaylistItem item = new PlaylistItem("D", Color.GRAY::getRGB, playList::getName, () -> screen.setCurrentPanel(new PlaylistPanel(playList)));
+                item.selectedWhen = () -> isCurrentPlaylist(playList);
                 item.setShouldOverrideMouseCursor(true);
 
                 this.playlistPanel.addChild(item);
@@ -245,7 +143,7 @@ public class NavigateBar extends NCMPanel {
         creatorAvatar.setShouldOverrideMouseCursor(true);
         creatorAvatar.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
             if (mouseButton == 0) {
-                NCMScreen.getInstance().setCurrentPanel(new SettingsPanel());
+                screen.setCurrentPanel(new SettingsPanel());
             }
 
             return true;
@@ -271,6 +169,10 @@ public class NavigateBar extends NCMPanel {
     @Override
     public boolean onMouseClicked(double mouseX, double mouseY, int mouseButton) {
         return false;
+    }
+
+    private boolean isCurrentPlaylist(PlayList playlist) {
+        return screen.getCurrentPanel() instanceof PlaylistPanel panel && playlist.equals(panel.playList);
     }
 
     private void loadAvatar() {
@@ -309,9 +211,11 @@ public class NavigateBar extends NCMPanel {
         RoundedRectWidget bg = new RoundedRectWidget();
         double trailingWidth;
 
-        @Getter
-        @Setter
-        boolean selected = false;
+        BooleanSupplier selectedWhen = () -> false;
+
+        public boolean isSelected() {
+            return selectedWhen.getAsBoolean();
+        }
 
         public PlaylistItem(String icon, Supplier<Integer> iconColorSupplier, Supplier<String> label, Runnable onClick) {
             this.icon = icon;
@@ -322,6 +226,7 @@ public class NavigateBar extends NCMPanel {
             this.setBeforeRenderCallback(() -> {
                 this.setBounds(this.getParentWidth(), 16);
                 this.setPosition(4, this.getRelativeY());
+                bg.setHidden(!isSelected());
             });
 
             bg.setClickable(false);
@@ -329,9 +234,8 @@ public class NavigateBar extends NCMPanel {
             this.addChild(bg);
             this.bg.setBeforeRenderCallback(() -> {
                 bg.setMargin(0);
-                bg.setHidden(!selected);
                 bg.setColor(Color.BLACK);
-                bg.setAlpha(selected ? 0.2f : 0f);
+                bg.setAlpha(isSelected() ? 0.2f : 0f);
                 bg.setRadius(4);
             });
 
@@ -361,14 +265,7 @@ public class NavigateBar extends NCMPanel {
             this.setOnClickCallback(((relativeX, relativeY, mouseButton) -> {
 
                 if (mouseButton == 0) {
-                    this.selected = true;
-                    bg.setHidden(false);
-
                     this.onClick.run();
-
-                    NCMScreen.getInstance().getPlaylistsPanel().playlistPanel.getChildren().stream()
-                            .filter(it -> it instanceof PlaylistItem && it != this)
-                            .forEach(it -> ((PlaylistItem) it).setSelected(false));
                 }
 
                 return true;

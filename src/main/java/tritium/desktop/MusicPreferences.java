@@ -20,6 +20,7 @@ public class MusicPreferences {
     static final String APPEARANCE_KEY = "ui.appearance";
     static final String LANGUAGE_KEY = "ui.language";
     static final String INTERFACE_STYLE_KEY = "ui.interfaceStyle";
+    static final String LAYOUT_KEY = "ui.layout";
     static final String SONG_ROW_OPACITY_KEY = "ui.songRowOpacity";
     static final String LYRIC_HOVER_OPACITY_KEY = "ui.lyricHoverOpacity";
     static final String LYRIC_DEBUG_KEY = "lyrics.debug";
@@ -40,6 +41,8 @@ public class MusicPreferences {
     private final ModePreference language = new ModePreference("Language", "zh-CN", Language.tags());
     private final ModePreference interfaceStyle = new ModePreference("Interface Style", "Static",
             new String[]{"Static", "Blur", "LiquidGlass"});
+    private final ModePreference layout = new ModePreference("Layout", "Sidebar",
+            new String[]{"Sidebar", "TopBar"});
     private final NumberPreference songRowOpacity = new NumberPreference("Song Row Opacity", .28, 0, 1, .01);
     private final NumberPreference lyricHoverOpacity = new NumberPreference("Lyric Hover Opacity", .5, 0, 1, .01);
     private final PreferenceValue<Boolean> lyricDebug = new PreferenceValue<>("Per-word lyrics debug", false);
@@ -66,6 +69,7 @@ public class MusicPreferences {
         appearance.setValueCallback(value -> fireChanged());
         language.setValueCallback(value -> fireChanged());
         interfaceStyle.setValueCallback(value -> fireChanged());
+        layout.setValueCallback(value -> fireChanged());
         songRowOpacity.setValueCallback(value -> fireChanged());
         lyricHoverOpacity.setValueCallback(value -> fireChanged());
         showWidgetBoundary.setValueCallback(value -> {
@@ -126,6 +130,7 @@ public class MusicPreferences {
         json.addProperty(APPEARANCE_KEY, appearance.getValue());
         json.addProperty(LANGUAGE_KEY, language.getValue());
         json.addProperty(INTERFACE_STYLE_KEY, interfaceStyle.getValue());
+        json.addProperty(LAYOUT_KEY, layout.getValue());
         json.addProperty(SONG_ROW_OPACITY_KEY, songRowOpacity.getValue());
         json.addProperty(LYRIC_HOVER_OPACITY_KEY, lyricHoverOpacity.getValue());
         json.addProperty(LYRIC_DEBUG_KEY, lyricDebug.getValue());
@@ -155,6 +160,7 @@ public class MusicPreferences {
             applyMode(json, APPEARANCE_KEY, appearance);
             applyMode(json, LANGUAGE_KEY, language);
             applyMode(json, INTERFACE_STYLE_KEY, interfaceStyle);
+            applyMode(json, LAYOUT_KEY, layout);
             applyOpacity(json, SONG_ROW_OPACITY_KEY, songRowOpacity);
             applyOpacity(json, LYRIC_HOVER_OPACITY_KEY, lyricHoverOpacity);
             JsonElement backgroundElement = json.get("background");
@@ -266,6 +272,10 @@ public class MusicPreferences {
 
     public ModePreference interfaceStyle() {
         return interfaceStyle;
+    }
+
+    public ModePreference layout() {
+        return layout;
     }
 
     public NumberPreference songRowOpacity() {

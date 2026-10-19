@@ -255,7 +255,6 @@ public class ControlsBar extends NCMPanel {
                                 lblMusicArtist.getRelativeY() + lblMusicArtist.getHeight() * .5 + 2
                         ));
 
-        double volumeBarWidth = 125;
         double volumeBarHeight = 5;
         double volumeRightPadding = 16;
 
@@ -267,7 +266,7 @@ public class ControlsBar extends NCMPanel {
                 .setBeforeRenderCallback(() -> lblVolumeMin
                         .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT))
                         .setPosition(
-                                this.getWidth() - volumeRightPadding - FontManager.music40.getStringWidthD("J") - 4 - volumeBarWidth - FontManager.music40.getStringWidthD("I") - 2,
+                                this.getWidth() - volumeRightPadding - FontManager.music40.getStringWidthD("J") - 4 - volumeBarWidth() - FontManager.music40.getStringWidthD("I") - 2,
                                 this.getHeight() * .5 - FontManager.music40.getHeight() * .5 - .5
                         ));
 
@@ -308,7 +307,7 @@ public class ControlsBar extends NCMPanel {
                 .setRadius(1.5)
                 .setShouldOverrideMouseCursor(true)
                 .setBeforeRenderCallback(() -> volumeBarBg
-                        .setBounds(volumeBarWidth, volumeBarHeight)
+                        .setBounds(volumeBarWidth(), volumeBarHeight)
                         .setPosition(
                                 lblVolumeMin.getRelativeX() + FontManager.music40.getStringWidthD("I") + 2,
                                 this.getHeight() * .5 - volumeBarHeight * .5
@@ -325,6 +324,10 @@ public class ControlsBar extends NCMPanel {
                                 this.getWidth() - volumeRightPadding - FontManager.music40.getStringWidthD("J"),
                                 lblVolumeMin.getRelativeY()
                         ));
+    }
+
+    private double volumeBarWidth() {
+        return Math.max(24, Math.min(125, (getWidth() - 350) * .5));
     }
 
     private String formatDuration(float totalMillis) {

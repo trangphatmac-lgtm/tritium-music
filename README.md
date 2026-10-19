@@ -12,6 +12,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - QR-code login for NetEase Cloud Music accounts
 - Cookie login and persistence
 - Home page, playlists, search, and liked songs
+- Switch between Sidebar list and Top navigation in Settings → Appearance → Layout; the choice is saved automatically. Top navigation includes Explore, My playlists, Saved playlists, Settings, and search, with dedicated scrollable playlist libraries.
 - Play, pause, previous track, and next track
 - Volume adjustment and seek bar dragging
 - Lyric page, word-by-word lyrics, translations, and romaji

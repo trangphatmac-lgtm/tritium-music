@@ -5,9 +5,11 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.Project;
 import tritium.desktop.DesktopScreen;
+import tritium.desktop.DesktopAppState;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
@@ -23,7 +25,7 @@ import tritium.rendering.animation.Interpolations;
 import tritium.rendering.entities.impl.TextField;
 import tritium.rendering.font.CFontRenderer;
 import tritium.rendering.rendersystem.RenderSystem;
-import tritium.rendering.shader.Shaders;
+import tritium.rendering.shader.impl.VFFadeoutShader;
 import tritium.rendering.texture.ITextureObject;
 import tritium.rendering.texture.Textures;
 import tritium.utils.KeyboardUtils;
@@ -51,6 +53,12 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
     public boolean closing = false;
     public float alpha = 0.0f;
+
+    private static final double CAMERA_DISTANCE = 240;
+    private static final double COVER_SIZE = 96;
+    private static final double SCENE_CENTER_Y = .4;
+    private final CoverflowReflection reflection = new CoverflowReflection();
+    private VFFadeoutShader coverReflection;
 
     public void display() {
         closing = false;
@@ -81,6 +89,11 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
     @Override
     public void onGuiClosed() {
+
+        reflection.close();
+        if (coverReflection != null) coverReflection.close();
+        coverReflection = null;
+        DesktopAppState.background().pause();
 
         if (this.reloadOnClosed) {
             this.albumList.clear();
@@ -171,8 +184,13 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         api.getGLStateManager().loadIdentity();
 
         // translate z
-        api.getGLStateManager().translate(0, 0, -200.0f);
+        api.getGLStateManager().translate(0, 0, -CAMERA_DISTANCE);
         api.getGLStateManager().scale(1, -1, 1);
+        api.getGLStateManager().translate(0, (SCENE_CENTER_Y - .5) * paneHeight(), 0);
+    }
+
+    private static double paneHeight() {
+        return 2 * CAMERA_DISTANCE * Math.tan(Math.toRadians(45) / 2);
     }
 
     public void stopProjectionTransformation() {
@@ -202,25 +220,10 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
             rmbPressed = false;
 
         UiMaterials.beginFrame(mouseX, mouseY);
-        Rect.draw(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight(), AppTheme.color(RGBA.color(0, 0, 0, alpha * 0.5f), RGBA.color(1, 1, 1, alpha)));
+        DesktopAppState.background().render(Display.isVisible());
 
         UiMaterials.captureBackdrop(false);
-
-        if (albumList.isEmpty())
-            return;
-
-        textBox.setPosition(8, 8);
-        textBox.width = 240;
-        textBox.height = 34;
-        textBox.setFontRenderer(FontManager.pf40bold);
-        textBox.setTextColor(AppTheme.foreground());
-        textBox.setDisabledTextColour(Color.GRAY.getRGB());
-        textBox.setPlaceholder(I18n.text("coverflow.search"));
-        textBox.setCallback(this::filterAlbums);
-//        textBox.yOffset = -4f;
-
-        if (UiMaterials.enabled()) UiMaterials.control(4, 4, textBox.width + 8, textBox.height + 8, 12, AppTheme.inputBackground());
-        textBox.drawTextBox((int) mouseX, (int) mouseY);
+        drawBackgroundReflection();
 
         this.setupProjectionTransformation();
 
@@ -231,7 +234,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 //        api.getGLStateManager().clearDepth(1.0D);
 //        api.getGLStateManager().disableCull();
 
-        double coverSize = 96;
+        double coverSize = COVER_SIZE;
         double spacing = 24;
 
         float rotDegTarget = 45;
@@ -294,6 +297,42 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
         this.stopProjectionTransformation();
 
+        drawAlbumTitle();
+
+        // Controls stay outside the reflected scene.
+        textBox.setPosition(8, 8);
+        textBox.width = (float) Math.min(240, Math.max(1, RenderSystem.getWidth() - 16));
+        textBox.height = 34;
+        textBox.setFontRenderer(FontManager.pf40bold);
+        textBox.setTextColor(AppTheme.foreground());
+        textBox.setDisabledTextColour(Color.GRAY.getRGB());
+        textBox.setPlaceholder(I18n.text("coverflow.search"));
+        textBox.setCallback(this::filterAlbums);
+        if (UiMaterials.enabled()) UiMaterials.control(4, 4, textBox.width + 8, textBox.height + 8, 12, AppTheme.inputBackground());
+        textBox.drawTextBox(mouseX, mouseY);
+    }
+
+    private void drawBackgroundReflection() {
+        double height = RenderSystem.getHeight();
+        double coverBottom = height * (SCENE_CENTER_Y + COVER_SIZE * .5 / paneHeight());
+        double scale = Math.min(1, height / 360);
+        // Only the background enters the polished floor's perspective and blur pass.
+        reflection.draw(coverBottom + 1.5 * scale, alpha);
+    }
+
+    private void drawAlbumTitle() {
+        double height = RenderSystem.getHeight();
+        CFontRenderer font = FontManager.pf50bold;
+        double scale = Math.min(1, height / 360);
+        double titleY = height - (font.getHeight() + 18) * scale;
+        if (!renderList.isEmpty()) {
+            String title = font.trim(albumName(renderList.get(index)), Math.max(1, (RenderSystem.getWidth() - 32) / scale));
+            api.getGLStateManager().pushMatrix();
+            api.getGLStateManager().translate(RenderSystem.getWidth() * .5, titleY, 0);
+            api.getGLStateManager().scale(scale, scale, 1);
+            font.drawCenteredStringWithShadow(title, 0, 0, AppTheme.foreground());
+            api.getGLStateManager().popMatrix();
+        }
     }
 
     private void renderCoverImage(Album al, double offsetX, double coverSize, float rotDegTarget, int i, boolean left, double mouseX, double mouseY, int dWheel) {
@@ -312,7 +351,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
         double fovy = 45.0f;
         double aspectRatio = (RenderSystem.getWidth() / RenderSystem.getHeight());
-        double translateZ = 200.0f; // 对应视图矩阵中的 offset z
+        double translateZ = CAMERA_DISTANCE;
 
         // 焦点
         double f = (1.0 / Math.tan(Math.toRadians(fovy) / 2.0));
@@ -321,7 +360,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         double paneHeight = translateZ / f * 2;
 
         mouseX = mouseX / RenderSystem.getWidth() * paneWidth - paneWidth * 0.5;
-        mouseY = mouseY / RenderSystem.getHeight() * paneHeight - paneHeight * 0.5;
+        mouseY = mouseY / RenderSystem.getHeight() * paneHeight - paneHeight * SCENE_CENTER_Y;
 
         // 喜欢我的魔法数字吗
         double fontScale = (1 / aspectRatio) * 0.618;
@@ -351,12 +390,13 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         Rect.draw(offsetX, -coverSize * 0.5f, coverSize, coverSize, RGBA.color(128, 128, 128, 128));
 
         if (texture != null) {
+            if (coverReflection == null) coverReflection = new VFFadeoutShader();
             api.getGLStateManager().bindTexture(texture.getGlTextureId());
             texture.linearFilter();
             Image.draw(offsetX, -coverSize * 0.5, coverSize, coverSize, Image.Type.Normal);
 
-            // reflection
-            Shaders.VF_FADEOUT.draw(offsetX, coverSize * 0.5, coverSize, coverSize, 0.5, 0.85f);
+            // Preserve the original cover-local mirror: same proportions, sharp texture and fade.
+            coverReflection.draw(offsetX, coverSize * .5, coverSize, coverSize, .5, .85f * alpha);
 
             if (renderingData.flipped || (renderingData.rotateDeg < -5 && index == i)) {
                 // flip it
@@ -471,18 +511,6 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                 lmbPressed = true;
             }
 
-//            OpenApiInstance.api.getRenderUtil().drawRect(mouseX, mouseY, 10, 10, Color.WHITE);
-
-            this.stopProjectionTransformation();
-
-            // mouseY = mouseY / RenderSystem.getHeight() * paneHeight - paneHeight * 0.5;
-
-            CFontRenderer fr = FontManager.pf50bold;
-
-            fr.drawCenteredStringWithShadow(albumName(al), RenderSystem.getWidth() * 0.5, RenderSystem.getHeight() * 0.5 + (coverSize - paneHeight * 0.225) / paneHeight * RenderSystem.getHeight(), AppTheme.foreground());
-//            fr.drawCenteredString(al.getA, RenderSystem.getWidth() * 0.5, RenderSystem.getHeight() * 0.5 + (coverSize - paneHeight * 0.25) / paneHeight * RenderSystem.getHeight() + fr.getHeight(), -1);
-
-            this.setupProjectionTransformation();
         }
 
     }

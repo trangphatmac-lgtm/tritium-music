@@ -1,13 +1,14 @@
 package tritium.rendering.shader.impl;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 import tritium.interfaces.SharedConstants;
 import tritium.rendering.shader.ShaderProgram;
 import tritium.rendering.shader.uniform.Uniform1f;
 import tritium.rendering.shader.uniform.Uniform1i;
 import tritium.rendering.shader.uniform.Uniform2f;
 
-public class VFFadeoutShader implements SharedConstants {
+public class VFFadeoutShader implements SharedConstants, AutoCloseable {
 
     private final ShaderProgram program = new ShaderProgram("vf_fadeout.frag", "vertex.vsh");
 
@@ -49,5 +50,9 @@ public class VFFadeoutShader implements SharedConstants {
         draw((float) x, (float) y, (float) width, (float) height, (float) controlPerc, alpha);
     }
 
+    @Override
+    public void close() {
+        GL20.glDeleteProgram(program.getProgramId());
+    }
 
 }

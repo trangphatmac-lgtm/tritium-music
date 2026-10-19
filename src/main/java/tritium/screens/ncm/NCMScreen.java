@@ -23,6 +23,13 @@ import tritium.rendering.ui.widgets.RectWidget;
 import tritium.screens.ncm.panels.ControlsBar;
 import tritium.screens.ncm.panels.HomePanel;
 import tritium.screens.ncm.panels.NavigateBar;
+import tritium.screens.ncm.panels.TopNavigateBar;
+import tritium.screens.ncm.panels.MusicSearchBar;
+import tritium.screens.ncm.panels.PlaylistLibraryPanel;
+import tritium.screens.ncm.panels.PlaylistPanel;
+import tritium.screens.ncm.panels.CloudStoragePanel;
+import tritium.screens.ncm.panels.SettingsPanel;
+import tritium.utils.KeyboardUtils;
 import tritium.utils.cursor.CursorUtils;
 import tritium.utils.other.multithreading.MultiThreadingUtil;
 
@@ -46,10 +53,15 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
     @Getter
     NavigateBar playlistsPanel;
 
+    private NCMPanel navigation;
+    private MusicSearchBar searchBar;
+    private boolean topBarLayout;
+
     RectWidget currentPanelBg = new RectWidget();
 
     float prevAnimatingPanelAlpha = 0f;
     NCMPanel prevAnimatingPanel = null;
+    @Getter
     NCMPanel currentPanel = null;
     float curPanelAlphaAnimation = 0f;
 
@@ -94,6 +106,9 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             // only when logged in
             if (CloudMusic.profile != null)
                 this.setCurrentPanel(new HomePanel());
+        } else if (topBarLayout != isTopBarLayout()) {
+            // Only replace navigation. Keep page/scroll state, history, and player controls.
+            this.layoutNavigation();
         }
     }
 
@@ -104,26 +119,59 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
     }
 
     public void layout() {
-        this.basePanel.getChildren().clear();
-
-        RectWidget bg = new RectWidget();
-        this.basePanel.addChild(bg);
-
         this.basePanel.setBeforeRenderCallback(() -> this.basePanel.center());
-
-        this.playlistsPanel = new NavigateBar();
-        this.basePanel.addChild(this.playlistsPanel);
-
-        this.basePanel.addChild(this.currentPanelBg);
+        if (searchBar == null) searchBar = new MusicSearchBar(this);
+        this.layoutNavigation();
 
         this.currentPanelBg.setBeforeRenderCallback(() -> {
-            this.currentPanelBg.setBounds(playlistsPanel.getWidth(), 0, this.currentPanelBg.getParentWidth() - playlistsPanel.getWidth(), this.getPanelHeight() * 0.93);
+            double left = topBarLayout ? 0 : navigation.getWidth();
+            double top = topBarLayout ? navigation.getHeight() : 0;
+            this.currentPanelBg.setBounds(left, top, this.getPanelWidth() - left,
+                    Math.max(0, this.getPanelHeight() * .93 - top));
             this.currentPanelBg.setColor(getColor(ColorType.GENERIC_BACKGROUND));
             this.currentPanelBg.setAlpha((DesktopAppState.background().isActive() || UiMaterials.enabled()) ? 0f : 1f);
         });
 
         this.controlsBar = new ControlsBar();
         this.controlsBar.onInit();
+    }
+
+    private void layoutNavigation() {
+        this.basePanel.getChildren().clear();
+        topBarLayout = isTopBarLayout();
+        searchBar.setBeforeRenderCallback(() -> { });
+        if (topBarLayout) {
+            playlistsPanel = null;
+            navigation = new TopNavigateBar(this, searchBar);
+        } else {
+            playlistsPanel = new NavigateBar(this, searchBar);
+            navigation = playlistsPanel;
+        }
+        this.basePanel.addChild(navigation);
+        this.basePanel.addChild(currentPanelBg);
+    }
+
+    public boolean isTopBarLayout() {
+        return DesktopAppState.preferences().layout().getValue().equals("TopBar");
+    }
+
+    public enum NavigationSection { EXPLORE, MY_PLAYLISTS, SAVED_PLAYLISTS, SETTINGS }
+
+    public NavigationSection getNavigationSection() {
+        if (currentPanel instanceof SettingsPanel) return NavigationSection.SETTINGS;
+        if (currentPanel instanceof PlaylistLibraryPanel library)
+            return library.isSubscribed() ? NavigationSection.SAVED_PLAYLISTS : NavigationSection.MY_PLAYLISTS;
+        if (currentPanel instanceof CloudStoragePanel) return NavigationSection.MY_PLAYLISTS;
+        if (currentPanel instanceof PlaylistPanel playlist && !playlist.playList.isSearchMode()) {
+            if (CloudMusic.playLists != null) {
+                for (var owned : CloudMusic.playLists) {
+                    if (owned.equals(playlist.playList)) return owned.isSubscribed()
+                            ? NavigationSection.SAVED_PLAYLISTS : NavigationSection.MY_PLAYLISTS;
+                }
+            }
+            if (playlist.playList.isSubscribed()) return NavigationSection.SAVED_PLAYLISTS;
+        }
+        return NavigationSection.EXPLORE;
     }
 
     public double getSpacing() {
@@ -214,7 +262,8 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             }
 
             this.controlsBar.setAlpha(alpha);
-            this.controlsBar.setBounds(this.currentPanelBg.getX(), this.currentPanelBg.getY() + this.currentPanelBg.getHeight(), this.currentPanelBg.getWidth(), this.getPanelHeight() - this.currentPanelBg.getHeight());
+            double controlsY = this.currentPanelBg.getY() + this.currentPanelBg.getHeight();
+            this.controlsBar.setBounds(this.currentPanelBg.getX(), controlsY, this.currentPanelBg.getWidth(), this.getPanelHeight() - controlsY);
             this.controlsBar.renderWidget(mouseX, mouseY, dWheel);
         }
 
@@ -375,11 +424,17 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             return;
         }
 
-        if (this.basePanel.onKeyTypedReceived(typedChar, keyCode)) {
+        if (this.musicLyricsPanel == null && searchBar != null && CloudMusic.profile != null
+                && KeyboardUtils.isKeyComboCtrl(keyCode, Keyboard.KEY_F)) {
+            searchBar.focus();
             return;
         }
 
-        if (this.currentPanel != null && this.currentPanel.onKeyTypedReceived(typedChar, keyCode)) {
+        if (this.musicLyricsPanel == null && this.basePanel.onKeyTypedReceived(typedChar, keyCode)) {
+            return;
+        }
+
+        if (this.musicLyricsPanel == null && this.currentPanel != null && this.currentPanel.onKeyTypedReceived(typedChar, keyCode)) {
             return;
         }
 
@@ -409,7 +464,11 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         }
 
         if (musicLyricsPanel == null) {
+            if (searchBar != null) searchBar.unfocusOutside(mouseX, mouseY);
             this.basePanel.onMouseClickReceived(mouseX, mouseY, mouseButton);
+            if (mouseButton < 3 && navigation != null
+                    && mouseX >= navigation.getX() && mouseX <= navigation.getX() + navigation.getWidth()
+                    && mouseY >= navigation.getY() && mouseY <= navigation.getY() + navigation.getHeight()) return;
 
             if (this.currentPanel != null)
                 this.currentPanel.onMouseClickReceived(mouseX, mouseY, mouseButton);

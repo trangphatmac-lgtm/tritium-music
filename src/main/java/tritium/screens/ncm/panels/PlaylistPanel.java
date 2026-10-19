@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
  */
 public class PlaylistPanel extends NCMPanel {
 
+    private static final double ACTION_BUTTON_HEIGHT = 20;
+
     public PlayList playList;
 
     public PlaylistPanel(PlayList playlist) {
@@ -39,9 +41,16 @@ public class PlaylistPanel extends NCMPanel {
 
     private TextFieldWidget tfSearch;
     private double tfOpenAnimation = 20;
+    private String searchStatus = "";
+
+    public void setSearchStatus(String searchStatus) {
+        this.searchStatus = searchStatus;
+    }
 
     @Override
     public void onInit() {
+
+        this.getChildren().clear();
 
         double musicsContainerOffsetY;
 
@@ -63,7 +72,7 @@ public class PlaylistPanel extends NCMPanel {
             this.addChild(btnPlay);
 
             btnPlay.setBeforeRenderCallback(() -> {
-                btnPlay.setBounds(Math.max(57, FontManager.pf16bold.getStringWidthD(I18n.text("playlist.play")) + 16), 20);
+                btnPlay.setBounds(Math.max(57, FontManager.pf16bold.getStringWidthD(I18n.text("playlist.play")) + 16), ACTION_BUTTON_HEIGHT);
                 btnPlay.setPosition(cover.getRelativeX() + cover.getWidth() + 12, cover.getRelativeY() + cover.getHeight() - btnPlay.getHeight());
                 btnPlay.setRadius(3);
                 btnPlay.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
@@ -83,7 +92,7 @@ public class PlaylistPanel extends NCMPanel {
             this.addChild(btnPlayRandomOrder);
 
             btnPlayRandomOrder.setBeforeRenderCallback(() -> {
-                btnPlayRandomOrder.setBounds(Math.max(57, FontManager.pf16bold.getStringWidthD(I18n.text("playlist.shuffle")) + 16), 20);
+                btnPlayRandomOrder.setBounds(Math.max(57, FontManager.pf16bold.getStringWidthD(I18n.text("playlist.shuffle")) + 16), ACTION_BUTTON_HEIGHT);
                 btnPlayRandomOrder.setPosition(cover.getRelativeX() + cover.getWidth() + 12 + btnPlay.getWidth() + 8, cover.getRelativeY() + cover.getHeight() - btnPlayRandomOrder.getHeight());
                 btnPlayRandomOrder.setRadius(3);
                 btnPlayRandomOrder.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
@@ -107,7 +116,7 @@ public class PlaylistPanel extends NCMPanel {
             this.addChild(btnCoverflow);
 
             btnCoverflow.setBeforeRenderCallback(() -> {
-                btnCoverflow.setBounds(57, 17);
+                btnCoverflow.setBounds(57, ACTION_BUTTON_HEIGHT);
                 btnCoverflow.setPosition(cover.getRelativeX() + cover.getWidth() + 12 + btnPlay.getWidth() + 8 + btnPlayRandomOrder.getWidth() + 8, cover.getRelativeY() + cover.getHeight() - btnCoverflow.getHeight());
                 btnCoverflow.setRadius(3);
                 btnCoverflow.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
@@ -171,7 +180,7 @@ public class PlaylistPanel extends NCMPanel {
                     .setColor(hexColor(100, 100, 100))
                     .setBeforeRenderCallback(() -> lblSearchIcon
                             .centerVertically()
-                            .setPosition(lblSearchIcon.getRelativeY(), lblSearchIcon.getRelativeY()));
+                            .setPosition((searchBar.getHeight() - lblSearchIcon.getWidth()) * .5, lblSearchIcon.getRelativeY()));
 
             this.tfSearch = new TextFieldWidget(FontManager.pf14bold);
             searchBar.addChild(tfSearch);
@@ -247,7 +256,16 @@ public class PlaylistPanel extends NCMPanel {
 
             musicsContainerOffsetY = cover.getRelativeY() + cover.getHeight() + 24;
         } else {
-            musicsContainerOffsetY = 18;
+            LabelWidget title = new LabelWidget(() -> I18n.text("search.results", playList.getName()), FontManager.pf25bold);
+            title.setWidthLimitType(LabelWidget.WidthLimitType.TRIM_TO_WIDTH);
+            title.setBeforeRenderCallback(() -> title.setPosition(24, 24).setColor(AppTheme.foreground())
+                    .setMaxWidth(Math.max(0, getWidth() - 48)));
+            addChild(title);
+            LabelWidget status = new LabelWidget(() -> searchStatus.isEmpty() ? I18n.songCount(playList.musics.size())
+                    : I18n.text(searchStatus), FontManager.pf14bold);
+            status.setBeforeRenderCallback(() -> status.setPosition(24, 52).setColor(AppTheme.foreground()).setAlpha(.5f));
+            addChild(status);
+            musicsContainerOffsetY = 80;
         }
 
         Panel rwMusicsContainer = new Panel();

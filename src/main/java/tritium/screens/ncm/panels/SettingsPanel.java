@@ -74,6 +74,8 @@ public class SettingsPanel extends NCMPanel {
                 mode -> I18n.text("mode." + mode)));
         scrollPanel.addChild(new ColorRow("settings.accent", preferences.accentColor(), false));
 
+        scrollPanel.addChild(new ChoiceRow("settings.layout", preferences.layout()));
+
         scrollPanel.addChild(new ChoiceRow("settings.interface", preferences.interfaceStyle()));
         scrollPanel.addChild(new BackgroundStatusRow(UiMaterials::status));
 
