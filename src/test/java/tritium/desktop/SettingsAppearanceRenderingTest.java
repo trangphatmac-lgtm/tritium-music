@@ -38,8 +38,10 @@ class SettingsAppearanceRenderingTest {
         int originalAccent = DesktopAppState.preferences().accentColor().getValue();
         int originalSpectrum = DesktopAppState.preferences().hud().musicSpectrum().color().getValue();
         boolean originalFps = DesktopAppState.preferences().showFps().getValue();
+        String originalLanguage = DesktopAppState.preferences().language().getValue();
         String originalAppearance = DesktopAppState.preferences().appearance().getValue();
         try {
+            DesktopAppState.preferences().language().setValue("zh-CN");
             DesktopAppState.preferences().appearance().setValue("Dark");
             invokeApp("createDisplay");
             Display.update();
@@ -52,7 +54,26 @@ class SettingsAppearanceRenderingTest {
             settings.onInit();
             renderStable(settings);
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
-            AbstractWidget<?> mode = scroll.getChildren().get(1);
+            AbstractWidget<?> language = scroll.getChildren().get(1);
+            var title = (tritium.rendering.ui.widgets.LabelWidget) settings.getChildren().getFirst();
+            assertEquals("设置", title.getLabel());
+            savePreview("settings-locale-zh-CN");
+            click(settings, language.getX() + 20, language.getY() + 20);
+            renderStable(settings);
+            assertEquals("zh-TW", DesktopAppState.preferences().language().getValue());
+            assertEquals("設定", title.getLabel());
+            savePreview("settings-locale-zh-TW");
+            click(settings, language.getX() + 20, language.getY() + 20);
+            settings.setWidth(Math.min(440, RenderSystem.getWidth()));
+            renderStable(settings);
+            assertEquals("en", DesktopAppState.preferences().language().getValue());
+            assertEquals("Settings", title.getLabel());
+            savePreview("settings-locale-en");
+            click(settings, language.getX() + 20, language.getY() + 20);
+            settings.setWidth(Math.min(720, RenderSystem.getWidth()));
+            renderStable(settings);
+            assertEquals("zh-CN", DesktopAppState.preferences().language().getValue());
+            AbstractWidget<?> mode = scroll.getChildren().get(3);
             assertRgb(8, 8, 30, 30, 30, 1);
             savePreview("settings-dark");
             click(settings, mode.getX() + 20, mode.getY() + 20);
@@ -97,7 +118,10 @@ class SettingsAppearanceRenderingTest {
             renderStable(settings);
             assertEquals("Dark", DesktopAppState.preferences().appearance().getValue());
             assertRgb(8, 8, 30, 30, 30, 1);
-            AbstractWidget<?> theme = scroll.getChildren().get(2);
+            AbstractWidget<?> theme = scroll.getChildren().get(4);
+            // Keep the expanded picker within the viewport below the new General section.
+            scroll.actualScrollOffset = scroll.targetScrollOffset = 92;
+            renderStable(settings);
             click(settings, theme.getX() + 68, theme.getY() + 61);
             assertEquals(0xFF58A6FF, DesktopAppState.preferences().accentColor().getValue());
             click(settings, theme.getX() + theme.getWidth() - 40, theme.getY() + 20);
@@ -121,7 +145,7 @@ class SettingsAppearanceRenderingTest {
                     .reduce((first, second) -> second).orElseThrow();
             // Expand and scroll the spectrum section to the top of the visible viewport.
             spectrum.onMouseClicked(30, 20, 0);
-            scroll.actualScrollOffset = scroll.targetScrollOffset = spectrum.getRelativeY() - 12;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + spectrum.getRelativeY() - 12;
             renderStable(settings);
             ColorPickerWidget spectrumPicker = (ColorPickerWidget) spectrum.getChildren().getFirst();
             assertFalse(spectrumPicker.isHidden());
@@ -156,6 +180,7 @@ class SettingsAppearanceRenderingTest {
             DesktopAppState.preferences().accentColor().setValue(originalAccent);
             DesktopAppState.preferences().hud().musicSpectrum().color().setValue(originalSpectrum);
             DesktopAppState.preferences().showFps().setValue(originalFps);
+            DesktopAppState.preferences().language().setValue(originalLanguage);
             DesktopAppState.preferences().appearance().setValue(originalAppearance);
             if (Display.isCreated()) {
                 FontManager.deleteLoadedTextures();

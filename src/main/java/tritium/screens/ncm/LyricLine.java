@@ -21,10 +21,22 @@ public class LyricLine {
     @Getter
     public long timestamp;  // 时间戳(ms)
 
-    @Getter
     @Setter
     @NonNull
     public String lyric;  // 歌词文本
+
+    private boolean placeholder;
+    private tritium.i18n.Language measuredLanguage;
+
+    public static LyricLine placeholder() {
+        LyricLine line = new LyricLine(0L, "");
+        line.placeholder = true;
+        return line;
+    }
+
+    public String getLyric() {
+        return placeholder ? tritium.i18n.I18n.text("lyrics.empty") : lyric;
+    }
 
     public LyricLine(long timestamp, @NonNull String lyric) {
         this.timestamp = timestamp;
@@ -84,6 +96,12 @@ public class LyricLine {
     }
 
     public void computeHeight(double width) {
+
+        if (placeholder && measuredLanguage != tritium.i18n.I18n.language()) {
+            measuredLanguage = tritium.i18n.I18n.language();
+            heightComputed = false;
+        }
+        String lyric = getLyric();
 
         if (heightComputed) return;
 

@@ -1,5 +1,6 @@
 package tritium.screens.ncm;
 
+import tritium.i18n.I18n;
 import tritium.rendering.material.UiMaterials;
 import lombok.Getter;
 import tritium.desktop.AppTheme;
@@ -61,7 +62,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
                 this.closing = true;
             } catch (RuntimeException e) {
                 if (acceptingQrLogin) {
-                    statusText = "扫码登录失败";
+                    statusText = I18n.text("login.qrFailed");
                     e.printStackTrace();
                 }
             }
@@ -104,7 +105,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
 
         renderModeTabs(posX, posY, width, alpha);
 
-        String title = mode == LoginMode.QR ? "扫码登录" : "Cookie 登录";
+        String title = mode == LoginMode.QR ? I18n.text("login.qr") : I18n.text("login.cookie");
         String[] strings = FontManager.pf20.fitWidth(title, width - 24);
 
         double startY = posY + height / 6.0;
@@ -164,11 +165,11 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
         if (!UiMaterials.enabled()) Rect.draw(inputX, inputY, inputWidth, inputHeight, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_BACKGROUND), alpha));
         UiMaterials.control(inputX, inputY, inputWidth, inputHeight, 4, reAlpha(NCMScreen.getColor(NCMScreen.ColorType.ELEMENT_BACKGROUND), alpha));
 
-        String preview = cookieInput.isEmpty() ? "MUSIC_U=...; __csrf=..." : "Cookie length: " + cookieInput.length();
+        String preview = cookieInput.isEmpty() ? "MUSIC_U=...; __csrf=..." : I18n.text("login.cookieLength", cookieInput.length());
         FontManager.pf14.drawString(preview, inputX + 10, inputY + 9, cookieInput.isEmpty() ? secondaryTextColor : textColor);
 
-        drawButton(buttonX(-1), buttonY(), 96, 28, "粘贴", alpha, textColor);
-        drawButton(buttonX(1), buttonY(), 96, 28, "登录", alpha, textColor);
+        drawButton(buttonX(-1), buttonY(), 96, 28, I18n.text("login.paste"), alpha, textColor);
+        drawButton(buttonX(1), buttonY(), 96, 28, I18n.text("login.signIn"), alpha, textColor);
 
         if (!statusText.isBlank()) {
             FontManager.pf14.drawCenteredString(statusText, posX + width / 2.0, buttonY() + 38, secondaryTextColor);
@@ -179,7 +180,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
         double tabY = posY + 28;
         double qrX = posX + width / 2.0 - 88;
         double cookieX = posX + width / 2.0 + 8;
-        drawModeTab(qrX, tabY, 80, 26, "扫码", mode == LoginMode.QR, alpha);
+        drawModeTab(qrX, tabY, 80, 26, I18n.text("login.scan"), mode == LoginMode.QR, alpha);
         drawModeTab(cookieX, tabY, 80, 26, "Cookie", mode == LoginMode.COOKIE, alpha);
     }
 
@@ -269,19 +270,19 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
             if (data instanceof String text && !text.isBlank()) {
                 cookieInput.setLength(0);
                 cookieInput.append(text.trim());
-                statusText = "已读取剪贴板";
+                statusText = I18n.text("login.pasted");
             } else {
-                statusText = "剪贴板为空";
+                statusText = I18n.text("login.clipboardEmpty");
             }
         } catch (Exception e) {
-            statusText = "无法读取剪贴板";
+            statusText = I18n.text("login.clipboardFailed");
         }
     }
 
     private void submitCookie() {
         String cookie = cookieInput.toString().trim();
         if (cookie.isEmpty()) {
-            statusText = "Cookie 为空";
+            statusText = I18n.text("login.cookieEmpty");
             return;
         }
 
@@ -290,7 +291,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
             loginThread.interrupt();
         }
         OptionsUtil.setCookie(cookie);
-        statusText = "正在登录";
+        statusText = I18n.text("login.signingIn");
         success = true;
         closing = true;
     }

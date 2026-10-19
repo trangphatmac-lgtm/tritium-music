@@ -1,5 +1,7 @@
 package tritium.screens.ncm.panels;
 
+import tritium.i18n.I18n;
+import tritium.i18n.Language;
 import tritium.rendering.material.UiMaterials;
 import org.lwjgl.input.Mouse;
 import tritium.desktop.DesktopCacheManager;
@@ -42,7 +44,7 @@ public class SettingsPanel extends NCMPanel {
         this.getChildren().clear();
         backgroundRows.clear();
 
-        LabelWidget title = new LabelWidget("设置", FontManager.pf32);
+        LabelWidget title = new LabelWidget(() -> I18n.text("settings.title"), FontManager.pf32);
         this.addChild(title);
         title.setBeforeRenderCallback(() -> title
                 .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT))
@@ -63,40 +65,40 @@ public class SettingsPanel extends NCMPanel {
             scrollPanel.setBounds(MARGIN, top, this.getWidth() - MARGIN * 2.0, this.getHeight() - top - MARGIN);
         });
 
-        scrollPanel.addChild(new SectionHeader("外观"));
-        scrollPanel.addChild(new ChoiceRow("显示模式", preferences.appearance(),
-                mode -> mode.equals("Light") ? "浅色" : "深色"));
-        scrollPanel.addChild(new ColorRow("主题色", preferences.accentColor(), false));
+        scrollPanel.addChild(new SectionHeader("settings.general"));
+        scrollPanel.addChild(new ChoiceRow("settings.language", preferences.language(),
+                tag -> Language.fromTag(tag).nativeName()));
 
-        scrollPanel.addChild(new ChoiceRow("界面风格", preferences.interfaceStyle(), mode -> switch (mode) {
-            case "Blur" -> "Blur";
-            case "LiquidGlass" -> "Liquid Glass";
-            default -> "Static";
-        }));
+        scrollPanel.addChild(new SectionHeader("settings.appearance"));
+        scrollPanel.addChild(new ChoiceRow("settings.displayMode", preferences.appearance(),
+                mode -> I18n.text("mode." + mode)));
+        scrollPanel.addChild(new ColorRow("settings.accent", preferences.accentColor(), false));
+
+        scrollPanel.addChild(new ChoiceRow("settings.interface", preferences.interfaceStyle()));
         scrollPanel.addChild(new BackgroundStatusRow(UiMaterials::status));
 
         addBackgroundSettings(scrollPanel);
 
-        scrollPanel.addChild(new SectionHeader("播放"));
-        scrollPanel.addChild(new ChoiceRow("音质", preferences.quality()));
-        scrollPanel.addChild(new SliderRow("音量", preferences.volume(), value -> Math.round(value * 100) + "%"));
+        scrollPanel.addChild(new SectionHeader("settings.playback"));
+        scrollPanel.addChild(new ChoiceRow("settings.quality", preferences.quality()));
+        scrollPanel.addChild(new SliderRow("settings.volume", preferences.volume(), value -> Math.round(value * 100) + "%"));
 
-        scrollPanel.addChild(new SectionHeader("缓存"));
+        scrollPanel.addChild(new SectionHeader("settings.cache"));
         scrollPanel.addChild(new CacheRow());
 
-        scrollPanel.addChild(new SectionHeader("歌词"));
-        scrollPanel.addChild(new ToggleRow("显示翻译", preferences.showTranslation()));
-        scrollPanel.addChild(new ToggleRow("显示罗马音", preferences.showRoman()));
-        scrollPanel.addChild(new SliderRow("歌词高度", preferences.lyricHeight(),
+        scrollPanel.addChild(new SectionHeader("settings.lyrics"));
+        scrollPanel.addChild(new ToggleRow("settings.translation", preferences.showTranslation()));
+        scrollPanel.addChild(new ToggleRow("settings.roman", preferences.showRoman()));
+        scrollPanel.addChild(new SliderRow("settings.lyricHeight", preferences.lyricHeight(),
                 value -> String.format(Locale.ROOT, "%.1f", value)));
 
-        scrollPanel.addChild(new SectionHeader("系统 HUD"));
-        scrollPanel.addChild(new ToggleRow("启用播放提示 HUD", preferences.musicToast()));
-        scrollPanel.addChild(new ToggleRow("启用信息 HUD", preferences.hud().musicInfo().enabled()));
-        scrollPanel.addChild(new ToggleRow("启用歌词 HUD", preferences.hud().musicLyrics().enabled()));
-        scrollPanel.addChild(new ToggleRow("启用频谱 HUD", preferences.hud().musicSpectrum().enabled()));
-        scrollPanel.addChild(new ToggleRow("编辑 HUD 布局", preferences.hud().editMode()));
-        scrollPanel.addChild(new ActionRow("重置 HUD 布局", () -> {
+        scrollPanel.addChild(new SectionHeader("settings.systemHud"));
+        scrollPanel.addChild(new ToggleRow("settings.toast", preferences.musicToast()));
+        scrollPanel.addChild(new ToggleRow("settings.infoHudEnabled", preferences.hud().musicInfo().enabled()));
+        scrollPanel.addChild(new ToggleRow("settings.lyricsHudEnabled", preferences.hud().musicLyrics().enabled()));
+        scrollPanel.addChild(new ToggleRow("settings.spectrumHudEnabled", preferences.hud().musicSpectrum().enabled()));
+        scrollPanel.addChild(new ToggleRow("settings.editHud", preferences.hud().editMode()));
+        scrollPanel.addChild(new ActionRow("settings.resetHud", () -> {
             Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment()
                     .getDefaultScreenDevice()
                     .getDefaultConfiguration()
@@ -106,33 +108,33 @@ public class SettingsPanel extends NCMPanel {
             DesktopAppState.savePreferences();
         }));
 
-        scrollPanel.addChild(new SectionHeader("信息 HUD"));
-        scrollPanel.addChild(new SliderRow("不透明度", preferences.hud().musicInfo().opacity(),
+        scrollPanel.addChild(new SectionHeader("settings.infoHud"));
+        scrollPanel.addChild(new SliderRow("settings.opacity", preferences.hud().musicInfo().opacity(),
                 value -> Math.round(value * 100) + "%"));
-        scrollPanel.addChild(new ToggleRow("作者区域显示当前歌词", preferences.hud().musicInfo().turnComposerIntoLyric()));
+        scrollPanel.addChild(new ToggleRow("settings.artistLyric", preferences.hud().musicInfo().turnComposerIntoLyric()));
 
-        scrollPanel.addChild(new SectionHeader("歌词 HUD"));
-        scrollPanel.addChild(new ChoiceRow("滚动效果", preferences.hud().musicLyrics().scrollEffect()));
-        scrollPanel.addChild(new ChoiceRow("对齐方式", preferences.hud().musicLyrics().align()));
-        scrollPanel.addChild(new ToggleRow("单行模式", preferences.hud().musicLyrics().singleLine()));
-        scrollPanel.addChild(new ToggleRow("歌词阴影", preferences.hud().musicLyrics().shadow()));
-        scrollPanel.addChild(new ToggleRow("优雅滚动", preferences.hud().musicLyrics().graceScroll()));
+        scrollPanel.addChild(new SectionHeader("settings.lyricsHud"));
+        scrollPanel.addChild(new ChoiceRow("settings.scrollEffect", preferences.hud().musicLyrics().scrollEffect()));
+        scrollPanel.addChild(new ChoiceRow("settings.align", preferences.hud().musicLyrics().align()));
+        scrollPanel.addChild(new ToggleRow("settings.singleLine", preferences.hud().musicLyrics().singleLine()));
+        scrollPanel.addChild(new ToggleRow("settings.shadow", preferences.hud().musicLyrics().shadow()));
+        scrollPanel.addChild(new ToggleRow("settings.graceScroll", preferences.hud().musicLyrics().graceScroll()));
 
-        scrollPanel.addChild(new SectionHeader("频谱 HUD"));
-        scrollPanel.addChild(new ChoiceRow("频谱样式", preferences.hud().musicSpectrum().style()));
-        scrollPanel.addChild(new ToggleRow("紧凑模式", preferences.hud().musicSpectrum().compact()));
-        scrollPanel.addChild(new ToggleRow("频谱指示线", preferences.hud().musicSpectrum().indicator()));
-        scrollPanel.addChild(new ToggleRow("频谱绝对音量", preferences.hud().musicSpectrum().absoluteVolume()));
-        scrollPanel.addChild(new SliderRow("频谱倍率", preferences.hud().musicSpectrum().multiplier(),
+        scrollPanel.addChild(new SectionHeader("settings.spectrumHud"));
+        scrollPanel.addChild(new ChoiceRow("settings.spectrumStyle", preferences.hud().musicSpectrum().style()));
+        scrollPanel.addChild(new ToggleRow("settings.compact", preferences.hud().musicSpectrum().compact()));
+        scrollPanel.addChild(new ToggleRow("settings.indicator", preferences.hud().musicSpectrum().indicator()));
+        scrollPanel.addChild(new ToggleRow("settings.absoluteVolume", preferences.hud().musicSpectrum().absoluteVolume()));
+        scrollPanel.addChild(new SliderRow("settings.multiplier", preferences.hud().musicSpectrum().multiplier(),
                 value -> String.format(Locale.ROOT, "%.1fx", value)));
-        scrollPanel.addChild(new ColorRow("频谱颜色", preferences.hud().musicSpectrum().color(), true));
+        scrollPanel.addChild(new ColorRow("settings.spectrumColor", preferences.hud().musicSpectrum().color(), true));
 
-        scrollPanel.addChild(new SectionHeader("调试"));
-        scrollPanel.addChild(new SliderRow("最大 FPS", preferences.maxFps(),
-                value -> Math.round(value) >= MusicPreferences.UNLIMITED_FPS ? "无限制" : Math.round(value) + " FPS"));
-        scrollPanel.addChild(new ToggleRow("显示 FPS", preferences.showFps()));
-        scrollPanel.addChild(new ToggleRow("UI 边界", preferences.showWidgetBoundary()));
-        scrollPanel.addChild(new ToggleRow("逐字歌词", preferences.lyricDebug()));
+        scrollPanel.addChild(new SectionHeader("settings.debug"));
+        scrollPanel.addChild(new SliderRow("settings.maxFps", preferences.maxFps(),
+                value -> Math.round(value) >= MusicPreferences.UNLIMITED_FPS ? I18n.text("common.unlimited") : Math.round(value) + " FPS"));
+        scrollPanel.addChild(new ToggleRow("settings.showFps", preferences.showFps()));
+        scrollPanel.addChild(new ToggleRow("settings.boundaries", preferences.showWidgetBoundary()));
+        scrollPanel.addChild(new ToggleRow("settings.wordLyrics", preferences.lyricDebug()));
     }
 
     private void addBackgroundSettings(ScrollPanel scroll) {
@@ -142,47 +144,33 @@ public class SettingsPanel extends NCMPanel {
         BooleanSupplier video = () -> background.mode().getValue().equals("video");
         BooleanSupplier shader = () -> background.mode().getValue().equals("shader");
         BooleanSupplier custom = () -> !background.mode().getValue().equals("static");
-        scroll.addChild(new SectionHeader("主界面背景"));
-        scroll.addChild(new ChoiceRow("背景模式", background.mode(), mode -> switch (mode) {
-            case "picture" -> "Picture";
-            case "video" -> "Video";
-            case "shader" -> "Shader";
-            default -> "Static";
-        }));
+        scroll.addChild(new SectionHeader("settings.background"));
+        scroll.addChild(new ChoiceRow("settings.backgroundMode", background.mode()));
         scroll.addChild(new BackgroundStatusRow(DesktopAppState.background()::status));
-        backgroundRow(scroll, new ChoiceRow("图片来源", background.pictureSource(),
-                value -> value.equals("folder") ? "文件夹轮播" : "单张图片"), picture);
-        backgroundRow(scroll, new FileRow("背景图片", background.pictureFile(), false, false),
+        backgroundRow(scroll, new ChoiceRow("settings.pictureSource", background.pictureSource(),
+                value -> value.equals("folder") ? I18n.text("background.folder") : I18n.text("background.single")), picture);
+        backgroundRow(scroll, new FileRow("settings.picture", background.pictureFile(), false, false),
                 () -> picture.getAsBoolean() && !folder.getAsBoolean());
-        backgroundRow(scroll, new FileRow("轮播文件夹", background.pictureFolder(), true, false), folder);
-        backgroundRow(scroll, new SliderRow("轮播间隔", background.interval(), value -> Math.round(value) + " 秒"), folder);
-        backgroundRow(scroll, new ToggleRow("随机轮播", background.shuffle()), folder);
-        backgroundRow(scroll, new FileRow("背景视频（静音循环）", background.videoFile(), false, true), video);
-        backgroundRow(scroll, new ChoiceRow("缩放方式", background.fit(), value -> switch (value) {
-            case "contain" -> "完整显示";
-            case "stretch" -> "拉伸";
-            default -> "填充裁切";
+        backgroundRow(scroll, new FileRow("settings.folder", background.pictureFolder(), true, false), folder);
+        backgroundRow(scroll, new SliderRow("settings.interval", background.interval(), value -> I18n.text("unit.seconds", Math.round(value))), folder);
+        backgroundRow(scroll, new ToggleRow("settings.shuffle", background.shuffle()), folder);
+        backgroundRow(scroll, new FileRow("settings.video", background.videoFile(), false, true), video);
+        backgroundRow(scroll, new ChoiceRow("settings.fit", background.fit(), value -> switch (value) {
+            case "contain" -> I18n.text("background.contain");
+            case "stretch" -> I18n.text("background.stretch");
+            default -> I18n.text("background.cover");
         }), () -> picture.getAsBoolean() || video.getAsBoolean());
-        backgroundRow(scroll, new ChoiceRow("着色器主题", background.shader(), value -> switch (value) {
-            case "aurora" -> "Aurora";
-            case "waves" -> "Waves";
-            case "nebula" -> "Nebula";
-            case "liquid" -> "Liquid";
-            case "mandala" -> "Mandala";
-            case "torus" -> "Torus";
-            case "rise" -> "Rise";
-            default -> throw new IllegalStateException("Unexpected value: " + value);
-        }), shader);
-        backgroundRow(scroll, new SliderRow("动画速度", background.shaderSpeed(),
+        backgroundRow(scroll, new ChoiceRow("settings.shader", background.shader()), shader);
+        backgroundRow(scroll, new SliderRow("settings.speed", background.shaderSpeed(),
                 value -> String.format(Locale.ROOT, "%.1fx", value)), shader);
-        backgroundRow(scroll, new SliderRow("背景强度", background.strength(), value -> Math.round(value * 100) + "%"), custom);
-        backgroundRow(scroll, new SliderRow("面板不透明度", background.panelOpacity(), value -> Math.round(value * 100) + "%"), custom);
+        backgroundRow(scroll, new SliderRow("settings.strength", background.strength(), value -> Math.round(value * 100) + "%"), custom);
+        backgroundRow(scroll, new SliderRow("settings.panelOpacity", background.panelOpacity(), value -> Math.round(value * 100) + "%"), custom);
         BooleanSupplier glass = () -> !preferences.interfaceStyle().getValue().equals("Static");
-        backgroundRow(scroll, new SliderRow("歌曲行不透明度", preferences.songRowOpacity(),
+        backgroundRow(scroll, new SliderRow("settings.songOpacity", preferences.songRowOpacity(),
                 value -> Math.round(value * 100) + "%"), glass);
-        backgroundRow(scroll, new SliderRow("歌词悬停高亮不透明度", preferences.lyricHoverOpacity(),
+        backgroundRow(scroll, new SliderRow("settings.lyricOpacity", preferences.lyricHoverOpacity(),
                 value -> Math.round(value * 100) + "%"), glass);
-        backgroundRow(scroll, new ActionRow("重新加载背景 / 刷新文件夹", DesktopAppState.background()::reload), custom);
+        backgroundRow(scroll, new ActionRow("settings.reloadBackground", DesktopAppState.background()::reload), custom);
     }
 
     private void backgroundRow(ScrollPanel scroll, AbstractWidget<?> row, BooleanSupplier visible) {
@@ -231,7 +219,7 @@ public class SettingsPanel extends NCMPanel {
                     path.setValue("");
                     error = "";
                 } else {
-                    BackgroundFilePicker.choose(label, path.getValue(), folder, video, selected -> {
+                    BackgroundFilePicker.choose(I18n.text(label), path.getValue(), folder, video, selected -> {
                         path.setValue(selected.toString());
                         error = "";
                         DesktopAppState.background().reload();
@@ -248,12 +236,12 @@ public class SettingsPanel extends NCMPanel {
             double buttonX = rightInset(BUTTON_WIDTH);
             UiMaterials.control(buttonX, centerY - BUTTON_HEIGHT * .5, BUTTON_WIDTH, BUTTON_HEIGHT, 5,
                     reAlpha(AppTheme.accent(), getAlpha()));
-            FontManager.pf14bold.drawCenteredString(BackgroundFilePicker.isOpen() ? "选择中" : "选择",
+            FontManager.pf14bold.drawCenteredString(BackgroundFilePicker.isOpen() ? I18n.text("common.choosing") : I18n.text("common.choose"),
                     buttonX + BUTTON_WIDTH * .5, centerY - FontManager.pf14bold.getFontHeight() * .5,
                     reAlpha(AppTheme.onAccent(), getAlpha()));
-            FontManager.pf12bold.drawCenteredStringVertical("清除", rightInset(110), centerY,
+            FontManager.pf12bold.drawCenteredStringVertical(I18n.text("common.clear"), rightInset(110), centerY,
                     reAlpha(AppTheme.foreground(), getAlpha() * .65f));
-            String value = !error.isEmpty() ? error : path.getValue().isBlank() ? "尚未选择 · 点击打开文件选择器" : path.getValue();
+            String value = !error.isEmpty() ? I18n.text(error) : path.getValue().isBlank() ? I18n.text("background.noSelection") : path.getValue();
             FontManager.pf12bold.drawString(shorten(value, getWidth() - 32), getX() + 16, getY() + 49,
                     reAlpha(AppTheme.foreground(), getAlpha() * .6f));
         }
@@ -276,7 +264,7 @@ public class SettingsPanel extends NCMPanel {
 
         @Override
         public void onRender(double mouseX, double mouseY) {
-            FontManager.pf14bold.drawString(title, this.getX() + 2, this.getY() + 6,
+            FontManager.pf14bold.drawString(I18n.text(title), this.getX() + 2, this.getY() + 6,
                     RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha() * .48f));
         }
     }
@@ -299,8 +287,18 @@ public class SettingsPanel extends NCMPanel {
             float surfaceAlpha = !UiMaterials.enabled() && DesktopAppState.background().isActive()
                     ? .5f + .5f * AppTheme.backgroundPanelOpacity() : 1f;
             UiMaterials.surface(this.getX(), this.getY(), this.getWidth(), this.getHeight(), 6, RenderSystem.reAlpha(bg, this.getAlpha() * surfaceAlpha));
-            FontManager.pf16bold.drawString(label, this.getX() + 16, labelY(),
-                    RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
+            String[] lines = FontManager.pf16bold.fitWidth(I18n.text(label), labelWidth());
+            double lineHeight = FontManager.pf16bold.getFontHeight();
+            int count = Math.min(2, lines.length);
+            for (int i = 0; i < count; i++) {
+                FontManager.pf16bold.drawString(lines[i], getX() + 16,
+                        labelY() - (count - 1) * lineHeight * .5 + i * lineHeight,
+                        RenderSystem.reAlpha(AppTheme.foreground(), getAlpha()));
+            }
+        }
+
+        protected double labelWidth() {
+            return Math.max(24, getWidth() - 180);
         }
 
         protected double labelY() {
@@ -362,7 +360,7 @@ public class SettingsPanel extends NCMPanel {
         private final Function<String, String> formatter;
 
         private ChoiceRow(String label, ModePreference preference) {
-            this(label, preference, Function.identity());
+            this(label, preference, mode -> I18n.text("mode." + mode));
         }
 
         private ChoiceRow(String label, ModePreference preference, Function<String, String> formatter) {
@@ -391,6 +389,12 @@ public class SettingsPanel extends NCMPanel {
             FontManager.pf14bold.drawCenteredString(value, valueX + valueWidth * .5,
                     valueY + valueHeight * .5 - FontManager.pf14bold.getHeight() * .5,
                     RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
+        }
+
+        @Override
+        protected double labelWidth() {
+            return Math.max(24, getWidth() - 56 - Math.max(92,
+                    FontManager.pf14bold.getStringWidthD(formatter.apply(preference.getValue())) + 28));
         }
 
         private void cycle(int direction) {
@@ -497,7 +501,7 @@ public class SettingsPanel extends NCMPanel {
         public void onRender(double mouseX, double mouseY) {
             super.onRender(mouseX, mouseY);
             pressAnimation = Interpolations.interpolate(pressAnimation, 0f, .25f);
-            String label = "执行";
+            String label = I18n.text("common.run");
             double width = 56;
             double height = 24;
             double x = rightInset(width);
@@ -511,15 +515,15 @@ public class SettingsPanel extends NCMPanel {
     }
 
     private static final class CacheRow extends SettingsRow<CacheRow> {
-        private volatile String sizeText = "计算中...";
-        private volatile String statusText = "";
+        private volatile Supplier<String> sizeText = () -> I18n.text("cache.calculating");
+        private volatile Supplier<String> statusText = () -> "";
         private volatile boolean refreshing;
         private volatile boolean clearing;
         private long lastRefreshMillis;
         private float pressAnimation;
 
         private CacheRow() {
-            super("音乐缓存", 64);
+            super("settings.musicCache", 64);
             refreshSize();
             this.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
                 if (mouseButton == 0 && isButtonHit(relativeX, relativeY) && !clearing) {
@@ -547,19 +551,19 @@ public class SettingsPanel extends NCMPanel {
             int buttonBg = blend(clearing ? 0xFF555555 : AppTheme.accent(), clearing ? 0xFF666666 : AppTheme.accentHover(), pressAnimation);
             UiMaterials.control(buttonX, buttonY, buttonWidth, buttonHeight, 5, RenderSystem.reAlpha(buttonBg, this.getAlpha()));
 
-            String buttonLabel = clearing ? "清理中" : "清除";
+            String buttonLabel = clearing ? I18n.text("cache.clearingShort") : I18n.text("common.clear");
             FontManager.pf14bold.drawCenteredString(buttonLabel, buttonX + buttonWidth * .5,
                     buttonY + buttonHeight * .5 - FontManager.pf14bold.getHeight() * .5,
                     RenderSystem.reAlpha(clearing ? AppTheme.foreground() : AppTheme.onAccent(), this.getAlpha()));
 
-            String currentSize = clearing ? "清理中..." : sizeText;
+            String currentSize = clearing ? I18n.text("cache.clearing") : sizeText.get();
             double sizeWidth = FontManager.pf14bold.getStringWidthD(currentSize);
             double sizeX = buttonX - 14 - sizeWidth;
             FontManager.pf14bold.drawString(currentSize, sizeX, this.getY() + 14,
                     RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha() * .78f));
 
-            if (!statusText.isBlank()) {
-                FontManager.pf12bold.drawString(statusText,
+            if (!statusText.get().isBlank()) {
+                FontManager.pf12bold.drawString(shorten(statusText.get(), getWidth() - 32),
                         this.getX() + 16,
                         this.getY() + 40,
                         RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha() * .46f));
@@ -587,9 +591,10 @@ public class SettingsPanel extends NCMPanel {
             lastRefreshMillis = System.currentTimeMillis();
             MultiThreadingUtil.runAsync(() -> {
                 try {
-                    sizeText = DesktopCacheManager.formatSize(DesktopCacheManager.musicCacheSize());
+                    long size = DesktopCacheManager.musicCacheSize();
+                    sizeText = () -> DesktopCacheManager.formatSize(size);
                 } catch (Exception e) {
-                    sizeText = "读取失败";
+                    sizeText = () -> I18n.text("cache.readFailed");
                 } finally {
                     refreshing = false;
                 }
@@ -598,21 +603,20 @@ public class SettingsPanel extends NCMPanel {
 
         private void clearCache() {
             if (DesktopAppState.downloadStatus().downloading) {
-                statusText = "正在下载音乐，稍后再清理";
+                statusText = () -> I18n.text("cache.downloading");
                 refreshSize();
                 return;
             }
 
             clearing = true;
-            statusText = "正在清理缓存...";
+            statusText = () -> I18n.text("cache.cleaning");
             pressAnimation = 1f;
             MultiThreadingUtil.runAsync(() -> {
                 DesktopCacheManager.ClearResult result = DesktopCacheManager.clearMusicCache();
                 long freed = Math.max(0L, result.sizeBefore() - result.sizeAfter());
-                sizeText = DesktopCacheManager.formatSize(result.sizeAfter());
-                statusText = result.successful()
-                        ? "已释放 " + DesktopCacheManager.formatSize(freed)
-                        : "部分文件无法删除，已释放 " + DesktopCacheManager.formatSize(freed);
+                sizeText = () -> DesktopCacheManager.formatSize(result.sizeAfter());
+                statusText = () -> I18n.text(result.successful() ? "cache.freed" : "cache.partial",
+                        DesktopCacheManager.formatSize(freed));
                 clearing = false;
                 lastRefreshMillis = System.currentTimeMillis();
             });
@@ -623,20 +627,20 @@ public class SettingsPanel extends NCMPanel {
         private record Preset(String name, int color) { }
 
         private static final List<Preset> THEME_PRESETS = List.of(
-                new Preset("网易云红", AppTheme.DEFAULT_ACCENT),
-                new Preset("晴空蓝", 0xFF58A6FF),
-                new Preset("鸢尾紫", 0xFFA78BFA),
-                new Preset("湖水青", 0xFF2DD4BF),
-                new Preset("薄荷绿", 0xFF71E096),
-                new Preset("日落橙", 0xFFFFA657),
-                new Preset("樱花粉", 0xFFF472B6),
-                new Preset("月光白", 0xFFE5E7EB));
+                new Preset("color.red", AppTheme.DEFAULT_ACCENT),
+                new Preset("color.blue", 0xFF58A6FF),
+                new Preset("color.purple", 0xFFA78BFA),
+                new Preset("color.teal", 0xFF2DD4BF),
+                new Preset("color.green", 0xFF71E096),
+                new Preset("color.orange", 0xFFFFA657),
+                new Preset("color.pink", 0xFFF472B6),
+                new Preset("color.moon", 0xFFE5E7EB));
         private static final List<Preset> SPECTRUM_PRESETS = List.of(
-                new Preset("经典灰", 0xC87D7D7D),
-                new Preset("网易云红", 0xD0C30218),
-                new Preset("纯白", 0xD0FFFFFF),
-                new Preset("晴空蓝", 0xC858A6FF),
-                new Preset("薄荷绿", 0xC871E096));
+                new Preset("color.gray", 0xC87D7D7D),
+                new Preset("color.red", 0xD0C30218),
+                new Preset("color.white", 0xD0FFFFFF),
+                new Preset("color.blue", 0xC858A6FF),
+                new Preset("color.green", 0xC871E096));
         private final PreferenceValue<Integer> preference;
         private final boolean alphaEnabled;
         private final List<Preset> presets;
@@ -682,7 +686,7 @@ public class SettingsPanel extends NCMPanel {
             picker.setArgb(color);
             String hex = alphaEnabled ? String.format(Locale.ROOT, "#%08X", color)
                     : String.format(Locale.ROOT, "#%06X", color & 0xFFFFFF);
-            String value = hex + (expanded ? "  收起" : "  自定义");
+            String value = hex + (expanded ? I18n.text("color.collapse") : I18n.text("color.custom"));
             double valueWidth = FontManager.pf14bold.getStringWidthD(value);
             double valueX = rightInset(valueWidth);
             double swatchX = valueX - 32;
@@ -694,22 +698,22 @@ public class SettingsPanel extends NCMPanel {
             FontManager.pf14bold.drawString(value, valueX, getY() + 14,
                     RenderSystem.reAlpha(AppTheme.foreground(), getAlpha() * .8f));
 
-            String name = "自定义颜色";
+            String name = I18n.text("color.customName");
             String hoveredName = null;
             for (int i = 0; i < presets.size(); i++) {
                 Preset preset = presets.get(i);
                 double x = getX() + presetX(i), y = getY() + 48;
                 boolean selected = preset.color() == color;
                 if (selected) {
-                    name = preset.name();
+                    name = I18n.text(preset.name());
                     roundedRect(x - 3, y - 3, 32, 32, 16, reAlpha(AppTheme.foreground(), getAlpha()));
                     roundedRect(x - 1, y - 1, 28, 28, 14, reAlpha(AppTheme.settingsSurface(), getAlpha()));
                 }
                 roundedRect(x, y, 26, 26, 13, reAlpha(preset.color(), getAlpha()));
-                if (isHovered(mouseX, mouseY, x, y, 26, 26)) hoveredName = preset.name();
+                if (isHovered(mouseX, mouseY, x, y, 26, 26)) hoveredName = I18n.text(preset.name());
             }
-            String hint = expanded ? " · 拖动面板和色相条调整颜色" : " · 点击色板应用，点击自定义展开";
-            FontManager.pf12bold.drawString((hoveredName == null ? name : hoveredName) + hint, getX() + 16, getY() + 84,
+            String hint = expanded ? I18n.text("color.dragHint") : I18n.text("color.clickHint");
+            FontManager.pf12bold.drawString(shorten((hoveredName == null ? name : hoveredName) + hint, getWidth() - 32), getX() + 16, getY() + 84,
                     RenderSystem.reAlpha(AppTheme.foreground(), getAlpha() * .5f));
         }
     }

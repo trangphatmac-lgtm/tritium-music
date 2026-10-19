@@ -1,5 +1,6 @@
 package tritium.screens.ncm;
 
+import tritium.i18n.I18n;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import org.lwjgl.input.Keyboard;
@@ -136,12 +137,12 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
     static String albumName(Album album) {
         String name = album.getName();
-        return name == null || name.isBlank() ? "未知专辑" : name;
+        return name == null || name.isBlank() ? I18n.text("album.unknown") : name;
     }
 
     static String musicName(Music music) {
         String name = music.getName();
-        return name == null || name.isBlank() ? "未知歌曲" : name;
+        return name == null || name.isBlank() ? I18n.text("track.unknown") : name;
     }
 
     void filterAlbums(String text) {
@@ -214,7 +215,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         textBox.setFontRenderer(FontManager.pf40bold);
         textBox.setTextColor(AppTheme.foreground());
         textBox.setDisabledTextColour(Color.GRAY.getRGB());
-        textBox.setPlaceholder("Search (Ctrl + F)");
+        textBox.setPlaceholder(I18n.text("coverflow.search"));
         textBox.setCallback(this::filterAlbums);
 //        textBox.yOffset = -4f;
 

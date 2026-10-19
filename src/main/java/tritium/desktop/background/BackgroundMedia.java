@@ -1,5 +1,6 @@
 package tritium.desktop.background;
 
+import tritium.i18n.I18n;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 
@@ -30,7 +31,9 @@ final class BackgroundMedia implements Runnable {
     private final Source source;
     volatile boolean paused;
     volatile double interval = 30;
-    volatile String status = "正在加载背景…";
+    private volatile java.util.function.Supplier<String> status = () -> I18n.text("background.loading");
+
+    String status() { return status.get(); }
     volatile boolean failed;
     private volatile boolean cancelled;
 
@@ -44,7 +47,7 @@ final class BackgroundMedia implements Runnable {
     @Override
     public void run() {
         try {
-            if (source.path().isBlank()) throw new IOException("请先选择背景文件或文件夹");
+            if (source.path().isBlank()) throw new MediaException("background.select");
             Path path = Path.of(source.path());
             if (source.mode().equals("video")) playVideo(path);
             else showPictures(path);
@@ -52,18 +55,26 @@ final class BackgroundMedia implements Runnable {
             Thread.currentThread().interrupt();
         } catch (Exception | LinkageError e) {
             failed = true;
-            status = "背景不可用，已恢复纯色 · " + readableError(e);
+            status = () -> I18n.text("background.failed", readableError(e));
             System.err.println("Background media: " + e);
         } finally {
             if (cancelled) pending.set(null);
         }
     }
 
+    private static final class MediaException extends IOException {
+        MediaException(String key) { super(key); }
+        MediaException(String key, Throwable cause) { super(key, cause); }
+
+        @Override
+        public String getMessage() { return I18n.text(super.getMessage()); }
+    }
+
     private static String readableError(Throwable error) {
-        if (error instanceof java.nio.file.NoSuchFileException) return "文件或文件夹已移动";
-        if (error instanceof LinkageError) return "视频解码器无法加载";
-        if (error instanceof org.bytedeco.javacv.FrameGrabber.Exception) return "视频无法解码，请选择其他文件";
-        return error.getMessage() == null ? "无法读取文件" : error.getMessage();
+        if (error instanceof java.nio.file.NoSuchFileException) return I18n.text("background.moved");
+        if (error instanceof LinkageError) return I18n.text("background.decoder");
+        if (error instanceof org.bytedeco.javacv.FrameGrabber.Exception) return I18n.text("background.decode");
+        return error.getMessage() == null ? I18n.text("background.readFailed") : error.getMessage();
     }
 
     static List<Path> listPictures(Path folder) throws IOException {
@@ -81,7 +92,7 @@ final class BackgroundMedia implements Runnable {
 
     private void showPictures(Path path) throws Exception {
         List<Path> pictures = new ArrayList<>(source.folder() ? listPictures(path) : List.of(path));
-        if (pictures.isEmpty()) throw new IOException("文件夹中没有 JPG / PNG / BMP / GIF 图片");
+        if (pictures.isEmpty()) throw new MediaException("background.noPictures");
         if (source.shuffle()) Collections.shuffle(pictures);
         int index = 0;
         int skipped = 0;
@@ -92,12 +103,15 @@ final class BackgroundMedia implements Runnable {
                 Pixels pixels = readPicture(picture);
                 if (cancelled) return;
                 pending.set(pixels);
-                status = (source.folder() ? "轮播 · " + pictures.size() + " 张 · " : "图片 · ") + picture.getFileName()
-                        + (skipped > 0 ? " · 已跳过 " + skipped + " 个损坏文件" : "");
+                int pictureCount = pictures.size(), skippedCount = skipped;
+                status = () -> (source.folder()
+                        ? I18n.text("background.slideshow", pictureCount, picture.getFileName())
+                        : I18n.text("background.pictureStatus", picture.getFileName()))
+                        + (skippedCount > 0 ? I18n.text("background.skipped", skippedCount) : "");
             } catch (IOException | RuntimeException e) {
                 pictures.remove(index);
                 skipped++;
-                if (pictures.isEmpty()) throw new IOException("没有可读取的图片", e);
+                if (pictures.isEmpty()) throw new MediaException("background.noReadable", e);
                 index %= pictures.size();
                 continue;
             }
@@ -123,9 +137,9 @@ final class BackgroundMedia implements Runnable {
 
     static Pixels readPicture(Path path) throws IOException {
         try (var input = ImageIO.createImageInputStream(path.toFile())) {
-            if (input == null) throw new IOException("无法读取图片");
+            if (input == null) throw new MediaException("background.readPicture");
             var readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) throw new IOException("不支持的图片或文件已损坏");
+            if (!readers.hasNext()) throw new MediaException("background.unsupported");
             ImageReader reader = readers.next();
             try {
                 reader.setInput(input, true, true);
@@ -153,7 +167,7 @@ final class BackgroundMedia implements Runnable {
     }
 
     private void playVideo(Path path) throws Exception {
-        if (!Files.isRegularFile(path)) throw new IOException("视频文件不存在");
+        if (!Files.isRegularFile(path)) throw new MediaException("background.noVideo");
         try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(path.toFile())) {
             grabber.setPixelFormat(AV_PIX_FMT_RGBA);
             grabber.setVideoOption("threads", "2");
@@ -161,7 +175,7 @@ final class BackgroundMedia implements Runnable {
             grabber.setOption("protocol_whitelist", "file,pipe");
             grabber.start();
             int width = grabber.getImageWidth(), height = grabber.getImageHeight();
-            if (width <= 0 || height <= 0) throw new IOException("文件中没有视频画面");
+            if (width <= 0 || height <= 0) throw new MediaException("background.noFrames");
             double scale = Math.min(1, Math.min(1920.0 / width, 1080.0 / height));
             grabber.setImageWidth(Math.max(1, (int) Math.round(width * scale)));
             grabber.setImageHeight(Math.max(1, (int) Math.round(height * scale)));
@@ -176,7 +190,7 @@ final class BackgroundMedia implements Runnable {
                 origin += waitUntilVisible();
                 Frame frame = grabber.grabImage();
                 if (frame == null) {
-                    if (!hadFrame) throw new IOException("视频没有可解码的画面");
+                    if (!hadFrame) throw new MediaException("background.noDecoded");
                     // Preserve the final frame's duration, including single-frame videos.
                     waitForPresentation(origin + (lastTimestamp + frameDuration) * 1000);
                     // Keep the last frame displayed across the loop boundary.
@@ -207,7 +221,7 @@ final class BackgroundMedia implements Runnable {
                         || System.nanoTime() - due > 100_000_000)) continue;
                 pending.set(copyFrame(frame));
                 lastPublished = timestamp;
-                status = "视频 · 静音循环 · " + path.getFileName();
+                status = () -> I18n.text("background.videoStatus", path.getFileName());
             }
         }
     }

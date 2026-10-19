@@ -1,5 +1,6 @@
 package tritium.desktop.hud;
 
+import tritium.i18n.I18n;
 import tritium.desktop.HudElementPreferences;
 import tritium.desktop.HudPreferences;
 import tritium.desktop.MusicPreferences;
@@ -218,7 +219,7 @@ public final class MusicLyricsHudRenderer implements HudRenderer {
         Font font = HudRenderUtil.fontBold(28);
         FontMetrics metrics = HudRenderUtil.metrics(graphics, font);
         double baseline = bounds.getY() + bounds.getHeight() / 2.0 - metrics.getHeight() / 2.0 + metrics.getAscent();
-        HudRenderUtil.drawAlignedText(graphics, "暂无歌词", font, bounds.getX(), baseline, bounds.getWidth(),
+        HudRenderUtil.drawAlignedText(graphics, I18n.text("lyrics.empty"), font, bounds.getX(), baseline, bounds.getWidth(),
                 preferences.align().getValue(), 0xAAFFFFFF, preferences.shadow().getValue());
     }
 

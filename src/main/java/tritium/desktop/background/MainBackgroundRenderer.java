@@ -1,5 +1,6 @@
 package tritium.desktop.background;
 
+import tritium.i18n.I18n;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -41,10 +42,10 @@ public final class MainBackgroundRenderer implements AutoCloseable {
     public boolean isActive() { return active; }
 
     public String status() {
-        if (preferences.mode().getValue().equals("static")) return "纯色背景跟随深色 / 浅色模式 · 不影响歌词页和 HUD";
-        if (shaderError != null) return shaderError;
-        if (media != null) return media.status;
-        return preferences.mode().getValue().equals("shader") ? "内置动态着色器 · 不影响歌词页和 HUD" : "选择本地文件后立即预览";
+        if (preferences.mode().getValue().equals("static")) return I18n.text("background.staticHint");
+        if (shaderError != null) return I18n.text(shaderError);
+        if (media != null) return media.status();
+        return preferences.mode().getValue().equals("shader") ? I18n.text("background.shaderHint") : I18n.text("background.previewHint");
     }
 
     public void render(boolean visible) {
@@ -122,7 +123,7 @@ public final class MainBackgroundRenderer implements AutoCloseable {
                 try {
                     shader = new BackgroundShader(theme);
                 } catch (Exception e) {
-                    shaderError = "着色器不可用，已恢复纯色 · 可切换主题重试";
+                    shaderError = "background.shaderFailed";
                     System.err.println("Background shader: " + e);
                 }
             }

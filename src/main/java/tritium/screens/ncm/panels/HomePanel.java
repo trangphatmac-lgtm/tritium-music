@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.i18n.I18n;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -84,7 +85,7 @@ public class HomePanel extends NCMPanel {
     public ScrollPanel scrollPanel;
 
     private void layout() {
-        LabelWidget lblWelcome = new LabelWidget("欢迎来到 Tritium Music!", FontManager.pf25bold);
+        LabelWidget lblWelcome = new LabelWidget(() -> I18n.text("home.welcome"), FontManager.pf25bold);
 
         this.addChild(lblWelcome);
 
@@ -94,7 +95,7 @@ public class HomePanel extends NCMPanel {
                 .setPosition(margin, margin)
                 .setColor(NCMScreen.getColor(NCMScreen.ColorType.PRIMARY_TEXT)));
 
-        LabelWidget lblRecommendations = new LabelWidget("推荐歌单", FontManager.pf14bold);
+        LabelWidget lblRecommendations = new LabelWidget(() -> I18n.text("home.recommended"), FontManager.pf14bold);
 
         this.addChild(lblRecommendations);
 

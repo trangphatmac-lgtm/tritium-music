@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.i18n.I18n;
 import tritium.rendering.material.UiMaterials;
 import org.lwjgl.input.Mouse;
 import tritium.desktop.DesktopAppState;
@@ -219,7 +220,7 @@ public class ControlsBar extends NCMPanel {
                 .setPosition(playingCover.getRelativeX() + playingCover.getWidth() + 4,
                         this.getHeight() * .5 - favoriteButton.getHeight() * .5));
 
-        LabelWidget lblMusicName = new LabelWidget(() -> CloudMusic.currentlyPlaying == null ? "未在播放" : CloudMusic.currentlyPlaying.getName(), FontManager.pf14bold);
+        LabelWidget lblMusicName = new LabelWidget(() -> CloudMusic.currentlyPlaying == null ? I18n.text("player.idle") : CloudMusic.currentlyPlaying.getName(), FontManager.pf14bold);
         this.addChild(lblMusicName);
 
         lblMusicName
@@ -236,7 +237,7 @@ public class ControlsBar extends NCMPanel {
         LabelWidget lblMusicArtist = new LabelWidget(
                 () -> {
                     if (CloudMusic.currentlyPlaying == null)
-                        return "无";
+                        return I18n.text("common.none");
                     return CloudMusic.currentlyPlaying.getArtistsName() + " - " + CloudMusic.currentlyPlaying.getAlbum().getName();
                 },
                 FontManager.pf14bold

@@ -6,7 +6,7 @@ import java.util.function.Predicate;
 
 public class PreferenceValue<T> {
     private final String name;
-    private T value;
+    private volatile T value;
     private Consumer<T> callback = ignored -> {
     };
     private Predicate<PreferenceValue<T>> hiddenPredicate = ignored -> false;

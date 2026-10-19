@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.Quality;
 import tritium.settings.ClientSettings;
+import tritium.i18n.Language;
 
 public class MusicPreferences {
     // The slider's final position disables the frame-rate limit.
@@ -17,6 +18,7 @@ public class MusicPreferences {
     static final String MAX_FPS_KEY = "ui.maxFps";
     static final String ACCENT_COLOR_KEY = "ui.accentColor";
     static final String APPEARANCE_KEY = "ui.appearance";
+    static final String LANGUAGE_KEY = "ui.language";
     static final String INTERFACE_STYLE_KEY = "ui.interfaceStyle";
     static final String SONG_ROW_OPACITY_KEY = "ui.songRowOpacity";
     static final String LYRIC_HOVER_OPACITY_KEY = "ui.lyricHoverOpacity";
@@ -35,6 +37,7 @@ public class MusicPreferences {
     private final NumberPreference maxFps = new NumberPreference("Max FPS", 60, 30, UNLIMITED_FPS, 1);
     private final PreferenceValue<Integer> accentColor = new PreferenceValue<>("Accent Color", AppTheme.DEFAULT_ACCENT);
     private final ModePreference appearance = new ModePreference("Appearance", "Dark", new String[]{"Dark", "Light"});
+    private final ModePreference language = new ModePreference("Language", "zh-CN", Language.tags());
     private final ModePreference interfaceStyle = new ModePreference("Interface Style", "Static",
             new String[]{"Static", "Blur", "LiquidGlass"});
     private final NumberPreference songRowOpacity = new NumberPreference("Song Row Opacity", .28, 0, 1, .01);
@@ -61,6 +64,7 @@ public class MusicPreferences {
         maxFps.setValueCallback(value -> fireChanged());
         accentColor.setValueCallback(value -> fireChanged());
         appearance.setValueCallback(value -> fireChanged());
+        language.setValueCallback(value -> fireChanged());
         interfaceStyle.setValueCallback(value -> fireChanged());
         songRowOpacity.setValueCallback(value -> fireChanged());
         lyricHoverOpacity.setValueCallback(value -> fireChanged());
@@ -120,6 +124,7 @@ public class MusicPreferences {
         json.addProperty(MAX_FPS_KEY, maxFps.getValue());
         json.addProperty(ACCENT_COLOR_KEY, accentColor.getValue());
         json.addProperty(APPEARANCE_KEY, appearance.getValue());
+        json.addProperty(LANGUAGE_KEY, language.getValue());
         json.addProperty(INTERFACE_STYLE_KEY, interfaceStyle.getValue());
         json.addProperty(SONG_ROW_OPACITY_KEY, songRowOpacity.getValue());
         json.addProperty(LYRIC_HOVER_OPACITY_KEY, lyricHoverOpacity.getValue());
@@ -148,6 +153,7 @@ public class MusicPreferences {
             applyNumber(json, MAX_FPS_KEY, maxFps);
             applyAccentColor(json);
             applyMode(json, APPEARANCE_KEY, appearance);
+            applyMode(json, LANGUAGE_KEY, language);
             applyMode(json, INTERFACE_STYLE_KEY, interfaceStyle);
             applyOpacity(json, SONG_ROW_OPACITY_KEY, songRowOpacity);
             applyOpacity(json, LYRIC_HOVER_OPACITY_KEY, lyricHoverOpacity);
@@ -252,6 +258,10 @@ public class MusicPreferences {
 
     public ModePreference appearance() {
         return appearance;
+    }
+
+    public ModePreference language() {
+        return language;
     }
 
     public ModePreference interfaceStyle() {

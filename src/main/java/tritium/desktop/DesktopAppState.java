@@ -21,6 +21,10 @@ public final class DesktopAppState {
     private static volatile Thread mainThread;
     private static volatile boolean running;
 
+    static {
+        tritium.i18n.I18n.bindLanguage(() -> PREFERENCES.language().getValue());
+    }
+
     private DesktopAppState() {
     }
 

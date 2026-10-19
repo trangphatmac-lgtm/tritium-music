@@ -1,5 +1,6 @@
 package tritium.ncm.music;
 
+import tritium.i18n.LocalizedException;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import tritium.ncm.RequestUtil;
@@ -66,7 +67,7 @@ final class HeartbeatSession {
         if (answer == null || answer.getStatus() != 200 || body == null
                 || !body.has("code") || body.get("code").getAsInt() != 200
                 || !body.has("data") || !body.get("data").isJsonArray()) {
-            throw new IllegalStateException("心动推荐加载失败，请检查网络或重新登录");
+            throw new LocalizedException("heartbeat.auth");
         }
         LinkedHashMap<Long, Music> songs = new LinkedHashMap<>();
         for (JsonElement element : body.getAsJsonArray("data")) {
@@ -88,7 +89,7 @@ final class HeartbeatSession {
                 // A malformed recommendation must not discard the remaining usable songs.
             }
         }
-        if (songs.isEmpty()) throw new IllegalStateException("暂无心动推荐，请稍后重试");
+        if (songs.isEmpty()) throw new LocalizedException("heartbeat.empty");
         return List.copyOf(songs.values());
     }
 }

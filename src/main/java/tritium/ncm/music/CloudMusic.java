@@ -1,5 +1,6 @@
 package tritium.ncm.music;
 
+import tritium.i18n.I18n;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
@@ -69,6 +70,9 @@ import java.util.function.Supplier;
  */
 public class CloudMusic implements SharedConstants {
 
+    /** Internal result consumed by controls; never displayed or compared as translated text. */
+    public static final String HEARTBEAT_CANCELLED = "heartbeat.cancelled";
+
     @Getter
     private static final Map<String, String> headers = new HashMap<>();
     public static volatile boolean loadingSession = false;
@@ -110,19 +114,19 @@ public class CloudMusic implements SharedConstants {
         final boolean liked;
         final Object token = new Object();
         if (song == null) {
-            return CompletableFuture.completedFuture("未在播放");
+            return CompletableFuture.completedFuture(I18n.text("player.idle"));
         }
         long songId = song.getId();
         synchronized (favoritesLock) {
             user = profile;
             if (user == null) {
-                return CompletableFuture.completedFuture("请先登录后收藏歌曲");
+                return CompletableFuture.completedFuture(I18n.text("favorites.signIn"));
             }
             if (likeList == null) {
-                return CompletableFuture.completedFuture("收藏列表尚未加载，请稍后重试");
+                return CompletableFuture.completedFuture(I18n.text("favorites.loading"));
             }
             if (pendingFavorites.containsKey(songId)) {
-                return CompletableFuture.completedFuture("正在更新收藏…");
+                return CompletableFuture.completedFuture(I18n.text("favorites.updating"));
             }
             liked = !likeList.contains(songId);
             pendingFavorites.put(songId, token);
@@ -133,17 +137,17 @@ public class CloudMusic implements SharedConstants {
             String message;
             try {
                 if (profile != user) {
-                    message = "登录状态已变化，请重试";
+                    message = I18n.text("login.changed");
                 } else {
                     RequestUtil.RequestAnswer answer = request.apply(songId, liked);
                     JsonObject body = answer.toJsonObject();
                     if (answer.getStatus() != 200 || body == null || !body.has("code")
                             || body.get("code").getAsInt() != 200) {
-                        message = "收藏更新失败，请重试";
+                        message = I18n.text("favorites.failed");
                     } else {
                         synchronized (favoritesLock) {
                             if (profile != user || likeList == null) {
-                                message = "登录状态已变化，请重试";
+                                message = I18n.text("login.changed");
                             } else {
                                 List<Long> updated = new ArrayList<>(likeList);
                                 updated.removeIf(id -> id == songId);
@@ -153,13 +157,13 @@ public class CloudMusic implements SharedConstants {
                                     playLists.stream().filter(CloudMusic::isLikedPlaylist)
                                             .forEach(PlayList::invalidateMusics);
                                 }
-                                message = liked ? "已收藏" : "已取消收藏";
+                                message = liked ? I18n.text("favorites.added") : I18n.text("favorites.removed");
                             }
                         }
                     }
                 }
             } catch (Exception e) {
-                message = "收藏更新失败，请重试";
+                message = I18n.text("favorites.failed");
             } finally {
                 synchronized (favoritesLock) {
                     pendingFavorites.remove(songId, token);
@@ -173,7 +177,7 @@ public class CloudMusic implements SharedConstants {
             synchronized (favoritesLock) {
                 pendingFavorites.remove(songId, token);
             }
-            result.complete("收藏更新失败，请重试");
+            result.complete(I18n.text("favorites.failed"));
         }
         return result;
     }
@@ -221,14 +225,14 @@ public class CloudMusic implements SharedConstants {
         synchronized (playbackLock) {
             if (heartbeatSession != null) {
                 exitHeartbeat();
-                return CompletableFuture.completedFuture("已退出心动模式");
+                return CompletableFuture.completedFuture(I18n.text("heartbeat.exited"));
             }
-            if (profile == null) return CompletableFuture.completedFuture("请先登录后开启心动模式");
+            if (profile == null) return CompletableFuture.completedFuture(I18n.text("heartbeat.signIn"));
             if (likeList == null || playLists == null)
-                return CompletableFuture.completedFuture("喜欢列表尚未加载，请稍后重试");
-            if (likeList.isEmpty()) return CompletableFuture.completedFuture("先收藏一些喜欢的歌曲，再开启心动模式");
+                return CompletableFuture.completedFuture(I18n.text("heartbeat.likesLoading"));
+            if (likeList.isEmpty()) return CompletableFuture.completedFuture(I18n.text("heartbeat.noLikes"));
             PlayList source = playLists.stream().filter(CloudMusic::isLikedPlaylist).findFirst().orElse(null);
-            if (source == null) return CompletableFuture.completedFuture("未找到我喜欢的音乐，请刷新登录状态");
+            if (source == null) return CompletableFuture.completedFuture(I18n.text("heartbeat.noPlaylist"));
             Music current = currentlyPlaying;
             long seed = current != null && likeList.contains(current.getId()) ? current.getId()
                     : likeList.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(likeList.size()));
@@ -241,12 +245,12 @@ public class CloudMusic implements SharedConstants {
             session.requestMore(session.seed).whenComplete((songs, failure) -> {
                 synchronized (playbackLock) {
                     if (heartbeatSession != session) {
-                        result.complete("心动模式请求已取消");
+                        result.complete(HEARTBEAT_CANCELLED);
                         return;
                     }
                     if (profile != session.user || failure != null) {
                         exitHeartbeat();
-                        result.complete(profile != session.user ? "登录状态已变化，请重试"
+                        result.complete(profile != session.user ? I18n.text("login.changed")
                                 : heartbeatFailureMessage(failure));
                         return;
                     }
@@ -258,10 +262,10 @@ public class CloudMusic implements SharedConstants {
                     try {
                         startPlayback.accept(session);
                         playedFrom = session.source;
-                        result.complete("已开启心动模式 · 红心歌曲与相似推荐交替播放");
+                        result.complete(I18n.text("heartbeat.enabled"));
                     } catch (RuntimeException e) {
                         exitHeartbeat();
-                        result.complete("心动模式启动失败，请重试");
+                        result.complete(I18n.text("heartbeat.startFailed"));
                     }
                 }
             });
@@ -269,14 +273,14 @@ public class CloudMusic implements SharedConstants {
             synchronized (playbackLock) {
                 if (heartbeatSession == session) exitHeartbeat();
             }
-            result.complete("心动推荐加载失败，请重试");
+            result.complete(I18n.text("heartbeat.failed"));
         }
         return result;
     }
 
     private static String heartbeatFailureMessage(Throwable failure) {
         while (failure.getCause() != null) failure = failure.getCause();
-        return failure instanceof IllegalStateException ? failure.getMessage() : "心动推荐加载失败，请检查网络后重试";
+        return failure instanceof IllegalStateException ? failure.getMessage() : I18n.text("heartbeat.network");
     }
 
     public static void exitHeartbeat() {
@@ -298,7 +302,7 @@ public class CloudMusic implements SharedConstants {
             if (next == PlayMode.Heartbeat) return startHeartbeat.get();
             exitHeartbeat();
             playMode = next;
-            return CompletableFuture.completedFuture("已切换为" + next.getDisplayName());
+            return CompletableFuture.completedFuture(I18n.text("playMode.changed", next.getDisplayName()));
         }
     }
 
@@ -336,7 +340,7 @@ public class CloudMusic implements SharedConstants {
         lyrics.addAll(parsedLyrics);
         
         if (lyrics.isEmpty()) {
-            lyrics.add(new LyricLine(0L, "暂无歌词"));
+            lyrics.add(LyricLine.placeholder());
         }
     }
 
@@ -600,7 +604,7 @@ public class CloudMusic implements SharedConstants {
     private static void loadNCMFromStoredCookie(String cookie) {
         loadingSession = true;
         loadingSessionStartedAt = System.currentTimeMillis();
-        sessionStatusText = "正在验证本地 Cookie";
+        sessionStatusText = I18n.text("login.checkingCookie");
         try {
             loadNCM(cookie);
         } finally {
@@ -629,12 +633,12 @@ public class CloudMusic implements SharedConstants {
             pendingFavorites.clear();
         }
         OptionsUtil.setCookie(cookie);
-        sessionStatusText = "正在加载用户信息";
+        sessionStatusText = I18n.text("login.loadingUser");
         // 获取用户信息
         profile = getUserProfile();
 
         if (profile == null) {
-            sessionStatusText = "Cookie 无效或登录已过期";
+            sessionStatusText = I18n.text("login.expired");
             return;
         }
 
@@ -644,11 +648,11 @@ public class CloudMusic implements SharedConstants {
             onStop();
         }
 
-        sessionStatusText = "正在加载歌单";
+        sessionStatusText = I18n.text("login.loadingPlaylists");
         CloudMusic.playLists = loadUserPlaylists();
         System.out.printf("[NCM] Loaded %s playlists\n", playLists.size());
 
-        sessionStatusText = "正在加载喜欢列表";
+        sessionStatusText = I18n.text("login.loadingLikes");
         likeList = List.copyOf(likeList());
         NCMScreen.getInstance().markDirty();
     }
@@ -726,11 +730,11 @@ public class CloudMusic implements SharedConstants {
 
     @Getter
     public enum PlayMode {
-        Random("F", "随机播放"),
-        LoopInList("I", "列表循环"),
-        LoopSingle("L", "单曲循环"),
-        Sequential("G", "顺序播放"),
-        Heartbeat("D", "心动模式");
+        Random("F", "playMode.Random"),
+        LoopInList("I", "playMode.LoopInList"),
+        LoopSingle("L", "playMode.LoopSingle"),
+        Sequential("G", "playMode.Sequential"),
+        Heartbeat("D", "playMode.Heartbeat");
 
         private final String icon;
         private final String displayName;
@@ -738,6 +742,10 @@ public class CloudMusic implements SharedConstants {
         PlayMode(String icon, String displayName) {
             this.icon = icon;
             this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return I18n.text(displayName);
         }
 
         public PlayMode nextMode() {
@@ -856,14 +864,14 @@ public class CloudMusic implements SharedConstants {
     }
 
     static String playNext(Music song, Consumer<Music> startPlayback) {
-        if (song == null) return "请选择歌曲";
+        if (song == null) return I18n.text("player.select");
         synchronized (playbackLock) {
             if (playThread instanceof PlayThread thread) {
                 String result = thread.queueNext(song);
                 if (result != null) return result;
             }
             startPlayback.accept(song);
-            return "开始播放";
+            return I18n.text("player.start");
         }
     }
 
@@ -971,10 +979,10 @@ public class CloudMusic implements SharedConstants {
 
         synchronized String queueNext(Music song) {
             if (!acceptingNext || doBreak || isInterrupted()) return null;
-            if (activeSong != null && activeSong.getId() == song.getId()) return "正在播放";
+            if (activeSong != null && activeSong.getId() == song.getId()) return I18n.text("player.playing");
             nextSongs.removeIf(queued -> queued.getId() == song.getId());
             nextSongs.addFirst(song);
-            return "已加入下一首";
+            return I18n.text("player.queued");
         }
 
         synchronized boolean hasQueuedNext() {
@@ -1093,7 +1101,7 @@ public class CloudMusic implements SharedConstants {
                         if (isHeartbeat()) {
                             curIdx++;
                             if (++failedSongs < 5) continue;
-                            heartbeat.error = "连续多首推荐无法播放，点击下一首重试";
+                            heartbeat.error = I18n.text("heartbeat.unplayable");
                         }
                         acceptingNext = false;
                     }
@@ -1104,7 +1112,7 @@ public class CloudMusic implements SharedConstants {
                     try {
                         heartbeat.requestMore(songs.getLast().getId());
                     } catch (RuntimeException e) {
-                        heartbeat.error = "心动推荐加载失败，点击下一首重试";
+                        heartbeat.error = I18n.text("heartbeat.retry");
                     }
                 }
                 
@@ -1138,7 +1146,7 @@ public class CloudMusic implements SharedConstants {
                 List<Music> batch = heartbeat.requestMore(songs.getLast().getId()).get();
                 if (!isHeartbeat() || doBreak || isInterrupted()) return false;
                 List<Music> fresh = heartbeat.freshSongs(batch);
-                if (fresh.isEmpty()) throw new IllegalStateException("暂无新的心动推荐");
+                if (fresh.isEmpty()) throw new IllegalStateException(I18n.text("heartbeat.noNew"));
                 songs.addAll(fresh);
                 // Preserve a useful previous-track history without growing forever.
                 int trim = Math.max(0, curIdx - 100);
@@ -1151,7 +1159,7 @@ public class CloudMusic implements SharedConstants {
                 interrupt();
                 return false;
             } catch (Exception e) {
-                heartbeat.error = heartbeatFailureMessage(e) + " · 点击下一首重试";
+                heartbeat.error = heartbeatFailureMessage(e) + I18n.text("heartbeat.nextHint");
                 synchronized (this) {
                     if (!nextSongs.isEmpty()) {
                         insertNextSong();
@@ -1241,7 +1249,7 @@ public class CloudMusic implements SharedConstants {
         }
         
         private void handleUnplayableSong(Music song) {
-            api.printMessage(DesktopChatColor.RED + "无法播放: " + song.getName() + " - " + song.getArtistsName());
+            api.printMessage(DesktopChatColor.RED + I18n.text("player.unavailable", song.getName(), song.getArtistsName()));
 
             System.err.printf("%s无法播放: %s - %s, 可能因为该歌曲没有版权\n", DesktopChatColor.RED, song.getName(), song.getArtistsName());
         }

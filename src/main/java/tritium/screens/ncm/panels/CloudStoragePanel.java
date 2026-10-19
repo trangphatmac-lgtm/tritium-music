@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.i18n.I18n;
 import tritium.management.FontManager;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.CloudStorage;
@@ -27,7 +28,7 @@ public class CloudStoragePanel extends NCMPanel {
     private final TextFieldWidget search = new TextFieldWidget(FontManager.pf14bold);
     private PlayList snapshot;
     private boolean loading;
-    private String status = "";
+    private Supplier<String> status = () -> "";
     private String error = "";
 
     public CloudStoragePanel() {
@@ -43,22 +44,24 @@ public class CloudStoragePanel extends NCMPanel {
     @Override
     public void onInit() {
         if (!getChildren().isEmpty()) return;
-        LabelWidget title = new LabelWidget("音乐网盘", FontManager.pf32);
+        LabelWidget title = new LabelWidget(() -> I18n.text("cloud.title"), FontManager.pf32);
         addChild(title);
         title.setBeforeRenderCallback(() -> title.setPosition(24, 24)
                 .setColor(getColor(NCMScreen.ColorType.PRIMARY_TEXT)));
 
-        LabelWidget info = new LabelWidget(() -> status, FontManager.pf14);
+        LabelWidget info = new LabelWidget(() -> status.get(), FontManager.pf14);
         addChild(info);
         info.setWidthLimitType(LabelWidget.WidthLimitType.TRIM_TO_WIDTH);
         info.setBeforeRenderCallback(() -> info.setPosition(24, 51)
                 .setMaxWidth(Math.max(0, getWidth() - 48))
                 .setColor(getColor(NCMScreen.ColorType.SECONDARY_TEXT)));
 
-        RoundedButtonWidget refresh = new RoundedButtonWidget(() -> loading ? "加载中…" : "刷新", FontManager.pf14bold);
+        RoundedButtonWidget refresh = new RoundedButtonWidget(() -> loading ? I18n.text("common.loading") : I18n.text("common.refresh"), FontManager.pf14bold);
         addChild(refresh);
         refresh.setBeforeRenderCallback(() -> {
-            refresh.setBounds(getWidth() - 80, 27, 56, 20);
+            double buttonWidth = Math.max(56, FontManager.pf14bold.getStringWidthD(loading
+                    ? I18n.text("common.loading") : I18n.text("common.refresh")) + 16);
+            refresh.setBounds(getWidth() - buttonWidth - 24, 27, buttonWidth, 20);
             refresh.setRadius(3).setColor(getColor(NCMScreen.ColorType.ELEMENT_BACKGROUND));
             refresh.setTextColor(getColor(NCMScreen.ColorType.PRIMARY_TEXT));
             refresh.setClickable(!loading);
@@ -68,7 +71,7 @@ public class CloudStoragePanel extends NCMPanel {
             return true;
         });
 
-        RoundedButtonWidget play = new RoundedButtonWidget("播放全部", FontManager.pf16bold);
+        RoundedButtonWidget play = new RoundedButtonWidget(() -> I18n.text("playlist.playAll"), FontManager.pf16bold);
         addChild(play);
         play.setBeforeRenderCallback(() -> {
             boolean enabled = snapshot != null && !snapshot.musics.isEmpty();
@@ -83,7 +86,7 @@ public class CloudStoragePanel extends NCMPanel {
         });
 
         addChild(search);
-        search.setPlaceholder("搜索网盘歌曲、歌手或专辑");
+        search.setPlaceholder(() -> I18n.text("cloud.search"));
         search.setBeforeRenderCallback(() -> {
             double width = Math.min(210, Math.max(80, getWidth() - 128));
             search.setBounds(getWidth() - width - 24, 78, width, 22);
@@ -103,39 +106,39 @@ public class CloudStoragePanel extends NCMPanel {
         if (CloudMusic.profile == null) {
             snapshot = null;
             songsPanel.getChildren().clear();
-            status = "请先登录网易云音乐，再查看音乐网盘";
+            status = () -> I18n.text("cloud.signIn");
             return;
         }
         long owner = CloudMusic.profile.getId();
         loading = true;
         error = "";
-        status = "正在加载音乐网盘…";
+        status = () -> I18n.text("cloud.loading");
         background.execute(() -> {
             List<Music> songs = null;
-            String failure = "音乐网盘加载失败，请点击刷新重试";
+            Supplier<String> failure = () -> I18n.text("cloud.failed");
             try {
                 songs = loader.get();
             } catch (Exception e) {
                 if (e instanceof IllegalStateException && e.getMessage() != null && !e.getMessage().isBlank()) {
-                    failure = e.getMessage();
+                    failure = e::getMessage;
                 }
             }
             List<Music> loaded = songs;
-            String message = failure;
+            Supplier<String> message = failure;
             ui.execute(() -> {
                 loading = false;
                 if (CloudMusic.profile == null || CloudMusic.profile.getId() != owner) {
                     snapshot = null;
                     songsPanel.getChildren().clear();
-                    status = "登录状态已变化，请点击刷新";
+                    status = () -> I18n.text("cloud.sessionChanged");
                     return;
                 }
                 if (loaded == null) {
-                    error = message;
+                    error = message.get();
                     status = message;
                     return;
                 }
-                snapshot = new PlayList(-1, "音乐网盘", "", loaded.size(), 0, CloudMusic.profile, "", false, 0, 0);
+                snapshot = new PlayList(-1, I18n.text("cloud.title"), "", loaded.size(), 0, CloudMusic.profile, "", false, 0, 0);
                 snapshot.musics = List.copyOf(loaded);
                 snapshot.musicsLoaded = true;
                 songsPanel.getChildren().clear();
@@ -160,8 +163,10 @@ public class CloudStoragePanel extends NCMPanel {
         }
         songsPanel.actualScrollOffset = songsPanel.targetScrollOffset = 0;
         if (!loading && error.isEmpty() && snapshot != null) {
-            status = snapshot.musics.isEmpty() ? "音乐网盘暂无歌曲" : query.isEmpty()
-                    ? snapshot.musics.size() + " 首歌曲" : "找到 " + visible + " 首歌曲 · 共 " + snapshot.musics.size() + " 首";
+            long visibleCount = visible;
+            status = () -> snapshot.musics.isEmpty() ? I18n.text("cloud.empty") : query.isEmpty()
+                    ? I18n.songCount(snapshot.musics.size()) : I18n.text("cloud.matches",
+                            I18n.songCount(visibleCount), I18n.songCount(snapshot.musics.size()));
         }
     }
 }

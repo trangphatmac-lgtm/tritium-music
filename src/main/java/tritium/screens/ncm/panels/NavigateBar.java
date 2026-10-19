@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.i18n.I18n;
 import tritium.rendering.material.UiMaterials;
 import lombok.Getter;
 import lombok.Setter;
@@ -114,7 +115,7 @@ public class NavigateBar extends NCMPanel {
 
         searchBar.addChild(searchField);
 
-        this.searchField.setPlaceholder("搜索...");
+        this.searchField.setPlaceholder(() -> I18n.text("nav.search"));
 
         this.searchField.setOnKeyTypedCallback((character, keyCode) -> {
             if (this.searchField.isFocused()) {
@@ -178,14 +179,14 @@ public class NavigateBar extends NCMPanel {
         this.playlistPanel.addChild(lbl);
 
         {
-            PlaylistItem item = new PlaylistItem("A", () -> NCMScreen.getColor(NCMScreen.ColorType.ACCENT), () -> "主页", () -> NCMScreen.getInstance().setCurrentPanel(new HomePanel()));
+            PlaylistItem item = new PlaylistItem("A", () -> NCMScreen.getColor(NCMScreen.ColorType.ACCENT), () -> I18n.text("nav.home"), () -> NCMScreen.getInstance().setCurrentPanel(new HomePanel()));
 
             item.setShouldOverrideMouseCursor(true);
 
             this.playlistPanel.addChild(item);
         }
 
-        LabelWidget lblPlaylists = new LabelWidget("我的歌单", FontManager.pf14bold);
+        LabelWidget lblPlaylists = new LabelWidget(() -> I18n.text("nav.playlists"), FontManager.pf14bold);
         lblPlaylists.setBeforeRenderCallback(() -> {
             lblPlaylists.setColor(Color.GRAY);
             lblPlaylists.setPosition(6, lblPlaylists.getRelativeY());
@@ -193,7 +194,7 @@ public class NavigateBar extends NCMPanel {
 
         this.playlistPanel.addChild(lblPlaylists);
 
-        PlaylistItem cloudStorage = new PlaylistItem("D", Color.GRAY::getRGB, () -> "音乐网盘",
+        PlaylistItem cloudStorage = new PlaylistItem("D", Color.GRAY::getRGB, () -> I18n.text("cloud.title"),
                 () -> NCMScreen.getInstance().setCurrentPanel(new CloudStoragePanel()));
         cloudStorage.setShouldOverrideMouseCursor(true);
         this.playlistPanel.addChild(cloudStorage);
@@ -220,7 +221,7 @@ public class NavigateBar extends NCMPanel {
             }
         }
 
-        LabelWidget lblSubscribed = new LabelWidget("收藏歌单", FontManager.pf14bold);
+        LabelWidget lblSubscribed = new LabelWidget(() -> I18n.text("nav.subscribed"), FontManager.pf14bold);
         lblSubscribed.setBeforeRenderCallback(() -> {
             lblSubscribed.setColor(Color.GRAY);
             lblSubscribed.setPosition(6, lblSubscribed.getRelativeY());
@@ -258,7 +259,7 @@ public class NavigateBar extends NCMPanel {
             creatorAvatar.setRadius(7.25);
         });
 
-        LabelWidget lblCreator = new LabelWidget(() -> CloudMusic.profile == null ? "未登录" : CloudMusic.profile.getName(), FontManager.pf16bold);
+        LabelWidget lblCreator = new LabelWidget(() -> CloudMusic.profile == null ? I18n.text("login.signedOut") : CloudMusic.profile.getName(), FontManager.pf16bold);
         this.addChild(lblCreator);
 
         lblCreator.setBeforeRenderCallback(() -> {

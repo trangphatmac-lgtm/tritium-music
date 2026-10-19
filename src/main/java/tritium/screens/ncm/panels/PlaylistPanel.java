@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.i18n.I18n;
 import org.lwjgl.input.Keyboard;
 import tritium.management.FontManager;
 import tritium.desktop.AppTheme;
@@ -58,11 +59,11 @@ public class PlaylistPanel extends NCMPanel {
             cover.setBeforeRenderCallback(() -> cover.setRadius(4));
 
 //        LabelWidget lblPlaylistName = new LabelWidget(playList.name, FontManager.pf);
-            RoundedButtonWidget btnPlay = new RoundedButtonWidget("播放歌单", FontManager.pf16bold);
+            RoundedButtonWidget btnPlay = new RoundedButtonWidget(() -> I18n.text("playlist.play"), FontManager.pf16bold);
             this.addChild(btnPlay);
 
             btnPlay.setBeforeRenderCallback(() -> {
-                btnPlay.setBounds(57, 17);
+                btnPlay.setBounds(Math.max(57, FontManager.pf16bold.getStringWidthD(I18n.text("playlist.play")) + 16), 20);
                 btnPlay.setPosition(cover.getRelativeX() + cover.getWidth() + 12, cover.getRelativeY() + cover.getHeight() - btnPlay.getHeight());
                 btnPlay.setRadius(3);
                 btnPlay.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
@@ -78,11 +79,11 @@ public class PlaylistPanel extends NCMPanel {
                 return true;
             });
 
-            RoundedButtonWidget btnPlayRandomOrder = new RoundedButtonWidget("乱序播放歌单", FontManager.pf16bold);
+            RoundedButtonWidget btnPlayRandomOrder = new RoundedButtonWidget(() -> I18n.text("playlist.shuffle"), FontManager.pf16bold);
             this.addChild(btnPlayRandomOrder);
 
             btnPlayRandomOrder.setBeforeRenderCallback(() -> {
-                btnPlayRandomOrder.setBounds(57, 17);
+                btnPlayRandomOrder.setBounds(Math.max(57, FontManager.pf16bold.getStringWidthD(I18n.text("playlist.shuffle")) + 16), 20);
                 btnPlayRandomOrder.setPosition(cover.getRelativeX() + cover.getWidth() + 12 + btnPlay.getWidth() + 8, cover.getRelativeY() + cover.getHeight() - btnPlayRandomOrder.getHeight());
                 btnPlayRandomOrder.setRadius(3);
                 btnPlayRandomOrder.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
@@ -305,20 +306,21 @@ public class PlaylistPanel extends NCMPanel {
         StringBuilder sb = new StringBuilder();
 
         if (hours > 0) {
-            sb.append(String.format("%02d时", hours));
+            sb.append(I18n.text("unit.hours", hours));
         }
 
         if (minutes > 0) {
-            sb.append(String.format("%02d分", minutes));
+            sb.append(I18n.text("unit.minutes", minutes));
         }
 
-        sb.append(String.format("%02d秒", seconds));
+        sb.append(I18n.text("unit.durationSeconds", seconds));
 
         return sb.toString();
     }
 
     String cached = "";
     int lastSize = -1;
+    private tritium.i18n.Language lastLanguage;
 
     private String getPlayListInfo() {
         if (!playList.musicsLoaded)
@@ -326,12 +328,14 @@ public class PlaylistPanel extends NCMPanel {
 
         List<Music> musics = playList.musics;
 
-        if (lastSize != musics.size()) {
+        if (lastSize != musics.size() || lastLanguage != I18n.language()) {
+            lastLanguage = I18n.language();
             lastSize = musics.size();
             if (musics.isEmpty()) {
-                cached = "0首歌曲";
+                cached = I18n.songCount(0);
             } else {
-                cached = musics.size() + "首歌曲 · " + this.formatDuration(musics.stream().mapToLong(Music::getDuration).sum());
+                cached = I18n.text("playlist.info", I18n.songCount(musics.size()),
+                        this.formatDuration(musics.stream().mapToLong(Music::getDuration).sum()));
             }
         }
 

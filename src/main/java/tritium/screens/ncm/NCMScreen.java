@@ -1,5 +1,6 @@
 package tritium.screens.ncm;
 
+import tritium.i18n.I18n;
 import tritium.rendering.material.UiMaterials;
 import lombok.Getter;
 import org.lwjgl.input.Keyboard;
@@ -255,7 +256,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             MultiThreadingUtil.runAsync(() -> {
                 CloudMusic.loadingSession = true;
                 CloudMusic.loadingSessionStartedAt = System.currentTimeMillis();
-                CloudMusic.sessionStatusText = "正在加载用户信息";
+                CloudMusic.sessionStatusText = I18n.text("login.loadingUser");
                 try {
                     CloudMusic.loadNCM(OptionsUtil.getCookie());
                 } finally {
@@ -291,7 +292,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         Rect.draw(cardX + 24, cardY + cardHeight - 28, barWidth, 4, hexColor(70, 70, 70, 255));
         Rect.draw(cardX + 24, cardY + cardHeight - 28, Math.max(24, barWidth * progress), 4, AppTheme.accent());
 
-        FontManager.pf25bold.drawCenteredString("正在加载登录状态", centerX, centerY - FontManager.pf25bold.getHeight(), RenderSystem.reAlpha(AppTheme.foreground(), alpha));
+        FontManager.pf25bold.drawCenteredString(I18n.text("login.loadingSession"), centerX, centerY - FontManager.pf25bold.getHeight(), RenderSystem.reAlpha(AppTheme.foreground(), alpha));
         if (!CloudMusic.sessionStatusText.isBlank()) {
             FontManager.pf18.drawCenteredString(CloudMusic.sessionStatusText, centerX, centerY + 10, hexColor(180, 180, 180, alpha));
         }

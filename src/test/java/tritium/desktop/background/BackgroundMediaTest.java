@@ -50,7 +50,7 @@ class BackgroundMediaTest {
             media.paused = false;
             await(() -> media.pending.get() != null);
             assertEquals((byte) 255, media.pending.get().rgba()[1]);
-            assertTrue(media.status.contains("已跳过 1"));
+            assertTrue(media.status().contains("已跳过 1"));
         } finally {
             media.cancel();
             worker.interrupt();
@@ -67,7 +67,7 @@ class BackgroundMediaTest {
             BackgroundMedia media = new BackgroundMedia(source);
             media.run();
             assertTrue(media.failed);
-            assertTrue(media.status.contains("已恢复纯色"));
+            assertTrue(media.status().contains("已恢复纯色"));
             assertNull(media.pending.get());
         }
     }
@@ -83,7 +83,7 @@ class BackgroundMediaTest {
         try {
             worker.start();
             await(() -> media.pending.get() != null || media.failed);
-            assertFalse(media.failed, media.status);
+            assertFalse(media.failed, media.status());
             assertEquals(96, media.pending.get().width());
             Thread.sleep(1100); // More than two complete loops.
             media.pending.set(null);
@@ -121,7 +121,7 @@ class BackgroundMediaTest {
         try {
             worker.start();
             await(() -> media.pending.get() != null || media.failed);
-            assertFalse(media.failed, media.status);
+            assertFalse(media.failed, media.status());
             media.pending.set(null);
             Thread.sleep(250);
             assertNull(media.pending.get(), "The one-second frame should still be displayed");

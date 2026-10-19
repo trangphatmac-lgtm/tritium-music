@@ -1,5 +1,6 @@
 package tritium.desktop.hud;
 
+import tritium.i18n.I18n;
 import tritium.desktop.DesktopAppState;
 import tritium.ncm.music.AudioPlayer;
 import tritium.ncm.music.CloudMusic;
@@ -97,7 +98,7 @@ public final class HudStateSnapshot {
                 DesktopAppState.downloadStatus().downloadProgress,
                 DesktopAppState.downloadStatus().downloadSpeed,
                 musicId,
-                music == null ? "未在播放" : music.getName(),
+                music == null ? I18n.text("player.idle") : music.getName(),
                 music == null ? "" : music.getArtistsName(),
                 current,
                 total,

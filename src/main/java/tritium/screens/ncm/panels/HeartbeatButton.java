@@ -17,7 +17,7 @@ public class HeartbeatButton extends IconWidget {
             if (mouseButton != 0) return false;
             feedback = null;
             CloudMusic.toggleHeartbeat().thenAccept(message -> {
-                if ("心动模式请求已取消".equals(message)) return;
+                if (CloudMusic.HEARTBEAT_CANCELLED.equals(message)) return;
                 feedback = message;
                 feedbackUntil = System.currentTimeMillis() + 4500;
             });

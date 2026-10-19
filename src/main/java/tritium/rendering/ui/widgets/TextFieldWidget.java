@@ -14,6 +14,7 @@ public class TextFieldWidget extends AbstractWidget<TextFieldWidget> {
 
     @Getter
     private final TextField textField;
+    private java.util.function.Supplier<String> placeholder;
 
     public TextFieldWidget(CFontRenderer fontRenderer) {
         this.textField = new TextField(0, 0, 0, 0, 0);
@@ -23,6 +24,7 @@ public class TextFieldWidget extends AbstractWidget<TextFieldWidget> {
 
     @Override
     public void onRender(double mouseX, double mouseY) {
+        if (placeholder != null) this.textField.setPlaceholder(placeholder.get());
         this.textField.xPosition = (float) this.getX();
         this.textField.yPosition = (float) this.getY();
         this.textField.width = (float) this.getWidth();
@@ -86,7 +88,14 @@ public class TextFieldWidget extends AbstractWidget<TextFieldWidget> {
     }
 
     public TextFieldWidget setPlaceholder(String placeholder) {
+        this.placeholder = null;
         this.textField.setPlaceholder(placeholder);
+        return this;
+    }
+
+    public TextFieldWidget setPlaceholder(java.util.function.Supplier<String> placeholder) {
+        this.placeholder = placeholder;
+        this.textField.setPlaceholder(placeholder.get());
         return this;
     }
 

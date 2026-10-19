@@ -84,6 +84,50 @@ class CloudStoragePanelTest {
         assertTrue(labels(panel).anyMatch(s -> s.contains("登录状态已变化")));
     }
 
+    @Test
+    void languageSwitchUpdatesExistingViewWithoutReloadingOrTranslatingSongData() {
+        var preferences = tritium.desktop.DesktopAppState.preferences();
+        String original = preferences.language().getValue();
+        CloudMusic.profile = user(1);
+        AtomicInteger calls = new AtomicInteger();
+        Music namedLikeUi = JsonUtils.parse("""
+                {"id":124,"name":"设置","ar":[{"name":"Artist"}],"al":{"name":"Album"}}
+                """, Music.class);
+        var placeholder = tritium.screens.ncm.LyricLine.placeholder();
+        var userLyric = new tritium.screens.ncm.LyricLine(0, "暂无歌词");
+        try {
+            preferences.language().setValue("zh-CN");
+            var panel = new CloudStoragePanel(() -> {
+                calls.incrementAndGet();
+                return List.of(namedLikeUi);
+            }, Runnable::run, Runnable::run);
+            panel.onInit();
+            assertTrue(labels(panel).anyMatch("音乐网盘"::equals));
+            preferences.language().setValue("en");
+            assertTrue(labels(panel).anyMatch("Cloud library"::equals));
+            assertTrue(labels(panel).anyMatch("1 song"::equals));
+            assertEquals("No lyrics available", placeholder.getLyric());
+            assertEquals("暂无歌词", userLyric.getLyric());
+            assertEquals("Repeat all", CloudMusic.PlayMode.LoopInList.getDisplayName());
+            preferences.language().setValue("zh-TW");
+            assertTrue(labels(panel).anyMatch("音樂雲端硬碟"::equals));
+            assertTrue(labels(panel).anyMatch("1 首歌曲"::equals));
+            assertEquals("暫無歌詞", placeholder.getLyric());
+            assertEquals("清單循環", CloudMusic.PlayMode.LoopInList.getDisplayName());
+            assertTrue(labels(panel).anyMatch("设置"::equals));
+            assertEquals(1, calls.get(), "Language switching must not reload the library");
+            var failedPanel = new CloudStoragePanel(() -> {
+                throw new tritium.i18n.LocalizedException("cloud.expired");
+            }, Runnable::run, Runnable::run);
+            failedPanel.onInit();
+            assertTrue(labels(failedPanel).anyMatch(s -> s.contains("登入已失效")));
+            preferences.language().setValue("en");
+            assertTrue(labels(failedPanel).anyMatch(s -> s.startsWith("Session expired.")));
+        } finally {
+            preferences.language().setValue(original);
+        }
+    }
+
     private User user(int id) {
         return JsonUtils.parse("{\"userId\":" + id + "}", User.class);
     }

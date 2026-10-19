@@ -238,7 +238,7 @@ class CloudMusicHeartbeatTest {
                 work::add, session -> fail("Cancelled request started playback"));
         assertEquals("已退出心动模式", CloudMusic.toggleHeartbeat(null, null, null).join());
         work.remove().run();
-        assertEquals("心动模式请求已取消", result.join());
+        assertEquals(CloudMusic.HEARTBEAT_CANCELLED, result.join());
         assertEquals(CloudMusic.PlayMode.Random, CloudMusic.playMode);
         assertFalse(CloudMusic.isHeartbeatLoading());
     }
@@ -358,7 +358,7 @@ class CloudMusicHeartbeatTest {
         assertFalse(CloudMusic.isHeartbeatLoading());
         assertEquals(CloudMusic.PlayMode.Sequential, CloudMusic.playMode);
         work.remove().run();
-        assertEquals("心动模式请求已取消", result.join());
+        assertEquals(CloudMusic.HEARTBEAT_CANCELLED, result.join());
         assertEquals(CloudMusic.PlayMode.Sequential, CloudMusic.playMode);
     }
 

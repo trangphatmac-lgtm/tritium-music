@@ -1,5 +1,6 @@
 package tritium.rendering.material;
 
+import tritium.i18n.I18n;
 import org.lwjgl.opengl.*;
 import tritium.desktop.AppTheme;
 import tritium.desktop.DesktopAppState;
@@ -40,7 +41,7 @@ public final class UiMaterials {
     }
 
     public static String status() {
-        return failed ? "玻璃效果不可用，暂时使用 Static；切换风格可重试" : "歌词页仅改变翻译按钮与悬停高亮 · HUD 保持原样";
+        return failed ? I18n.text("materials.failed") : I18n.text("materials.hint");
     }
 
     public static void beginFrame(double mouseX, double mouseY) {

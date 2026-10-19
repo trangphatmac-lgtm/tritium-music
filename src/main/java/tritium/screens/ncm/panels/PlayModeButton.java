@@ -1,5 +1,6 @@
 package tritium.screens.ncm.panels;
 
+import tritium.i18n.I18n;
 import tritium.management.FontManager;
 import tritium.rendering.material.UiMaterials;
 import tritium.ncm.music.CloudMusic;
@@ -27,7 +28,7 @@ public class PlayModeButton extends IconWidget {
             }
             feedback = null;
             CloudMusic.cyclePlayMode().thenAccept(message -> {
-                if ("心动模式请求已取消".equals(message)) return;
+                if (CloudMusic.HEARTBEAT_CANCELLED.equals(message)) return;
                 feedback = message;
                 feedbackUntil = System.currentTimeMillis() + 4500;
             });
@@ -47,10 +48,10 @@ public class PlayModeButton extends IconWidget {
 
         boolean showFeedback = feedback != null && System.currentTimeMillis() < feedbackUntil;
         if (testHovered(mouseX, mouseY) || showFeedback) {
-            String text = loading ? "正在加载心动推荐 · 点击切换到顺序播放"
+            String text = loading ? I18n.text("heartbeat.loading")
                     : showFeedback ? feedback
                     : CloudMusic.heartbeatError() != null ? CloudMusic.heartbeatError()
-                    : mode.getDisplayName() + " · 点击切换到" + mode.nextMode().getDisplayName();
+                    : I18n.text("playMode.next", mode.getDisplayName(), mode.nextMode().getDisplayName());
             drawTooltip(text);
         }
     }

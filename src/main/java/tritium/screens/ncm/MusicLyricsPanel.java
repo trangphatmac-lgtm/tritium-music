@@ -1,5 +1,6 @@
 package tritium.screens.ncm;
 
+import tritium.i18n.I18n;
 import tritium.rendering.material.UiMaterials;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
@@ -73,7 +74,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     IconWidget next = new IconWidget("H", FontManager.music40, 0, 0, 32, 32);
     PlayModeButton playModeButton = new PlayModeButton(32).setFollowTheme(false);
     FavoriteButton favoriteButton = new FavoriteButton(32).setFollowTheme(false);
-    IconWidget translationButton = new IconWidget("译", FontManager.pf20bold, 0, 0, 32, 32);
+    IconWidget translationButton = new IconWidget(I18n.text("lyrics.translationIcon"), FontManager.pf20bold, 0, 0, 32, 32);
 
     private final Music music;
     public MusicLyricsPanel(Music music) {
@@ -302,6 +303,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
         double buttonSize = 32;
         double buttonRightPadding = 20;
+        translationButton.setIcon(I18n.text("lyrics.translationIcon"));
         translationButton
                 .setBounds(posX + width - buttonRightPadding - buttonSize, posY + height - 88, buttonSize, buttonSize)
                 .setAlpha(available ? alpha : alpha * .35f)
@@ -584,7 +586,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
                     renderX += wordWidth;
                 }
             } else {
-                String[] strings = FontManager.pf65bold.fitWidth(lyric.lyric, lyricsWidth);
+                String[] strings = FontManager.pf65bold.fitWidth(lyric.getLyric(), lyricsWidth);
 
                 for (String string : strings) {
                     FontManager.pf65bold.drawString(string, renderX, renderY, hexColor(1, 1, 1, alpha * ((lyric.alpha * .6f) + .4f)));
