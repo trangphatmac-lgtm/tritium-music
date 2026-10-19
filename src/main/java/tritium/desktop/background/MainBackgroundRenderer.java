@@ -6,6 +6,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import tritium.desktop.AppTheme;
 import tritium.desktop.BackgroundPreferences;
+import tritium.desktop.background.latent.LatentRenderer;
 import tritium.rendering.Rect;
 import tritium.rendering.rendersystem.RenderSystem;
 
@@ -27,6 +28,7 @@ public final class MainBackgroundRenderer implements AutoCloseable {
     private BackgroundMedia media;
     private Future<?> decodeTask;
     private BackgroundShader shader;
+    private LatentRenderer latent;
     private String shaderTheme;
     private String shaderError;
     private int texture;
@@ -45,6 +47,7 @@ public final class MainBackgroundRenderer implements AutoCloseable {
         if (preferences.mode().getValue().equals("static")) return I18n.text("background.staticHint");
         if (shaderError != null) return I18n.text(shaderError);
         if (media != null) return media.status();
+        if (preferences.mode().getValue().equals("latent")) return I18n.text("background.latentHint");
         return preferences.mode().getValue().equals("shader") ? I18n.text("background.shaderHint") : I18n.text("background.previewHint");
     }
 
@@ -58,7 +61,8 @@ public final class MainBackgroundRenderer implements AutoCloseable {
             media.interval = preferences.interval().getValue();
         }
         long now = System.nanoTime();
-        if (visible && lastFrame != 0) shaderTime += Math.min(.1, (now - lastFrame) / 1e9) * preferences.shaderSpeed().getValue();
+        double seconds = lastFrame == 0 ? 0 : Math.min(.1, (now - lastFrame) / 1e9);
+        if (visible) shaderTime += seconds * preferences.shaderSpeed().getValue();
         lastFrame = now;
         active = false;
         if (!visible || preferences.mode().getValue().equals("static")) return;
@@ -72,7 +76,19 @@ public final class MainBackgroundRenderer implements AutoCloseable {
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
             GL11.glColor4f(1, 1, 1, 1);
-            if (preferences.mode().getValue().equals("shader")) {
+            if (preferences.mode().getValue().equals("latent")) {
+                if (latent != null) {
+                    try {
+                        latent.render(width, height, seconds);
+                        active = true;
+                    } catch (RuntimeException e) {
+                        latent.close();
+                        latent = null;
+                        shaderError = "background.shaderFailed";
+                        System.err.println("[Latent] Rendering failed: " + e);
+                    }
+                }
+            } else if (preferences.mode().getValue().equals("shader")) {
                 if (shader != null) {
                     GL11.glDisable(GL11.GL_TEXTURE_2D);
                     shader.draw(width, height, RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), (float) shaderTime);
@@ -86,7 +102,7 @@ public final class MainBackgroundRenderer implements AutoCloseable {
                     active = true;
                 }
             }
-            if (active) Rect.draw(0, 0, width, height,
+            if (active && latent == null) Rect.draw(0, 0, width, height,
                     RenderSystem.reAlpha(AppTheme.background(), 1 - preferences.strength().getValue().floatValue()));
         } finally {
             GL11.glPopClientAttrib();
@@ -112,16 +128,19 @@ public final class MainBackgroundRenderer implements AutoCloseable {
                 decodeTask = decoder.submit(media);
             }
         }
-        String theme = mode.equals("shader") ? preferences.shader().getValue() : null;
+        String theme = mode.equals("latent") ? "latent" : mode.equals("shader") ? preferences.shader().getValue() : null;
         if (!Objects.equals(theme, shaderTheme)) {
             if (shader != null) shader.close();
+            if (latent != null) latent.close();
+            latent = null;
             shader = null;
             shaderError = null;
             shaderTheme = theme;
             shaderTime = 0;
             if (theme != null) {
                 try {
-                    shader = new BackgroundShader(theme);
+                    if (theme.equals("latent")) latent = new LatentRenderer(preferences, decoder);
+                    else shader = new BackgroundShader(theme);
                 } catch (Exception e) {
                     shaderError = "background.shaderFailed";
                     System.err.println("Background shader: " + e);
@@ -188,6 +207,8 @@ public final class MainBackgroundRenderer implements AutoCloseable {
         releaseMedia();
         source = null;
         if (shader != null) shader.close();
+        if (latent != null) latent.close();
+        latent = null;
         shader = null;
         shaderTheme = null;
         shaderError = null;

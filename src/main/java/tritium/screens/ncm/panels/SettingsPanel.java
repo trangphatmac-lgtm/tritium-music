@@ -13,6 +13,7 @@ import tritium.desktop.NumberPreference;
 import tritium.desktop.PreferenceValue;
 import tritium.desktop.BackgroundPreferences;
 import tritium.desktop.background.BackgroundFilePicker;
+import tritium.desktop.background.latent.LatentPreferences;
 import tritium.management.FontManager;
 import tritium.rendering.animation.Interpolations;
 import tritium.rendering.rendersystem.RenderSystem;
@@ -72,7 +73,8 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new SectionHeader("settings.appearance"));
         scrollPanel.addChild(new ChoiceRow("settings.displayMode", preferences.appearance(),
                 mode -> I18n.text("mode." + mode)));
-        scrollPanel.addChild(new ColorRow("settings.accent", preferences.accentColor(), false));
+        backgroundRow(scrollPanel, new ColorRow("settings.accent", preferences.accentColor(), false),
+                () -> !preferences.background().mode().getValue().equals("latent"));
 
         scrollPanel.addChild(new ChoiceRow("settings.layout", preferences.layout()));
 
@@ -145,6 +147,7 @@ public class SettingsPanel extends NCMPanel {
         BooleanSupplier folder = () -> picture.getAsBoolean() && background.pictureSource().getValue().equals("folder");
         BooleanSupplier video = () -> background.mode().getValue().equals("video");
         BooleanSupplier shader = () -> background.mode().getValue().equals("shader");
+        BooleanSupplier latent = () -> background.mode().getValue().equals("latent");
         BooleanSupplier custom = () -> !background.mode().getValue().equals("static");
         scroll.addChild(new SectionHeader("settings.background"));
         scroll.addChild(new ChoiceRow("settings.backgroundMode", background.mode()));
@@ -165,6 +168,20 @@ public class SettingsPanel extends NCMPanel {
         backgroundRow(scroll, new ChoiceRow("settings.shader", background.shader()), shader);
         backgroundRow(scroll, new SliderRow("settings.speed", background.shaderSpeed(),
                 value -> String.format(Locale.ROOT, "%.1fx", value)), shader);
+        LatentPreferences latentSettings = background.latent();
+        backgroundRow(scroll, new ChoiceRow("settings.latentColors", latentSettings.colorSource()), latent);
+        backgroundRow(scroll, new ChoiceRow("settings.latentLayers", latentSettings.layers()), latent);
+        backgroundRow(scroll, new ToggleRow("settings.latentBeat", latentSettings.beat()), latent);
+        backgroundRow(scroll, new SliderRow("settings.speed", latentSettings.speed(),
+                value -> String.format(Locale.ROOT, "%.1fx", value)), latent);
+        backgroundRow(scroll, new BackgroundStatusRow(() -> I18n.text("background.latentPaletteHint",
+                I18n.text("mode." + preferences.appearance().getValue()))), latent);
+        for (LatentPreferences.Color part : LatentPreferences.Color.values()) {
+            backgroundRow(scroll, new ColorRow("settings.latent." + part.name(),
+                    () -> latentSettings.color(preferences.appearance().getValue().equals("Light"), part), false), latent);
+        }
+        backgroundRow(scroll, new ActionRow("settings.latentReset", () ->
+                latentSettings.resetPalette(preferences.appearance().getValue().equals("Light"))), latent);
         backgroundRow(scroll, new SliderRow("settings.strength", background.strength(), value -> Math.round(value * 100) + "%"), custom);
         backgroundRow(scroll, new SliderRow("settings.panelOpacity", background.panelOpacity(), value -> Math.round(value * 100) + "%"), custom);
         BooleanSupplier glass = () -> !preferences.interfaceStyle().getValue().equals("Static");
@@ -643,18 +660,22 @@ public class SettingsPanel extends NCMPanel {
                 new Preset("color.white", 0xD0FFFFFF),
                 new Preset("color.blue", 0xC858A6FF),
                 new Preset("color.green", 0xC871E096));
-        private final PreferenceValue<Integer> preference;
+        private final Supplier<PreferenceValue<Integer>> preference;
         private final boolean alphaEnabled;
         private final List<Preset> presets;
         private final ColorPickerWidget picker;
         private boolean expanded;
 
         private ColorRow(String label, PreferenceValue<Integer> preference, boolean alphaEnabled) {
+            this(label, () -> preference, alphaEnabled);
+        }
+
+        private ColorRow(String label, Supplier<PreferenceValue<Integer>> preference, boolean alphaEnabled) {
             super(label, 104);
             this.preference = preference;
             this.alphaEnabled = alphaEnabled;
             this.presets = alphaEnabled ? SPECTRUM_PRESETS : THEME_PRESETS;
-            this.picker = new ColorPickerWidget(preference.getValue(), alphaEnabled, preference::setValue);
+            this.picker = new ColorPickerWidget(preference.get().getValue(), alphaEnabled, color -> preference.get().setValue(color));
             this.addChild(picker);
             picker.setHidden(true);
             picker.setBeforeRenderCallback(() -> picker.setBounds(16, 108, Math.max(1, getWidth() - 32), picker.getHeight()));
@@ -662,8 +683,8 @@ public class SettingsPanel extends NCMPanel {
                 if (button != 0) return false;
                 for (int i = 0; i < presets.size(); i++) {
                     if (isHovered(x, y, presetX(i) - 3, 45, 32, 32)) {
-                        preference.setValue(presets.get(i).color());
-                        picker.setArgb(preference.getValue());
+                        preference.get().setValue(presets.get(i).color());
+                        picker.setArgb(preference.get().getValue());
                         return true;
                     }
                 }
@@ -684,7 +705,7 @@ public class SettingsPanel extends NCMPanel {
         @Override
         public void onRender(double mouseX, double mouseY) {
             super.onRender(mouseX, mouseY);
-            int color = preference.getValue();
+            int color = preference.get().getValue();
             picker.setArgb(color);
             String hex = alphaEnabled ? String.format(Locale.ROOT, "#%08X", color)
                     : String.format(Locale.ROOT, "#%06X", color & 0xFFFFFF);

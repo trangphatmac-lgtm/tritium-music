@@ -530,7 +530,8 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             case ELEMENT_BACKGROUND -> AppTheme.surface();
             case ELEMENT_HOVER -> AppTheme.hover();
             case PRIMARY_TEXT -> AppTheme.foreground();
-            case SECONDARY_TEXT -> 0x6B6B6B;
+            case SECONDARY_TEXT -> DesktopAppState.preferences().background().mode().getValue().equals("latent")
+                    ? AppTheme.secondary() : 0x6B6B6B;
         };
 
     }

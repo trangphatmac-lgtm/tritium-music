@@ -1,5 +1,7 @@
 package tritium.desktop;
 
+import tritium.desktop.background.latent.LatentPreferences;
+
 /** Main-window palette, sampled once per frame so all controls transition together. */
 public final class AppTheme {
     public static final int DEFAULT_ACCENT = 0xFFD60017;
@@ -20,11 +22,24 @@ public final class AppTheme {
     }
 
     public static int background() {
-        return color(0xFF1E1E1E, 0xFFFFFFFF);
+        return latentEnabled() ? latentColor(LatentPreferences.Color.BACKGROUND) : color(0xFF1E1E1E, 0xFFFFFFFF);
     }
 
     public static int foreground() {
-        return color(0xFFFFFFFF, 0xFF000000);
+        return latentEnabled() ? latentColor(LatentPreferences.Color.PRIMARY) : color(0xFFFFFFFF, 0xFF000000);
+    }
+
+    private static boolean latentEnabled() {
+        return DesktopAppState.preferences().background().mode().getValue().equals("latent");
+    }
+
+    public static int latentColor(LatentPreferences.Color part) {
+        var palette = DesktopAppState.preferences().background().latent();
+        return color(palette.color(false, part).getValue(), palette.color(true, part).getValue());
+    }
+
+    public static int secondary() {
+        return latentEnabled() ? latentColor(LatentPreferences.Color.SECONDARY) : color(0xFFAAAAAA, 0xFF6B6B6B);
     }
 
     /** Used only by main-window panels; lyric and HUD palettes do not consult it. */
@@ -34,19 +49,19 @@ public final class AppTheme {
     }
 
     public static int surface() {
-        return color(0xFF232323, 0xFFF7F7F7);
+        return latentEnabled() ? mix(background(), foreground(), .04f) : color(0xFF232323, 0xFFF7F7F7);
     }
 
     public static int hover() {
-        return color(0xFF353535, 0xFFE8E8E8);
+        return latentEnabled() ? mix(background(), foreground(), .10f) : color(0xFF353535, 0xFFE8E8E8);
     }
 
     public static int settingsSurface() {
-        return color(0xFF242424, 0xFFF5F5F5);
+        return latentEnabled() ? surface() : color(0xFF242424, 0xFFF5F5F5);
     }
 
     public static int settingsHover() {
-        return color(0xFF303030, 0xFFEBEBEB);
+        return latentEnabled() ? hover() : color(0xFF303030, 0xFFEBEBEB);
     }
 
     public static int inputBackground() {
@@ -54,6 +69,7 @@ public final class AppTheme {
     }
 
     public static int accent() {
+        if (latentEnabled()) return latentColor(LatentPreferences.Color.ACCENT);
         return DesktopAppState.preferences().accentColor().getValue() | 0xFF000000;
     }
 

@@ -8,12 +8,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /** GLSL 1.20 keeps the built-in themes compatible with the app's desktop OpenGL context. */
-final class BackgroundShader implements AutoCloseable {
+public final class BackgroundShader implements AutoCloseable {
     private final int program;
     private final int resolutionUniform;
     private final int timeUniform;
 
-    BackgroundShader(String theme) throws IOException {
+    public BackgroundShader(String theme) throws IOException {
         String file = switch (theme) {
             case "aurora" -> "01_aurora.frag";
             case "nebula" -> "02_nebula.frag";
@@ -22,6 +22,7 @@ final class BackgroundShader implements AutoCloseable {
             case "torus" -> "05_torus.frag";
             case "waves" -> "waves.frag";
             case "rise" -> "nebula.frag";
+            case "latent" -> "latent.frag";
             default -> throw new IllegalStateException("Unexpected value: " + theme);
         };
         String fragment;
@@ -65,11 +66,18 @@ final class BackgroundShader implements AutoCloseable {
     }
 
     void draw(double width, double height, int framebufferWidth, int framebufferHeight, float time) {
+        draw(width, height, framebufferWidth, framebufferHeight, time, () -> { });
+    }
+
+    public int uniform(String name) { return GL20.glGetUniformLocation(program, name); }
+
+    public void draw(double width, double height, int framebufferWidth, int framebufferHeight, float time, Runnable uniforms) {
         int previous = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         GL20.glUseProgram(program);
         try {
             GL20.glUniform2f(resolutionUniform, framebufferWidth, framebufferHeight);
             GL20.glUniform1f(timeUniform, time);
+            uniforms.run();
             ShaderProgram.drawQuad(0, 0, width, height);
         } finally {
             GL20.glUseProgram(previous);

@@ -32,8 +32,14 @@ public class AudioPlayer {
         finished = false;
     }
 
+    private final AudioEnergy.Analyzer energyAnalyzer = new AudioEnergy.Analyzer(JSynFFT.FFT_SIZE);
     @Getter
-    FFT fft = new FFT(128, callback);
+    private volatile AudioEnergy energy = AudioEnergy.SILENT;
+    @Getter
+    FFT fft = new FFT(128, magnitudes -> {
+        callback.onFFT(magnitudes);
+        if (skipCount == 0) energy = energyAnalyzer.analyze(magnitudes, Sound.sampleRate(), System.nanoTime());
+    });
 
     public static float[] bandValues = new float[1];
     public static final SpectrumVisualizer visualizer = new SpectrumVisualizer(48000, JSynFFT.FFT_SIZE, 1024);
@@ -54,6 +60,8 @@ public class AudioPlayer {
 
     public void setListeners() {
         fft.removeInput();
+        energyAnalyzer.reset();
+        energy = AudioEnergy.SILENT;
         fft.input(this.player);
 
         player.setOnFinished(() -> finished = true);
@@ -73,6 +81,8 @@ public class AudioPlayer {
 
     @SneakyThrows
     public void close() {
+        fft.removeInput();
+        energy = AudioEnergy.SILENT;
         this.player.jump(0);
         player.stop();
         player.cleanUp();

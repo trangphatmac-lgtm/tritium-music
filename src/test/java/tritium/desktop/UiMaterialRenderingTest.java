@@ -79,7 +79,7 @@ class UiMaterialRenderingTest {
             settle();
             assertTrue(DesktopAppState.background().isActive());
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
-            var styleRow = scroll.getChildren().get(3);
+            var styleRow = interfaceStyleRow(scroll, preferences.interfaceStyle());
             scroll.actualScrollOffset = scroll.targetScrollOffset = styleRow.getRelativeY() - 8;
             render();
             for (String expected : new String[]{"Blur", "LiquidGlass", "Static"}) {
@@ -198,6 +198,17 @@ class UiMaterialRenderingTest {
             if (field.getType() == float.class) field.setFloat(screen.musicLyricsPanel, (float) value);
             else field.setDouble(screen.musicLyricsPanel, value);
         }
+    }
+
+    private static tritium.rendering.ui.AbstractWidget<?> interfaceStyleRow(ScrollPanel scroll, ModePreference preference) throws Exception {
+        for (var row : scroll.getChildren()) {
+            try {
+                var field = row.getClass().getDeclaredField("preference");
+                field.setAccessible(true);
+                if (field.get(row) == preference) return row;
+            } catch (NoSuchFieldException ignored) { }
+        }
+        throw new AssertionError("Interface style row missing");
     }
 
     private void verifySamplingAndClip() throws Exception {

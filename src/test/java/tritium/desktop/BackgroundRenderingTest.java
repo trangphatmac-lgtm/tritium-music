@@ -67,7 +67,7 @@ class BackgroundRenderingTest {
             settle();
             assertPixel(RenderSystem.getWidth() - 3, 150, 30, 30, 30);
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
-            AbstractWidget<?> modeRow = scroll.getChildren().get(6);
+            AbstractWidget<?> modeRow = backgroundModeRow(scroll, bg.mode());
             scroll.actualScrollOffset = scroll.targetScrollOffset = modeRow.getRelativeY() - 8;
             render();
             render(modeRow.getX() + 20, modeRow.getY() + 20);
@@ -136,7 +136,7 @@ class BackgroundRenderingTest {
             settle();
             assertFalse(DesktopAppState.background().isActive());
             int[] baseline = capture().getRGB(0, 0, RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), null, 0, RenderSystem.getFramebufferWidth());
-            for (String mode : new String[]{"static", "picture", "shader"}) {
+            for (String mode : new String[]{"static", "picture", "shader", "latent"}) {
                 bg.mode().setValue(mode);
                 settle();
                 int[] current = capture().getRGB(0, 0, RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), null, 0, RenderSystem.getFramebufferWidth());
@@ -174,6 +174,17 @@ class BackgroundRenderingTest {
 
     private void render() throws Exception {
         render(-1, -1);
+    }
+
+    private static AbstractWidget<?> backgroundModeRow(ScrollPanel scroll, ModePreference mode) throws Exception {
+        for (AbstractWidget<?> row : scroll.getChildren()) {
+            try {
+                var field = row.getClass().getDeclaredField("preference");
+                field.setAccessible(true);
+                if (field.get(row) == mode) return row;
+            } catch (NoSuchFieldException ignored) { }
+        }
+        throw new AssertionError("Background mode row missing");
     }
 
     private void verifyFilePicker(Path picture, BackgroundPreferences bg) throws Exception {

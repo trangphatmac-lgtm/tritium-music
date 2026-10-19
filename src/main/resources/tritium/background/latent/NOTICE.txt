@@ -1,0 +1,19 @@
+Latent background port
+
+Paper Shaders 0.0.80, Copyright 2026 Paper, Apache License 2.0.
+Source: https://github.com/paper-design/shaders
+Exact package: https://registry.npmjs.org/@paper-design/shaders/-/shaders-0.0.80.tgz
+mesh-gradient and warp/4x4 dithering were ported to GLSL 1.20 and combined
+with the soft-light compositor in tritium/shaders/background/latent.frag.
+See Paper-LICENSE.txt and Paper-NOTICE.txt.
+
+Folia (folia-major), GNU Affero General Public License version 3.
+Reference revision: 851af3478bfa98b68dbd21fbc89120cc11b7ea96
+Reference modules: LatentBackground.tsx, baseThemes.ts, colorPalette.ts,
+usePlaybackVisualizerBridge.ts, and DEFAULT_LATENT_BACKGROUND_TUNING.
+The Java LatentMotion, LatentPalette and AudioEnergy implementations adapt
+the reference's audio response and palette algorithms. Latent defaults,
+layer transforms, filters and compositing follow the same reference.
+These adapted portions are provided under AGPL-3.0; see Folia-LICENSE.txt.
+The optional Beat This! model / intelligent effects and AI theme generator
+are not included; beats use the reference's real-time spectral-onset path.
