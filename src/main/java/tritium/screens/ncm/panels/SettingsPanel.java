@@ -153,6 +153,8 @@ public class SettingsPanel extends NCMPanel {
         scroll.addChild(new ChoiceRow("settings.backgroundMode", background.mode()));
         scroll.addChild(new BackgroundStatusRow(DesktopAppState.background()::status));
         backgroundRow(scroll, new ToggleRow("settings.backgroundInLyrics", background.applyToLyrics()), custom);
+        backgroundRow(scroll, new SliderRow("settings.lyricsBackgroundTransparency", background.lyricsTransparency(),
+                value -> Math.round(value * 100) + "%"), background::appliesToLyrics);
         backgroundRow(scroll, new ChoiceRow("settings.pictureSource", background.pictureSource(),
                 value -> value.equals("folder") ? I18n.text("background.folder") : I18n.text("background.single")), picture);
         backgroundRow(scroll, new FileRow("settings.picture", background.pictureFile(), false, false),

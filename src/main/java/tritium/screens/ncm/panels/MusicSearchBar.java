@@ -36,6 +36,7 @@ public final class MusicSearchBar extends Panel {
             field.setDisabledTextColor(reAlpha(AppTheme.foreground(), .45f));
         });
         field.setOnKeyTypedCallback((character, keyCode) -> {
+            if (!field.isFocused()) return false;
             if (keyCode == Keyboard.KEY_ESCAPE) field.setFocused(false);
             if (keyCode == Keyboard.KEY_RETURN || keyCode == Keyboard.KEY_NUMPADENTER) submit();
             return true;

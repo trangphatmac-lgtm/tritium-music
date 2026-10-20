@@ -54,6 +54,17 @@ class BackgroundPreferencesTest {
         assertEquals("Light", preferences.appearance().getValue());
         assertEquals("static", preferences.background().mode().getValue());
         assertFalse(preferences.background().applyToLyrics().getValue());
+        assertEquals(.35, preferences.background().lyricsTransparency().getValue());
+    }
+
+    @Test
+    void migratesSavedOpacityWithoutChangingTheBackgroundAppearance() {
+        var bg = new BackgroundPreferences();
+        bg.loadFromJsonObject(new JsonParser().parse("{\"lyricsOpacity\":0.65}").getAsJsonObject());
+        assertEquals(.35, bg.lyricsTransparency().getValue(), 1e-9);
+        assertFalse(bg.toJsonObject().has("lyricsOpacity"));
+        bg.loadFromJsonObject(new JsonParser().parse("{\"lyricsOpacity\":0.65,\"lyricsTransparency\":0.8}").getAsJsonObject());
+        assertEquals(.8, bg.lyricsTransparency().getValue());
     }
 
     @Test
@@ -75,7 +86,8 @@ class BackgroundPreferencesTest {
         bg.shader().setValue("aurora");
         bg.shaderSpeed().setValue(2.1);
         bg.applyToLyrics().setValue(true);
-        assertEquals(13, changes.get());
+        bg.lyricsTransparency().setValue(.42);
+        assertEquals(14, changes.get());
 
         DesktopPreferenceStore store = new DesktopPreferenceStore(temp.resolve("preferences.json"));
         store.save(preferences);

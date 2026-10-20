@@ -13,6 +13,7 @@ public final class BackgroundPreferences {
     private final ModePreference mode = mode("mode", "static", "static", "picture", "video", "shader", "latent");
     private final LatentPreferences latent = new LatentPreferences();
     private final PreferenceValue<Boolean> applyToLyrics = add("applyToLyrics", new PreferenceValue<>("Apply to lyrics", false));
+    private final NumberPreference lyricsTransparency = number("lyricsTransparency", .35, 0, 1, .01);
     private final ModePreference pictureSource = mode("pictureSource", "file", "file", "folder");
     private final PreferenceValue<String> pictureFile = add("pictureFile", new PreferenceValue<>("Picture", ""));
     private final PreferenceValue<String> pictureFolder = add("pictureFolder", new PreferenceValue<>("Folder", ""));
@@ -58,6 +59,13 @@ public final class BackgroundPreferences {
     }
 
     void loadFromJsonObject(JsonObject json) {
+        // Preserve the appearance of settings saved before the slider used transparency.
+        if (!json.has("lyricsTransparency") && json.has("lyricsOpacity")) {
+            try {
+                double opacity = json.get("lyricsOpacity").getAsDouble();
+                if (Double.isFinite(opacity)) lyricsTransparency.setValue(1 - opacity);
+            } catch (RuntimeException ignored) { }
+        }
         if (json.has("latent") && json.get("latent").isJsonObject()) latent.loadFromJsonObject(json.getAsJsonObject("latent"));
         values.forEach((key, preference) -> {
             JsonElement element = json.get(key);
@@ -84,6 +92,7 @@ public final class BackgroundPreferences {
     public ModePreference mode() { return mode; }
     public LatentPreferences latent() { return latent; }
     public PreferenceValue<Boolean> applyToLyrics() { return applyToLyrics; }
+    public NumberPreference lyricsTransparency() { return lyricsTransparency; }
     public boolean appliesToLyrics() { return applyToLyrics.getValue() && !mode.getValue().equals("static"); }
     public ModePreference pictureSource() { return pictureSource; }
     public PreferenceValue<String> pictureFile() { return pictureFile; }

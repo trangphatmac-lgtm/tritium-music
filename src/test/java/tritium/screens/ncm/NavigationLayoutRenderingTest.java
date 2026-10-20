@@ -10,6 +10,7 @@ import org.lwjgl.opengl.GL11;
 import tritium.desktop.*;
 import tritium.management.FontManager;
 import tritium.ncm.music.CloudMusic;
+import tritium.ncm.music.dto.Music;
 import tritium.ncm.music.dto.PlayList;
 import tritium.ncm.music.dto.User;
 import tritium.rendering.Framebuffer;
@@ -22,6 +23,7 @@ import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.rendering.ui.widgets.TextFieldWidget;
 import tritium.screens.ncm.panels.*;
+import tritium.utils.json.JsonUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -80,6 +82,16 @@ class NavigationLayoutRenderingTest {
                 TextureManager.getInstance().loadTexture(playlist.getCoverLocation(), new DynamicTexture(artwork(i)));
             }
             CloudMusic.playLists = fixtures;
+            Music moon = JsonUtils.parse("""
+                    {"id":90001,"name":"Moon","ar":[{"name":"Artist"}],"al":{"id":90001,"name":"Album"}}
+                    """, Music.class);
+            Music sun = JsonUtils.parse("""
+                    {"id":90002,"name":"Sun","ar":[{"name":"Artist"}],"al":{"id":90002,"name":"Album"}}
+                    """, Music.class);
+            fixtures.getFirst().musics = List.of(moon, sun);
+            for (Music song : fixtures.getFirst().musics) {
+                TextureManager.getInstance().loadTexture(song.getSmallCoverLocation(), new DynamicTexture(artwork(0)));
+            }
             recommendations.clear();
             recommendations.add(fixtures.getFirst());
             SettingsPanel settings = new SettingsPanel();
@@ -112,6 +124,7 @@ class NavigationLayoutRenderingTest {
             settle();
             assertSame(fixtures.getFirst(), ((PlaylistPanel) screen.getCurrentPanel()).playList);
             assertEquals(NCMScreen.NavigationSection.MY_PLAYLISTS, screen.getNavigationSection());
+            verifyPlaylistSearchStaysLocal();
 
             screen.mouseClicked(-1, -1, 3);
             settle();
@@ -244,6 +257,35 @@ class NavigationLayoutRenderingTest {
 
     private AbstractWidget<?> tab(int index) {
         return screen.basePanel.getChildren().getFirst().getChildren().get(index + 2);
+    }
+
+    private void verifyPlaylistSearchStaysLocal() throws Exception {
+        NCMPanel playlist = screen.getCurrentPanel();
+        TextFieldWidget global = searchField();
+        global.setText("previous global query");
+        TextFieldWidget local = (TextFieldWidget) playlist.getChildren().stream()
+                .flatMap(widget -> widget.getChildren().stream())
+                .filter(TextFieldWidget.class::isInstance).findFirst().orElseThrow();
+        click(local.getParent());
+        settle();
+        assertTrue(local.isFocused());
+        assertFalse(global.isFocused());
+
+        screen.keyTyped('o', Keyboard.KEY_O);
+        assertEquals("o", local.getText());
+        List<AbstractWidget<?>> rows = playlist.getChildren().stream()
+                .flatMap(widget -> widget.getChildren().stream())
+                .filter(ScrollPanel.class::isInstance).findFirst().orElseThrow().getChildren();
+        assertFalse(rows.getFirst().isHidden());
+        assertTrue(rows.get(1).isHidden());
+        screen.keyTyped('\n', Keyboard.KEY_RETURN);
+        assertSame(playlist, screen.getCurrentPanel());
+        assertEquals("previous global query", global.getText());
+
+        local.setText("");
+        assertTrue(rows.stream().noneMatch(AbstractWidget::isHidden));
+        local.setFocused(false);
+        global.setText("");
     }
 
     private TextFieldWidget searchField() {

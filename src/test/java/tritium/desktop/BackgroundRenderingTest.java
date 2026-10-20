@@ -72,7 +72,9 @@ class BackgroundRenderingTest {
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
             AbstractWidget<?> modeRow = preferenceRow(scroll, bg.mode());
             AbstractWidget<?> lyricsToggle = preferenceRow(scroll, bg.applyToLyrics());
+            AbstractWidget<?> lyricsTransparency = preferenceRow(scroll, bg.lyricsTransparency());
             assertTrue(lyricsToggle.isHidden(), "Solid color has no lyrics-background option");
+            assertTrue(lyricsTransparency.isHidden());
             scroll.actualScrollOffset = scroll.targetScrollOffset = modeRow.getRelativeY() - 8;
             render();
             render(modeRow.getX() + 20, modeRow.getY() + 20);
@@ -81,10 +83,13 @@ class BackgroundRenderingTest {
             assertEquals("picture", bg.mode().getValue(), "Background mode is reachable through settings input");
             render();
             assertFalse(lyricsToggle.isHidden());
+            assertTrue(lyricsTransparency.isHidden(), "Transparency is hidden until lyrics backgrounds are enabled");
             render(lyricsToggle.getX() + 20, lyricsToggle.getY() + 20);
             settings.onMouseClickReceived(lyricsToggle.getX() + 20, lyricsToggle.getY() + 20, 0);
             settings.onMouseReleaseReceived(lyricsToggle.getX() + 20, lyricsToggle.getY() + 20, 0);
             assertTrue(bg.applyToLyrics().getValue(), "Lyrics-background toggle is reachable through settings input");
+            render();
+            assertFalse(lyricsTransparency.isHidden());
             bg.applyToLyrics().setValue(false);
 
             BufferedImage image = new BufferedImage(320, 180, BufferedImage.TYPE_INT_RGB);
@@ -167,7 +172,20 @@ class BackgroundRenderingTest {
                 assertTrue(DesktopAppState.background().isAppliedToLyrics(), mode);
                 int[] current = capture().getRGB(0, 0, RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), null, 0, RenderSystem.getFramebufferWidth());
                 assertFalse(Arrays.equals(baseline, current), "Selected background must replace the cover: " + mode);
-                if (mode.equals("picture")) assertPixel(RenderSystem.getWidth() - 3, 150, 26, 52, 83);
+                if (mode.equals("picture")) {
+                    assertPixel(RenderSystem.getWidth() - 3, 150, 26, 52, 83);
+                    bg.lyricsTransparency().setValue(0.0);
+                    render();
+                    assertPixel(RenderSystem.getWidth() - 3, 150, 40, 80, 128);
+                    bg.lyricsTransparency().setValue(.5);
+                    render();
+                    assertPixel(RenderSystem.getWidth() - 3, 150, 20, 40, 64);
+                    bg.lyricsTransparency().setValue(1.0);
+                    render();
+                    assertPixel(RenderSystem.getWidth() - 3, 150, 0, 0, 0);
+                    bg.lyricsTransparency().setValue(.35);
+                    render();
+                }
                 save("lyrics-background-" + mode);
                 assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
             }

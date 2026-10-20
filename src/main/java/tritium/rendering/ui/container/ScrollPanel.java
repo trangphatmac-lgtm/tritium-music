@@ -2,10 +2,12 @@ package tritium.rendering.ui.container;
 
 import lombok.Getter;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 import tritium.rendering.Rect;
 import tritium.rendering.StencilClipManager;
 import tritium.rendering.animation.Interpolations;
 import tritium.rendering.ui.AbstractWidget;
+import tritium.utils.cursor.CursorUtils;
 
 import java.util.List;
 
@@ -19,6 +21,7 @@ public class ScrollPanel extends AbstractWidget<ScrollPanel> {
     @Getter
     private double spacing = 0;
     public double actualScrollOffset = 0, targetScrollOffset = 0;
+    private final OverlayScrollbar scrollbar = new OverlayScrollbar();
 
     @Getter
     private Alignment alignment = Alignment.VERTICAL;
@@ -46,16 +49,29 @@ public class ScrollPanel extends AbstractWidget<ScrollPanel> {
         if (alignment == null)
             throw new IllegalArgumentException("Alignment cannot be null!");
 
+        if (this.alignment != alignment) scrollbar.reset();
         this.alignment = alignment;
         return this;
     }
 
     @Override
     public void onRender(double mouseX, double mouseY) {
+        clampScrollOffsets();
+        if (scrollbar.isDragging()) {
+            if (Mouse.isCreated() && !Mouse.isButtonDown(0)) scrollbar.endDrag();
+            else dragScrollbar(mouseX - getX(), mouseY - getY());
+        }
         this.actualScrollOffset = Interpolations.interpolate(this.actualScrollOffset, this.targetScrollOffset, 1f);
+        if (Math.abs(actualScrollOffset - targetScrollOffset) < .01) actualScrollOffset = targetScrollOffset;
 
         // 设置子组件的垂直位置
         this.alignChildren();
+        OverlayScrollbar.Geometry geometry = scrollbarGeometry();
+        double pointer = scrollAxis(mouseX - getX(), mouseY - getY());
+        boolean atEdge = isAtScrollbarEdge(mouseX, mouseY);
+        scrollbar.update(geometry, actualScrollOffset, Math.abs(actualScrollOffset - targetScrollOffset) > .01,
+                atEdge, atEdge && pointer >= geometry.start() && pointer <= geometry.start() + geometry.length(),
+                System.nanoTime());
     }
 
     @Override
@@ -71,7 +87,7 @@ public class ScrollPanel extends AbstractWidget<ScrollPanel> {
 
     @Override
     public boolean onDWheel(double mouseX, double mouseY, int dWheel) {
-
+        if (scrollbar.isDragging()) return true;
         // 垂直滑动
         this.performScroll(dWheel);
         super.onDWheel(mouseX, mouseY, dWheel);
@@ -85,7 +101,7 @@ public class ScrollPanel extends AbstractWidget<ScrollPanel> {
 
             double strength = 12;
 
-            if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT))
+            if (Keyboard.isCreated() && Keyboard.isKeyDown(Keyboard.KEY_LSHIFT))
                 strength *= 2;
 
             if (dWheel > 0)
@@ -94,112 +110,46 @@ public class ScrollPanel extends AbstractWidget<ScrollPanel> {
                 this.targetScrollOffset += strength;
         }
 
-        this.targetScrollOffset = Math.max(this.targetScrollOffset, 0);
-
-        switch (this.alignment) {
-            case VERTICAL -> {
-                double childrenHeightSum = this.getChildrenHeightSum();
-                if (childrenHeightSum > this.getHeight())
-                    this.targetScrollOffset = Math.min(this.targetScrollOffset, childrenHeightSum - this.getHeight());
-                else
-                    this.targetScrollOffset = Math.min(this.targetScrollOffset, 0);
-            }
-            case HORIZONTAL -> {
-                double childrenWidthSum = this.getChildrenWidthSum();
-                if (childrenWidthSum > this.getWidth())
-                    this.targetScrollOffset = Math.min(this.targetScrollOffset, childrenWidthSum - this.getWidth());
-                else
-                    this.targetScrollOffset = Math.min(this.targetScrollOffset, 0);
-            }
-            case VERTICAL_WITH_HORIZONTAL_FILL -> {
-                double childrenHeightSum = this.getChildrenHeightSumHorizontalFill();
-                if (childrenHeightSum > this.getHeight())
-                    this.targetScrollOffset = Math.min(this.targetScrollOffset, childrenHeightSum - this.getHeight());
-                else
-                    this.targetScrollOffset = Math.min(this.targetScrollOffset, 0);
-            }
-        }
+        this.targetScrollOffset = Math.max(0, Math.min(this.targetScrollOffset, maxScrollOffset()));
     }
 
     public void scrollToEnd() {
-        switch (this.alignment) {
-            case VERTICAL -> {
-                double childrenHeightSum = this.getChildrenHeightSum();
-                if (childrenHeightSum > this.getHeight())
-                    this.targetScrollOffset = childrenHeightSum - this.getHeight();
-                else
-                    this.targetScrollOffset = 0;
-            }
-            case HORIZONTAL -> {
-                double childrenWidthSum = this.getChildrenWidthSum();
-                if (childrenWidthSum > this.getWidth())
-                    this.targetScrollOffset = childrenWidthSum - this.getWidth();
-                else
-                    this.targetScrollOffset = 0;
-            }
-            case VERTICAL_WITH_HORIZONTAL_FILL -> {
-                double childrenHeightSum = this.getChildrenHeightSumHorizontalFill();
-                if (childrenHeightSum > this.getHeight())
-                    this.targetScrollOffset = childrenHeightSum - this.getHeight();
-                else
-                    this.targetScrollOffset = 0;
-            }
-        }
+        this.targetScrollOffset = maxScrollOffset();
     }
 
     public void scrollToEndImmediately() {
-        switch (this.alignment) {
-            case VERTICAL -> {
-                double childrenHeightSum = this.getChildrenHeightSum();
-                if (childrenHeightSum > this.getHeight())
-                    this.actualScrollOffset = childrenHeightSum - this.getHeight();
-                else
-                    this.actualScrollOffset = 0;
-            }
-            case HORIZONTAL -> {
-                double childrenWidthSum = this.getChildrenWidthSum();
-                if (childrenWidthSum > this.getWidth())
-                    this.actualScrollOffset = childrenWidthSum - this.getWidth();
-                else
-                    this.actualScrollOffset = 0;
-            }
-            case VERTICAL_WITH_HORIZONTAL_FILL -> {
-                double childrenHeightSum = this.getChildrenHeightSumHorizontalFill();
-                if (childrenHeightSum > this.getHeight())
-                    this.actualScrollOffset = childrenHeightSum - this.getHeight();
-                else
-                    this.actualScrollOffset = 0;
-            }
-        }
+        this.actualScrollOffset = this.targetScrollOffset = maxScrollOffset();
     }
 
     public boolean isScrolledToEnd() {
+        return this.targetScrollOffset >= maxScrollOffset();
+    }
+
+    private double contentLength() {
         return switch (this.alignment) {
-            case VERTICAL -> {
-                double childrenHeightSum = this.getChildrenHeightSum();
-                if (childrenHeightSum > this.getHeight())
-                    yield this.targetScrollOffset >= childrenHeightSum - this.getHeight();
-                else
-                    yield this.targetScrollOffset == 0;
-            }
-            case HORIZONTAL -> {
-                double childrenWidthSum = this.getChildrenWidthSum();
-                if (childrenWidthSum > this.getWidth())
-                    yield this.targetScrollOffset >= childrenWidthSum - this.getWidth();
-                else
-                    yield this.targetScrollOffset == 0;
-            }
-            case VERTICAL_WITH_HORIZONTAL_FILL -> {
-                double childrenHeightSum = this.getChildrenHeightSumHorizontalFill();
-                if (childrenHeightSum > this.getHeight())
-                    yield this.targetScrollOffset >= childrenHeightSum - this.getHeight();
-                else
-                    yield this.targetScrollOffset == 0;
-            }
+            case VERTICAL -> getChildrenHeightSum();
+            case HORIZONTAL -> getChildrenWidthSum();
+            case VERTICAL_WITH_HORIZONTAL_FILL -> getChildrenHeightSumHorizontalFill();
         };
     }
 
+    private double viewportLength() {
+        return Math.max(0, alignment == Alignment.HORIZONTAL ? getWidth() : getHeight());
+    }
+
+    private double maxScrollOffset() {
+        return Math.max(0, contentLength() - viewportLength());
+    }
+
+    private void clampScrollOffsets() {
+        double maximum = maxScrollOffset();
+        targetScrollOffset = Math.max(0, Math.min(targetScrollOffset, maximum));
+        actualScrollOffset = Math.max(0, Math.min(actualScrollOffset, maximum));
+        if (maximum == 0) scrollbar.reset();
+    }
+
     public void alignChildren() {
+        clampScrollOffsets();
         double offsetX = 0;
         double offsetY = 0;
 
@@ -207,36 +157,6 @@ public class ScrollPanel extends AbstractWidget<ScrollPanel> {
             offsetY = -this.actualScrollOffset;
         else
             offsetX = -this.actualScrollOffset;
-
-        switch (this.alignment) {
-            case VERTICAL -> {
-                double childrenHeightSum = this.getChildrenHeightSum();
-
-                if (childrenHeightSum < this.getHeight())
-                    this.targetScrollOffset = 0;
-                else if (this.targetScrollOffset > childrenHeightSum - this.getHeight()) {
-                    this.targetScrollOffset = childrenHeightSum - this.getHeight();
-                }
-            }
-            case HORIZONTAL -> {
-                double childrenWidthSum = this.getChildrenWidthSum();
-
-                if (childrenWidthSum < this.getWidth())
-                    this.targetScrollOffset = 0;
-                else if (this.targetScrollOffset > childrenWidthSum - this.getWidth()) {
-                    this.targetScrollOffset = childrenWidthSum - this.getWidth();
-                }
-            }
-            case VERTICAL_WITH_HORIZONTAL_FILL -> {
-                double childrenHeightSum = this.getChildrenHeightSumHorizontalFill();
-
-                if (childrenHeightSum < this.getHeight())
-                    this.targetScrollOffset = 0;
-                else if (this.targetScrollOffset > childrenHeightSum - this.getHeight()) {
-                    this.targetScrollOffset = childrenHeightSum - this.getHeight();
-                }
-            }
-        }
 
         for (AbstractWidget<?> child : this.getChildren()) {
 
@@ -346,11 +266,73 @@ public class ScrollPanel extends AbstractWidget<ScrollPanel> {
 
     @Override
     public void renderWidget(double mouseX, double mouseY, int dWheel) {
+        if (isHidden()) {
+            scrollbar.reset();
+            return;
+        }
         StencilClipManager.beginClip(() -> Rect.draw(this.getX(), this.getY(), this.getWidth(), this.getHeight(), -1));
 
         super.renderWidget(mouseX, mouseY, dWheel);
+        renderScrollbar(mouseX, mouseY);
 
         StencilClipManager.endClip();
+    }
+
+    private OverlayScrollbar.Geometry scrollbarGeometry() {
+        return OverlayScrollbar.geometry(viewportLength(), contentLength(), actualScrollOffset);
+    }
+
+    private double scrollAxis(double x, double y) {
+        return alignment == Alignment.HORIZONTAL ? x : y;
+    }
+
+    private boolean isAtScrollbarEdge(double mouseX, double mouseY) {
+        if (!testHovered(mouseX, mouseY)) return false;
+        // Respect any outer scrolling clip as well.
+        for (AbstractWidget<?> parent = getParent(); parent != null; parent = parent.getParent()) {
+            if (parent instanceof ScrollPanel scroll && !scroll.testHovered(mouseX, mouseY)) return false;
+        }
+        return alignment == Alignment.HORIZONTAL
+                ? mouseY >= getY() + getHeight() - OverlayScrollbar.HIT_WIDTH
+                : mouseX >= getX() + getWidth() - OverlayScrollbar.HIT_WIDTH;
+    }
+
+    private void renderScrollbar(double mouseX, double mouseY) {
+        OverlayScrollbar.Geometry geometry = scrollbarGeometry();
+        if (!geometry.scrollable() || scrollbar.alpha() <= 0) return;
+        double width = scrollbar.width();
+        double x = alignment == Alignment.HORIZONTAL ? getX() + geometry.start()
+                : getX() + getWidth() - OverlayScrollbar.INSET - width;
+        double y = alignment == Alignment.HORIZONTAL ? getY() + getHeight() - OverlayScrollbar.INSET - width
+                : getY() + geometry.start();
+        roundedRect(x, y, alignment == Alignment.HORIZONTAL ? geometry.length() : width,
+                alignment == Alignment.HORIZONTAL ? width : geometry.length(), width / 2,
+                reAlpha(0xFF808080, getAlpha() * scrollbar.alpha()));
+        if (scrollbar.isDragging() || isAtScrollbarEdge(mouseX, mouseY)) {
+            CursorUtils.setOverride(CursorUtils.ARROW);
+        }
+    }
+
+    @Override
+    protected boolean onMouseClickBeforeChildren(double mouseX, double mouseY, int mouseButton) {
+        OverlayScrollbar.Geometry geometry = scrollbarGeometry();
+        if (mouseButton != 0 || !geometry.scrollable() || !isAtScrollbarEdge(mouseX, mouseY)) return false;
+        scrollbar.beginDrag(geometry, scrollAxis(mouseX - getX(), mouseY - getY()));
+        dragScrollbar(mouseX - getX(), mouseY - getY());
+        return true;
+    }
+
+    private void dragScrollbar(double relativeX, double relativeY) {
+        actualScrollOffset = targetScrollOffset = scrollbar.dragOffset(scrollbarGeometry(), scrollAxis(relativeX, relativeY));
+        alignChildren();
+    }
+
+    @Override
+    public void onMouseReleased(double relativeX, double relativeY, int mouseButton) {
+        if (mouseButton == 0 && scrollbar.isDragging()) {
+            dragScrollbar(relativeX, relativeY);
+            scrollbar.endDrag();
+        }
     }
 
     @Override

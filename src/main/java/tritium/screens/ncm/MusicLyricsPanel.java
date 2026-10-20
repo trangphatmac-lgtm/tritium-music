@@ -991,7 +991,9 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
             api.getGLStateManager().popMatrix();
         }
 
-        Rect.draw(posX, posY, width, height, hexColor(0, 0, 0, alpha * .35f));
+        float backgroundTransparency = DesktopAppState.background().isAppliedToLyrics()
+                ? DesktopAppState.preferences().background().lyricsTransparency().getValue().floatValue() : .35f;
+        Rect.draw(posX, posY, width, height, hexColor(0, 0, 0, alpha * backgroundTransparency));
     }
 
     private float calculateLowFrequencyEnergy() {

@@ -371,13 +371,18 @@ public abstract class AbstractWidget<SELF extends AbstractWidget<SELF>> implemen
             if (!child.shouldClickChildren(mouseX, mouseY))
                 continue;
 
+            if (child.isClickable() && child.onMouseClickBeforeChildren(mouseX, mouseY, mouseButton)) {
+                return true;
+            }
+
             if (!child.getChildren().isEmpty()) {
                 if (this.iterateChildrenMouseClick(child.getChildren(), mouseX, mouseY, mouseButton)) {
                     return true;
                 }
             }
 
-            if (child.isHovering() && child.isClickable() && child.onMouseClicked(mouseX - child.getX(), mouseY - child.getY(), mouseButton)) {
+            // Hover is cached during rendering and may be stale after pointer movement or scroll culling.
+            if (child.testHovered(mouseX, mouseY) && child.isClickable() && child.onMouseClicked(mouseX - child.getX(), mouseY - child.getY(), mouseButton)) {
                 return true;
             }
         }
@@ -417,15 +422,24 @@ public abstract class AbstractWidget<SELF extends AbstractWidget<SELF>> implemen
         return true;
     }
 
+    /** Allows foreground controls, such as scrollbars, to capture input above their content. */
+    protected boolean onMouseClickBeforeChildren(double mouseX, double mouseY, int mouseButton) {
+        return false;
+    }
+
     public void onMouseClickReceived(double mouseX, double mouseY, int mouseButton) {
 
         if (!this.shouldClickChildren(mouseX, mouseY))
             return;
 
+        if (!this.isHidden() && this.isClickable()
+                && this.onMouseClickBeforeChildren(mouseX, mouseY, mouseButton))
+            return;
+
         // 先检测子组件
         // 如果子组件都没有响应点击事件, 则测试这个组件
         if (!this.iterateChildrenMouseClick(this.getChildren(), mouseX, mouseY, mouseButton)) {
-            if (!this.isHidden() && this.isHovering()) {
+            if (!this.isHidden() && this.testHovered(mouseX, mouseY)) {
                 // 不需要在乎返回值.
                 this.onMouseClicked(mouseX - this.getX(), mouseY - this.getY(), mouseButton);
             }
