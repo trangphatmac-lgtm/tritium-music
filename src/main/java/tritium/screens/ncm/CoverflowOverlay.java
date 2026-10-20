@@ -25,7 +25,6 @@ import tritium.rendering.animation.Interpolations;
 import tritium.rendering.entities.impl.TextField;
 import tritium.rendering.font.CFontRenderer;
 import tritium.rendering.rendersystem.RenderSystem;
-import tritium.rendering.shader.impl.VFFadeoutShader;
 import tritium.rendering.texture.ITextureObject;
 import tritium.rendering.texture.Textures;
 import tritium.utils.KeyboardUtils;
@@ -58,7 +57,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
     private static final double COVER_SIZE = 96;
     private static final double SCENE_CENTER_Y = .4;
     private final CoverflowReflection reflection = new CoverflowReflection();
-    private VFFadeoutShader coverReflection;
+    private final CoverflowSsr coverReflection = new CoverflowSsr();
 
     public void display() {
         closing = false;
@@ -91,8 +90,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
     public void onGuiClosed() {
 
         reflection.close();
-        if (coverReflection != null) coverReflection.close();
-        coverReflection = null;
+        coverReflection.close();
         DesktopAppState.background().pause();
 
         if (this.reloadOnClosed) {
@@ -226,6 +224,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         drawBackgroundReflection();
 
         this.setupProjectionTransformation();
+        coverReflection.beginFrame(-COVER_SIZE * .5 - (SCENE_CENTER_Y - .5) * paneHeight());
 
         api.getGLStateManager().clear(GL11.GL_DEPTH_BUFFER_BIT);
         api.getGLStateManager().disableDepth();
@@ -297,6 +296,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
         this.stopProjectionTransformation();
 
+        coverReflection.draw(alpha);
         drawAlbumTitle();
 
         // Controls stay outside the reflected scene.
@@ -383,20 +383,19 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         api.getGLStateManager().translate(-(offsetX + coverSize * 0.5), -coverSize * 0.5, 0);
 
         // scale
-        api.getGLStateManager().translate(offsetX + coverSize * 0.5, 0, 0);
+        // Anchor every cover on the same floor, including the smaller side covers.
+        api.getGLStateManager().translate(offsetX + coverSize * 0.5, coverSize * .5, 0);
         api.getGLStateManager().scale(renderingData.scale, renderingData.scale, 1);
-        api.getGLStateManager().translate(-(offsetX + coverSize * 0.5), 0, 0);
+        api.getGLStateManager().translate(-(offsetX + coverSize * 0.5), -coverSize * .5, 0);
 
         Rect.draw(offsetX, -coverSize * 0.5f, coverSize, coverSize, RGBA.color(128, 128, 128, 128));
 
         if (texture != null) {
-            if (coverReflection == null) coverReflection = new VFFadeoutShader();
             api.getGLStateManager().bindTexture(texture.getGlTextureId());
             texture.linearFilter();
             Image.draw(offsetX, -coverSize * 0.5, coverSize, coverSize, Image.Type.Normal);
 
-            // Preserve the original cover-local mirror: same proportions, sharp texture and fade.
-            coverReflection.draw(offsetX, coverSize * .5, coverSize, coverSize, .5, .85f * alpha);
+            coverReflection.addCover(texture.getGlTextureId(), offsetX, -coverSize * .5, coverSize);
 
             if (renderingData.flipped || (renderingData.rotateDeg < -5 && index == i)) {
                 // flip it
@@ -407,7 +406,8 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                 double y = -coverSize * 0.5f;
 
                 Image.drawLinearFlippedX(al.getCoverLocation(), offsetX, y, coverSize, coverSize, Image.Type.Normal);
-                UiMaterials.panel(offsetX, y, coverSize, coverSize, AppTheme.color(0xC8000000, 0xE6FFFFFF));
+                // Keep the flipped face flush with the square artwork, without a glass rim.
+                Rect.draw(offsetX, y, coverSize, coverSize, AppTheme.color(0xC8000000, 0xE6FFFFFF));
 
                 double imgSpacing = 1;
                 double imgSize = 16;
@@ -424,7 +424,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
                 double contentPaneHeight = coverSize - (imgSpacing * 2 + imgSize + contentSpacing * 2);
 
                 StencilClipManager.beginClip(() -> Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, -1));
-                UiMaterials.panel(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, AppTheme.color(0x14FFFFFF, 0xFFF5F5F5));
+                Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, AppTheme.color(0x14FFFFFF, 0xFFF5F5F5));
 
                 double yAdd = 5;
 

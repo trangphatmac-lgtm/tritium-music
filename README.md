@@ -17,6 +17,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Volume adjustment and seek bar dragging
 - Lyric page, word-by-word lyrics, translations, and romaji
 - Cover loading and blurred backgrounds
+- Coverflow with depth-based screen-space reflections, a shared mirror plane, angle-dependent reflectivity, and gradual softening.
 - Music download cache and cache size display
 - Simplified Chinese, Traditional Chinese, and English in Settings → General → Language; changes apply immediately and are saved automatically (default: Simplified Chinese)
 - Light and dark modes in Settings → Appearance, with smooth transitions and a saved preference; lyrics and system HUDs keep their existing appearance
@@ -184,7 +185,5 @@ On a desktop with a display, also validate actual framebuffer pixels, clipping, 
 ```bash
 mvn -Dtritium.testRendering=true test
 ```
-
-This check opens a temporary test window.
 
 ---

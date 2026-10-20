@@ -10,7 +10,7 @@ import tritium.rendering.shader.ShaderProgram;
 
 import java.nio.ByteBuffer;
 
-/** A polished background floor. Covers render their own sharp, uncompressed reflections afterward. */
+/** Background-only floor; artwork depth and reflections are handled separately by {@link CoverflowSsr}. */
 final class CoverflowReflection implements AutoCloseable {
     private int texture, width, height;
     private ShaderProgram shader;

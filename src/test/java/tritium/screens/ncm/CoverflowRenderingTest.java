@@ -9,6 +9,10 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL20;
 import tritium.desktop.*;
 import tritium.management.FontManager;
 import tritium.ncm.music.dto.Album;
@@ -19,12 +23,14 @@ import tritium.rendering.TextureManager;
 import tritium.rendering.material.UiMaterials;
 import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.texture.DynamicTexture;
+import tritium.rendering.shader.ShaderProgram;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
 import java.awt.GradientPaint;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -55,6 +61,7 @@ class CoverflowRenderingTest {
             preferences.appearance().setValue("Dark");
             preferences.interfaceStyle().setValue("Static");
             verifyMirrorPixels();
+            verifyScreenSpaceDepthHits();
 
             screen = new CoverflowOverlay();
             String[] titles = {"天亮以前说再见", "红尘之客", "Payphone", "午后散步"};
@@ -73,6 +80,8 @@ class CoverflowRenderingTest {
             assertTrue(brightTextPixels(dark, .86, 1) > 100, "The album title remains visible below the reflection");
             assertEquals(0, brightTextPixels(dark, .66, .84), "The album title must not appear in the reflection");
             save("coverflow-dark");
+            verifyReflectionState();
+            measureReflectionFrames();
 
             BufferedImage picture = new BufferedImage(128, 128, BufferedImage.TYPE_INT_RGB);
             for (int y = 0; y < 128; y++) for (int x = 0; x < 128; x++)
@@ -104,6 +113,9 @@ class CoverflowRenderingTest {
             render();
             assertTrue(screen.renderList.isEmpty());
             assertPixel(capture(), 3, RenderSystem.getHeight() * .3, 0x285080, 1);
+            BufferedImage empty = capture();
+            assertEquals(colorAt(empty, .1, .75), colorAt(empty, .5, .75),
+                    "Filtering out all albums must also remove pooled reflection geometry");
             screen.filterAlbums("");
             settle();
 
@@ -153,7 +165,7 @@ class CoverflowRenderingTest {
             settle();
             assertPixel(capture(), 3, RenderSystem.getHeight() * .3, 0xFFFFFF, 2);
             save("coverflow-light-resized");
-            screen.onGuiClosed();
+            verifyResourcesReleased();
             screen.initGui();
             settle();
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
@@ -172,6 +184,150 @@ class CoverflowRenderingTest {
     private static <T> Runnable restorePreference(PreferenceValue<T> preference) {
         T original = preference.getValue();
         return () -> preference.setValue(original);
+    }
+
+    /** Deliberately give SSR and its planar fallback different colors: a depth hit must win. */
+    private void verifyScreenSpaceDepthHits() throws Exception {
+        invokeApp("prepareFrameState");
+        ShaderProgram shader = new ShaderProgram("coverflow_ssr.frag", "vertex.vsh");
+        int[] textures = {GL11.glGenTextures(), GL11.glGenTextures(), GL11.glGenTextures()};
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        try {
+            GL11.glDisable(GL11.GL_BLEND);
+            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            for (int unit = 0; unit < 3; unit++) {
+                GL13.glActiveTexture(GL13.GL_TEXTURE0 + unit);
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, textures[unit]);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+                if (unit == 1) {
+                    GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_COMPARE_MODE, GL11.GL_NONE);
+                    uploadDepth(240, false);
+                } else {
+                    ByteBuffer pixels = BufferUtils.createByteBuffer(16 * 16 * 4);
+                    int color = unit == 0 ? 0xDF7028 : 0x275C91;
+                    for (int i = 0; i < 256; i++) pixels.put((byte) (color >> 16))
+                            .put((byte) (color >> 8)).put((byte) color).put((byte) 255);
+                    pixels.flip();
+                    GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 16, 16, 0,
+                            GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+                }
+            }
+            shader.start();
+            int program = shader.getProgramId();
+            GL20.glUniform1i(GL20.glGetUniformLocation(program, "scene"), 0);
+            GL20.glUniform1i(GL20.glGetUniformLocation(program, "depthBuffer"), 1);
+            GL20.glUniform1i(GL20.glGetUniformLocation(program, "planar"), 2);
+            float f = (float) (1 / Math.tan(Math.toRadians(22.5)));
+            GL20.glUniform2f(GL20.glGetUniformLocation(program, "projectionScale"),
+                    f * (float) (RenderSystem.getHeight() / RenderSystem.getWidth()), f);
+            GL20.glUniform2f(GL20.glGetUniformLocation(program, "clipPlanes"), 1, 3000);
+            GL20.glUniform2f(GL20.glGetUniformLocation(program, "depthRange"), 200, 280);
+            GL20.glUniform1f(GL20.glGetUniformLocation(program, "floorY"), -28.118f);
+
+            double w = RenderSystem.getWidth(), h = RenderSystem.getHeight();
+            ShaderProgram.drawQuadFlipped(0, 0, w, h);
+            assertPixel(capture(), w * .5, h * .75, 0xDF7028, 1);
+            assertPixel(capture(), w * .1, h * .75, 0x275C91, 1);
+
+            // Same color buffer, wrong depth: the orange rectangle must no longer be reflected.
+            GL13.glActiveTexture(GL13.GL_TEXTURE1);
+            uploadDepth(100, false);
+            ShaderProgram.drawQuadFlipped(0, 0, w, h);
+            assertPixel(capture(), w * .5, h * .75, 0x275C91, 1);
+
+            // Empty depth (off-screen/missing geometry) also uses the planar fallback.
+            uploadDepth(3000, false);
+            ShaderProgram.drawQuadFlipped(0, 0, w, h);
+            assertPixel(capture(), w * .5, h * .75, 0x275C91, 1);
+
+            // Foreground geometry at the destination must occlude the mirror.
+            uploadDepth(240, true);
+            ShaderProgram.drawQuadFlipped(0, 0, w, h);
+            assertPixel(capture(), w * .5, h * .75, 0, 1);
+        } finally {
+            ShaderProgram.stop();
+            GL20.glDeleteProgram(shader.getProgramId());
+            for (int texture : textures) GL11.glDeleteTextures(texture);
+            GL11.glPopAttrib();
+            GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        }
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+    }
+
+    private static void uploadDepth(float viewDepth, boolean occluder) {
+        FloatBuffer pixels = BufferUtils.createFloatBuffer(256);
+        for (int y = 0; y < 16; y++) for (int x = 0; x < 16; x++) {
+            float z = x >= 5 && x <= 10 && y >= 6 && y <= 11 ? viewDepth : 3000;
+            if (occluder && x >= 5 && x <= 10 && y >= 2 && y <= 5) z = 100;
+            pixels.put(3000f / 2999f - (3000f / 2999f) / z);
+        }
+        pixels.flip();
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL14.GL_DEPTH_COMPONENT24, 16, 16, 0,
+                GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, pixels);
+    }
+
+    private CoverflowSsr reflections() throws Exception {
+        var field = CoverflowOverlay.class.getDeclaredField("coverReflection");
+        field.setAccessible(true);
+        return (CoverflowSsr) field.get(screen);
+    }
+
+    private void verifyReflectionState() throws Exception {
+        CoverflowSsr reflections = reflections();
+        var failed = CoverflowSsr.class.getDeclaredField("failed");
+        failed.setAccessible(true);
+        assertFalse(failed.getBoolean(reflections), "Native GL test must exercise SSR, not the compatibility fallback");
+        FloatBuffer projection = BufferUtils.createFloatBuffer(16), modelView = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, projection);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, modelView);
+        GL13.glActiveTexture(GL13.GL_TEXTURE2);
+        int binding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        boolean mask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        reflections.draw(.7f);
+        assertEquals(GL13.GL_TEXTURE2, GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
+        assertEquals(binding, GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D));
+        assertEquals(mask, GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK));
+        FloatBuffer actual = BufferUtils.createFloatBuffer(16);
+        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, actual);
+        assertEquals(projection, actual);
+        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actual);
+        assertEquals(modelView, actual);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+    }
+
+    private void measureReflectionFrames() throws Exception {
+        long[] timings = new long[24];
+        for (int i = 0; i < timings.length; i++) {
+            GL11.glFinish();
+            long start = System.nanoTime();
+            reflections().draw(1);
+            GL11.glFinish();
+            timings[i] = System.nanoTime() - start;
+        }
+        java.util.Arrays.sort(timings);
+        System.out.printf(java.util.Locale.ROOT,
+                "Coverflow SSR GPU-complete pass at %dx%d: median %.2f ms, p95 %.2f ms%n",
+                RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(),
+                timings[12] / 1e6, timings[22] / 1e6);
+    }
+
+    private void verifyResourcesReleased() throws Exception {
+        CoverflowSsr reflections = reflections();
+        String[] names = {"scene", "depth", "planar", "planarDepth", "traced"};
+        int[] ids = new int[names.length];
+        for (int i = 0; i < names.length; i++) {
+            var field = CoverflowSsr.class.getDeclaredField(names[i]);
+            field.setAccessible(true);
+            ids[i] = field.getInt(reflections);
+            assertTrue(GL11.glIsTexture(ids[i]));
+        }
+        screen.onGuiClosed();
+        for (int id : ids) assertFalse(GL11.glIsTexture(id), "Closing Coverflow must free reflection textures");
     }
 
     private void verifyMirrorPixels() throws Exception {
