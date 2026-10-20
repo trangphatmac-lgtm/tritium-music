@@ -20,6 +20,7 @@ import tritium.rendering.entities.impl.ScrollText;
 import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.shader.ShaderProgram;
 import tritium.rendering.shader.Shaders;
+import tritium.rendering.shader.impl.GaussianBlurShader;
 import tritium.rendering.texture.ITextureObject;
 import tritium.rendering.ui.widgets.IconWidget;
 import tritium.screens.ncm.panels.PlayModeButton;
@@ -53,6 +54,8 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     static Music prevMusic = null;
 
     float alpha = 0f;
+    private float focusBlurAlpha = 0f;
+    private boolean hoveringLyrics;
     boolean closing = false;
 
     Framebuffer baseFb, stencilFb;
@@ -282,6 +285,9 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
     public void onRender(double mouseX, double mouseY, double posX, double posY, double width, double height, int dWheel) {
 
+        Framebuffer renderTarget = Framebuffer.currentlyBinding;
+        GaussianBlurShader blurShader = Shaders.BLUR_SHADER;
+        renderTarget.bindFramebuffer(true);
         if (prevMouse && !Mouse.isButtonDown(0)) prevMouse = false;
 
         alpha = Interpolations.interpolate(alpha, closing ? 0.0f : 1f, 0.3f);
@@ -289,10 +295,23 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         api.getGLStateManager().pushMatrix();
         scaleAtPos(posX + width * .5, posY + height * .5, 1.1 - (alpha * 0.1));
 
+        hoveringLyrics = isHovered(mouseX, mouseY, posX + width * .5, posY, width * .5, height);
+        focusBlurAlpha = Interpolations.interpolate(focusBlurAlpha,
+                !hoveringLyrics && !CloudMusic.lyrics.isEmpty() ? 1f : 0f, 0.05f);
         this.renderBackground(posX, posY, width, height, alpha);
+        // Cover backdrops are already blurred. Apply focus blur only to custom backgrounds.
+        if (DesktopAppState.background().isAppliedToLyrics() && alpha * focusBlurAlpha >= 1f / 255f) {
+            blurShader.run(Collections.singletonList(() ->
+                    Rect.draw(posX, posY, width, height, hexColor(1, 1, 1, alpha * focusBlurAlpha))));
+        }
         UiMaterials.captureBackdrop(true);
         UiMaterials.withoutMaterials(() -> this.renderControlsPart(mouseX, mouseY, posX, posY, width, height, alpha));
-        this.renderLyrics(mouseX, mouseY, posX, posY, width, height, dWheel, alpha);
+        if (!CloudMusic.lyrics.isEmpty()) {
+            List<Runnable> blurRects = new ArrayList<>();
+            // Blur a transparent lyric layer so the background is never sampled a second time.
+            blurShader.runLayer(() ->
+                    this.renderLyrics(mouseX, mouseY, posX, posY, width, height, dWheel, alpha, blurRects), blurRects);
+        }
         this.renderTranslationButton(mouseX, mouseY, posX, posY, width, height, alpha);
         api.getGLStateManager().popMatrix();
     }
@@ -329,7 +348,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         }
     }
 
-    private void renderLyrics(double mouseX, double mouseY, double posX, double posY, double width, double height, int dWheel, float alpha) {
+    private void renderLyrics(double mouseX, double mouseY, double posX, double posY, double width, double height, int dWheel, float alpha, List<Runnable> blurRects) {
 
         if (CloudMusic.lyrics.isEmpty()) return;
 
@@ -340,10 +359,6 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
         double lyricsWidth = width * getLyricWidthFactor();
         this.updateLyricPositions(posY, height, lyricsWidth);
-
-        List<Runnable> blurRects = new ArrayList<>();
-
-        boolean hoveringLyrics = isHovered(mouseX, mouseY, posX + width * .5, posY, width * .5, height);
 
         if (hoveringLyrics && dWheel != 0) {
 
@@ -477,6 +492,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
                         if (shouldClip) {
 
+                            Framebuffer lyricTarget = Framebuffer.currentlyBinding;
                             int scale = 2;
                             int fbWidth = ((int) stringWidthD) * scale, fbHeight = (FontManager.pf65bold.getHeight() + 6) * scale;
 
@@ -533,7 +549,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
                                 }
                             }
 
-                            Framebuffer.getMcFramebuffer().bindFramebuffer(true);
+                            lyricTarget.bindFramebuffer(true);
 
                             api.getGLStateManager().popMatrix();
                             api.getGLStateManager().matrixMode(GL11.GL_PROJECTION);
@@ -611,12 +627,6 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
             blurRects.add(() -> Rect.draw(lyricRenderOffsetX - 4, lyric.posY + scrollOffset, lyricsWidth, lyric.height + 8, hexColor(1, 1, 1, alpha * lyric.blurAlpha)));
         }
-
-        api.getGLStateManager().pushMatrix();
-        this.scaleAtPos(lyricRenderOffsetX, RenderSystem.getHeight() * .5, 1 / (1.1 - (alpha * 0.1)));
-        Shaders.BLUR_SHADER.run(blurRects);
-//        Shaders.UI_BLOOM_SHADER.runNoCaching(bloomRunnables);
-        api.getGLStateManager().popMatrix();
     }
 
     private void updateLyricPositions(double posY, double height, double width) {

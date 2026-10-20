@@ -21,6 +21,7 @@ import tritium.rendering.texture.DynamicTexture;
 import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.screens.ncm.MusicLyricsPanel;
+import tritium.screens.ncm.LyricLine;
 import tritium.screens.ncm.NCMScreen;
 import tritium.screens.ncm.panels.SettingsPanel;
 
@@ -50,6 +51,9 @@ class BackgroundRenderingTest {
         var original = DesktopAppState.preferences().toJsonObject();
         User profile = CloudMusic.profile;
         Music playing = CloudMusic.currentlyPlaying;
+        var originalLyrics = new java.util.ArrayList<>(CloudMusic.lyrics);
+        LyricLine originalCurrentLyric = CloudMusic.currentLyric;
+        boolean originalHasTranslation = CloudMusic.hasTransLyrics;
         BackgroundPreferences bg = DesktopAppState.preferences().background();
         try {
             DesktopNativeLoader.configureLibraryPath();
@@ -189,6 +193,46 @@ class BackgroundRenderingTest {
                 save("lyrics-background-" + mode);
                 assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
             }
+            // Exercise focus transitions with real text, translation, and partially sung words.
+            BufferedImage striped = new BufferedImage(320, 180, BufferedImage.TYPE_INT_RGB);
+            for (int y = 0; y < 180; y++) for (int x = 0; x < 320; x++)
+                striped.setRGB(x, y, x % 8 < 4 ? 0x204080 : 0x80C040);
+            Path stripedPicture = temp.resolve("striped.png");
+            ImageIO.write(striped, "png", stripedPicture.toFile());
+            bg.mode().setValue("picture");
+            bg.pictureFile().setValue(stripedPicture.toString());
+            bg.lyricsTransparency().setValue(0.0);
+            LyricLine currentLine = new LyricLine(0, "Current lyric");
+            currentLine.words.add(new LyricLine.Word("Current lyric", -500, 1000));
+            currentLine.translationText = "当前歌词保持清晰";
+            CloudMusic.hasTransLyrics = true;
+            DesktopAppState.preferences().showTranslation().setValue(true);
+            DesktopAppState.preferences().showRoman().setValue(false);
+            LyricLine nextLine = new LyricLine(2000, "Other lyrics soften");
+            CloudMusic.lyrics.clear();
+            CloudMusic.lyrics.add(currentLine);
+            CloudMusic.lyrics.add(nextLine);
+            CloudMusic.currentLyric = currentLine;
+            MusicLyricsPanel.updateLyricPositionsImmediate(screen.getPanelWidth() * MusicLyricsPanel.getLyricWidthFactor());
+            await(() -> DesktopAppState.background().isActive());
+            for (int i = 0; i < 90; i++) render(RenderSystem.getWidth() * .75, 2);
+            int[] focusedBackground = capture().getRGB(600, 30, 200, 50, null, 0, 200);
+            save("lyrics-focused");
+            settle();
+            int[] blurredBackground = capture().getRGB(600, 30, 200, 50, null, 0, 200);
+            assertFalse(Arrays.equals(focusedBackground, blurredBackground), "Losing lyric focus must blur the background");
+            assertTrue(currentLine.blurAlpha < .01f);
+            assertTrue(nextLine.blurAlpha > .8f);
+            save("lyrics-unfocused");
+            for (int i = 0; i < 90; i++) render(RenderSystem.getWidth() * .75, 2);
+            assertArrayEquals(focusedBackground, capture().getRGB(600, 30, 200, 50, null, 0, 200),
+                    "Returning focus must restore the original background");
+            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+            CloudMusic.lyrics.clear();
+            CloudMusic.currentLyric = null;
+            CloudMusic.hasTransLyrics = originalHasTranslation;
+            bg.lyricsTransparency().setValue(.35);
+
             // Invalid media and Solid Color both keep the established cover fallback.
             bg.mode().setValue("picture");
             bg.pictureFile().setValue(temp.resolve("missing-lyrics.png").toString());
@@ -223,6 +267,10 @@ class BackgroundRenderingTest {
         } finally {
             CloudMusic.profile = profile;
             CloudMusic.currentlyPlaying = playing;
+            CloudMusic.lyrics.clear();
+            CloudMusic.lyrics.addAll(originalLyrics);
+            CloudMusic.currentLyric = originalCurrentLyric;
+            CloudMusic.hasTransLyrics = originalHasTranslation;
             DesktopAppState.preferences().loadFromJsonObject(original);
             if (Display.isCreated()) {
                 if (lyricsFixture != null) TextureManager.getInstance().deleteTexture(lyricsFixture.getBlurredCoverLocation());

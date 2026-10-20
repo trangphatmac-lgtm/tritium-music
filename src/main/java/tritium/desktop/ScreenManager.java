@@ -1,5 +1,7 @@
 package tritium.desktop;
 
+import tritium.desktop.input.DesktopTextInput;
+
 public class ScreenManager {
     private DesktopScreen currentScreen;
 
@@ -12,6 +14,7 @@ public class ScreenManager {
             return;
         }
 
+        DesktopTextInput.clearFocus();
         if (currentScreen != null) {
             currentScreen.onGuiClosed();
         }

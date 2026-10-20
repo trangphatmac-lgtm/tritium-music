@@ -1,6 +1,7 @@
 package tritium.desktop;
 
 import tritium.rendering.material.UiMaterials;
+import tritium.desktop.input.DesktopTextInput;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
@@ -39,6 +40,7 @@ public final class TritiumMusicDesktopApp {
 
         try {
             createDisplay();
+            DesktopTextInput.install();
             initializeOpenGL();
             new FontManager().init();
             MultiThreadingUtil.runAsync(CloudMusic::initNCM);
@@ -128,8 +130,10 @@ public final class TritiumMusicDesktopApp {
     }
 
     private static void handleInput() {
+        DesktopTextInput.pump();
         while (Keyboard.next()) {
-            if (Keyboard.getEventKeyState() && DesktopAppState.screenManager().getCurrentScreen() != null) {
+            if (!DesktopTextInput.ownsKeyboard() && Keyboard.getEventKeyState()
+                    && DesktopAppState.screenManager().getCurrentScreen() != null) {
                 DesktopAppState.screenManager().getCurrentScreen().keyTyped(Keyboard.getEventCharacter(), Keyboard.getEventKey());
             }
         }
@@ -155,6 +159,7 @@ public final class TritiumMusicDesktopApp {
         Interpolations.calcFrameDelta();
         AppTheme.beginFrame();
         CursorUtils.resetOverride();
+        DesktopTextInput.beginFrame();
 
         prepareFrameState();
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
@@ -178,6 +183,7 @@ public final class TritiumMusicDesktopApp {
             renderFpsOverlay();
         }
         CursorUtils.setOverride();
+        DesktopTextInput.endFrame();
     }
 
     private static void renderFpsOverlay() {
@@ -226,6 +232,7 @@ public final class TritiumMusicDesktopApp {
     }
 
     private static void shutdown() {
+        DesktopTextInput.close();
         DesktopAppState.setRunning(false);
         try {
             DesktopAppState.savePreferences();

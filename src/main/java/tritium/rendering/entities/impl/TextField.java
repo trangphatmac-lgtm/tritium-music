@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
+import tritium.desktop.input.DesktopTextInput;
 import tritium.interfaces.SharedConstants;
 import tritium.management.FontManager;
 import tritium.rendering.AllowedCharacters;
@@ -56,9 +57,7 @@ public class TextField implements SharedConstants {
     @Getter
     private boolean isFocused;
     @Getter
-    @Setter
     private boolean isEnabled = true;
-    @Setter
     private boolean visible = true;
 
     public int enabledColor = 14737632;
@@ -75,8 +74,16 @@ public class TextField implements SharedConstants {
     private CFontRenderer fontRenderer = FontManager.pf18;
 
     private Predicate<String> textPredicate = Predicates.alwaysTrue();
-    private final Timer imePositionUpdateTimer = new Timer();
     private final Timer cursorForceShowTimer = new Timer();
+    @Getter
+    private String composition = "";
+    private int compositionCaret;
+
+    public void setComposition(String composition, int caret) {
+        this.composition = composition;
+        this.compositionCaret = clamp_int(caret, 0, composition.length());
+        cursorForceShowTimer.reset();
+    }
 
     public interface TextChangedCallback {
         void onTextChanged(String newText);
@@ -108,7 +115,7 @@ public class TextField implements SharedConstants {
         String filtered = AllowedCharacters.filterAllowedCharacters(input);
         int selStart = Math.min(cursorPosition, selectionEnd);
         int selEnd = Math.max(cursorPosition, selectionEnd);
-        int availableSpace = maxStringLength - text.length() - (selEnd - selStart);
+        int availableSpace = Math.max(0, maxStringLength - text.length() + (selEnd - selStart));
 
         StringBuilder newText = new StringBuilder();
 
@@ -117,6 +124,11 @@ public class TextField implements SharedConstants {
         }
 
         int charsToAdd = Math.min(availableSpace, filtered.length());
+        if (charsToAdd > 0 && charsToAdd < filtered.length()
+                && Character.isHighSurrogate(filtered.charAt(charsToAdd - 1))
+                && Character.isLowSurrogate(filtered.charAt(charsToAdd))) {
+            charsToAdd--;
+        }
         newText.append(filtered, 0, charsToAdd);
 
         if (!text.isEmpty() && selEnd < text.length()) {
@@ -143,8 +155,10 @@ public class TextField implements SharedConstants {
         }
 
         boolean deleteBefore = count < 0;
-        int deleteStart = deleteBefore ? cursorPosition + count : cursorPosition;
-        int deleteEnd = deleteBefore ? cursorPosition : cursorPosition + count;
+        int deleteStart = deleteBefore ? Math.max(0, cursorPosition + count) : cursorPosition;
+        int deleteEnd = deleteBefore ? cursorPosition : Math.min(text.length(), cursorPosition + count);
+        if (count == -1) deleteStart = previousCharacter(cursorPosition);
+        if (count == 1) deleteEnd = nextCharacter(cursorPosition);
 
         StringBuilder newText = new StringBuilder();
         if (deleteStart >= 0) {
@@ -159,7 +173,7 @@ public class TextField implements SharedConstants {
             this.callback.onTextChanged(text);
 
         if (deleteBefore) {
-            moveCursorBy(count);
+            setCursorPosition(deleteStart);
         }
     }
 
@@ -174,7 +188,7 @@ public class TextField implements SharedConstants {
     }
 
     public void setCursorPosition(int position) {
-        cursorPosition = clamp_int(position, 0, text.length());
+        cursorPosition = characterBoundary(position);
         dragStartChar = cursorPosition;
         dragEndChar = cursorPosition;
         setSelectionPos(cursorPosition);
@@ -200,7 +214,22 @@ public class TextField implements SharedConstants {
     }
 
     public void setSelectionPos(int position) {
-        selectionEnd = clamp_int(position, 0, text.length());
+        selectionEnd = characterBoundary(position);
+    }
+
+    private int characterBoundary(int position) {
+        int bounded = clamp_int(position, 0, text.length());
+        if (bounded > 0 && bounded < text.length() && Character.isLowSurrogate(text.charAt(bounded))
+                && Character.isHighSurrogate(text.charAt(bounded - 1))) return bounded - 1;
+        return bounded;
+    }
+
+    private int previousCharacter(int position) {
+        return position == 0 ? 0 : text.offsetByCodePoints(position, -1);
+    }
+
+    private int nextCharacter(int position) {
+        return position == text.length() ? position : text.offsetByCodePoints(position, 1);
     }
 
     public void updateCursorCounter() {
@@ -343,11 +372,11 @@ public class TextField implements SharedConstants {
             if (KeyboardUtils.isCtrlKeyDown()) {
                 setSelectionPos(getNthWordFromPos(-1, selectionEnd));
             } else {
-                int newPos = Math.max(0, selectionEnd - 1);
+                int newPos = previousCharacter(selectionEnd);
                 setSelectionPos(newPos);
                 if (dragStartChar > 0) {
                     cursorForceShowTimer.reset();
-                    dragStartChar--;
+                    dragStartChar = selectionEnd;
                 }
             }
         } else {
@@ -357,7 +386,7 @@ public class TextField implements SharedConstants {
                 if (cursorPosition != selectionEnd)
                     setCursorPosition(Math.min(cursorPosition, selectionEnd));
                 else
-                    moveCursorBy(-1);
+                    setCursorPosition(previousCharacter(selectionEnd));
             }
         }
     }
@@ -367,11 +396,11 @@ public class TextField implements SharedConstants {
             if (KeyboardUtils.isCtrlKeyDown()) {
                 setSelectionPos(getNthWordFromPos(1, selectionEnd));
             } else {
-                int newPos = Math.min(text.length(), selectionEnd + 1);
+                int newPos = nextCharacter(selectionEnd);
                 setSelectionPos(newPos);
                 if (dragStartChar < text.length()) {
                     cursorForceShowTimer.reset();
-                    dragStartChar++;
+                    dragStartChar = selectionEnd;
                 }
             }
         } else {
@@ -381,7 +410,7 @@ public class TextField implements SharedConstants {
                 if (cursorPosition != selectionEnd)
                     setCursorPosition(Math.max(cursorPosition, selectionEnd));
                 else
-                    moveCursorBy(1);
+                    setCursorPosition(nextCharacter(selectionEnd));
             }
         }
     }
@@ -394,7 +423,7 @@ public class TextField implements SharedConstants {
                 dragging = false;
                 lineScrollOffset = 0;
             }
-            setFocused(isHovered);
+            setFocused(isHovered && isEnabled);
         }
 
         if (isFocused && isHovered && mouseButton == 0) {
@@ -467,22 +496,30 @@ public class TextField implements SharedConstants {
         renderTextContent(textScrollOffset, isHovered);
 
         cleanupClipping();
+        if (isFocused) {
+            String displayText = getDisplayText();
+            double caretX = xPosition + getFontRenderer().getStringWidthD(
+                    displayText.substring(0, getDisplayCursorPosition())) - textScrollOffset;
+            DesktopTextInput.update(this, Math.max(xPosition, Math.min(xPosition + width, caretX)),
+                    getRenderOffsetY(), getFontRenderer().getFontHeight());
+        }
     }
 
     private double calculateTextScrollOffset() {
         double offset = 0;
-        double totalWidth = getFontRenderer().getStringWidthD(text);
+        String displayText = getDisplayText();
+        double totalWidth = getFontRenderer().getStringWidthD(displayText);
 
         if (totalWidth > this.width) {
-            int targetPos = Math.max(cursorPosition, selectionEnd);
-            double widthToTarget = getFontRenderer().getStringWidthD(text.substring(0, targetPos));
+            int targetPos = composition.isEmpty() ? Math.max(cursorPosition, selectionEnd) : getDisplayCursorPosition();
+            double widthToTarget = getFontRenderer().getStringWidthD(displayText.substring(0, targetPos));
 
             if (widthToTarget > this.width) {
                 offset = widthToTarget - this.width;
             }
 
-            int leftPos = Math.min(cursorPosition, selectionEnd);
-            double widthToLeft = getFontRenderer().getStringWidthD(text.substring(0, leftPos));
+            int leftPos = composition.isEmpty() ? Math.min(cursorPosition, selectionEnd) : targetPos;
+            double widthToLeft = getFontRenderer().getStringWidthD(displayText.substring(0, leftPos));
             if (widthToLeft < offset) {
                 offset = widthToLeft;
             }
@@ -528,7 +565,7 @@ public class TextField implements SharedConstants {
             return;
         }
 
-        if (hasSelection()) {
+        if (hasSelection() && composition.isEmpty()) {
             renderSelection(displayText, scrollOffset);
         }
 
@@ -540,13 +577,29 @@ public class TextField implements SharedConstants {
                     RenderSystem.reAlpha(textColor, alpha * RenderSystem.DIVIDE_BY_255 * wholeAlpha));
         }
 
-        if (shouldDrawCursor() && !hasSelection()) {
+        if (!composition.isEmpty()) {
+            int start = Math.min(cursorPosition, selectionEnd);
+            double left = xPosition + getFontRenderer().getStringWidthD(displayText.substring(0, start)) - scrollOffset;
+            double right = left + getFontRenderer().getStringWidthD(displayText.substring(start, start + composition.length()));
+            RenderSystem.drawRect(left, getRenderOffsetY() + getFontRenderer().getFontHeight(),
+                    right, getRenderOffsetY() + getFontRenderer().getFontHeight() + .5,
+                    applyAlpha(enabledColor, wholeAlpha));
+        }
+
+        if (shouldDrawCursor() && (!hasSelection() || !composition.isEmpty())) {
             renderCursor(displayText, posX, getRenderOffsetY(), scrollOffset);
         }
     }
 
     private String getDisplayText() {
-        return isPassword ? "*".repeat(text.length()) : text;
+        String displayed = composition.isEmpty() ? text
+                : text.substring(0, Math.min(cursorPosition, selectionEnd)) + composition
+                + text.substring(Math.max(cursorPosition, selectionEnd));
+        return isPassword ? "*".repeat(displayed.length()) : displayed;
+    }
+
+    private int getDisplayCursorPosition() {
+        return composition.isEmpty() ? cursorPosition : Math.min(cursorPosition, selectionEnd) + compositionCaret;
     }
 
     private boolean hasSelection() {
@@ -585,8 +638,7 @@ public class TextField implements SharedConstants {
     double animatedCursorX = -1;
 
     private void renderCursor(String displayText, double posX, double posY, double scrollOffset) {
-        String textBeforeCursor = dragStartChar > 0 ?
-                displayText.substring(0, dragStartChar) : "";
+        String textBeforeCursor = displayText.substring(0, getDisplayCursorPosition());
         float cursorX = (float) (xPosition + getFontRenderer().getStringWidthD(textBeforeCursor) - (float) scrollOffset);
 
         long l = System.currentTimeMillis() / 5 % 255;
@@ -638,17 +690,30 @@ public class TextField implements SharedConstants {
     }
 
     public void setFocused(boolean focused) {
+        focused = focused && isEnabled && visible;
         if (focused && !isFocused) {
             cursorForceShowTimer.reset();
             cursorCounter = 0;
-            Keyboard.enableRepeatEvents(true);
+            if (Keyboard.isCreated()) Keyboard.enableRepeatEvents(true);
         }
 
         if (!focused && isFocused) {
-            Keyboard.enableRepeatEvents(false);
+            setComposition("", 0);
         }
 
         isFocused = focused;
+        if (focused) DesktopTextInput.focus(this);
+        else DesktopTextInput.unfocus(this);
+    }
+
+    public void setEnabled(boolean enabled) {
+        isEnabled = enabled;
+        if (!enabled) setFocused(false);
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
+        if (!visible) setFocused(false);
     }
 
     public boolean getVisible() {

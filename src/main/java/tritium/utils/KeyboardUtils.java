@@ -7,12 +7,26 @@ import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
+import java.awt.event.InputEvent;
 
 /**
  * @author IzumiiKonata
  * Date: 2025/3/15 15:29
  */
 public class KeyboardUtils {
+    private static final ThreadLocal<Integer> INPUT_MODIFIERS = new ThreadLocal<>();
+
+    /** AWT and the GL loop run on different threads; use modifiers from the event. */
+    public static void withModifiers(int modifiers, Runnable action) {
+        Integer previous = INPUT_MODIFIERS.get();
+        INPUT_MODIFIERS.set(modifiers);
+        try {
+            action.run();
+        } finally {
+            if (previous == null) INPUT_MODIFIERS.remove();
+            else INPUT_MODIFIERS.set(previous);
+        }
+    }
 
     /**
      * Returns a string stored in the system clipboard.
@@ -47,21 +61,32 @@ public class KeyboardUtils {
      * Returns true if either windows ctrl key is down or if either mac meta key is down
      */
     public static boolean isCtrlKeyDown() {
-        return Keyboard.isKeyDown(29) || Keyboard.isKeyDown(157);
+        Integer modifiers = INPUT_MODIFIERS.get();
+        if (modifiers != null) {
+            return (modifiers & (InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK)) != 0;
+        }
+        return Keyboard.isCreated() && (Keyboard.isKeyDown(Keyboard.KEY_LCONTROL)
+                || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL)
+                || (System.getProperty("os.name", "").startsWith("Mac")
+                && (Keyboard.isKeyDown(Keyboard.KEY_LMETA) || Keyboard.isKeyDown(Keyboard.KEY_RMETA))));
     }
 
     /**
      * Returns true if either shift key is down
      */
     public static boolean isShiftKeyDown() {
-        return Keyboard.isKeyDown(42) || Keyboard.isKeyDown(54);
+        Integer modifiers = INPUT_MODIFIERS.get();
+        if (modifiers != null) return (modifiers & InputEvent.SHIFT_DOWN_MASK) != 0;
+        return Keyboard.isCreated() && (Keyboard.isKeyDown(42) || Keyboard.isKeyDown(54));
     }
 
     /**
      * Returns true if either alt key is down
      */
     public static boolean isAltKeyDown() {
-        return Keyboard.isKeyDown(56) || Keyboard.isKeyDown(184);
+        Integer modifiers = INPUT_MODIFIERS.get();
+        if (modifiers != null) return (modifiers & InputEvent.ALT_DOWN_MASK) != 0;
+        return Keyboard.isCreated() && (Keyboard.isKeyDown(56) || Keyboard.isKeyDown(184));
     }
 
     public static boolean isKeyComboCtrlX(int keyID) {
