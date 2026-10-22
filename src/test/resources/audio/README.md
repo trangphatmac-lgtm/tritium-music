@@ -13,3 +13,15 @@ The fragmented fixtures contain the same compressed samples as `tone.m4a`, split
 across multiple `moof`/`mdat` pairs with an empty initial sample table. They cover
 both fragment-relative and explicit base data offsets. Repackaging must preserve
 every compressed sample byte-for-byte and decoding must cover all fragments.
+
+## AutoMix PCM fixture
+
+`automix-entry-stereo.flac` is generated test audio, not a recording: 3 seconds of constant PCM, 44.1 kHz, stereo, signed 16-bit; left amplitude 0.5 and right 0.25.
+
+Regenerate with FFmpeg (not required when running tests):
+
+```sh
+ffmpeg -f lavfi -i 'aevalsrc=0.5|0.25:s=44100:d=3' -c:a flac -sample_fmt s16 automix-entry-stereo.flac
+```
+
+It checks lazy FLAC decoding, cue prefetch and stereo continuity without opening an audio device.

@@ -22,6 +22,7 @@ public final class DesktopAppState {
     private static volatile boolean running;
 
     static {
+        PREFERENCES.setLyricSourceChangeCallback(tritium.ncm.music.CloudMusic::reloadLyrics);
         tritium.i18n.I18n.bindLanguage(() -> PREFERENCES.language().getValue());
     }
 

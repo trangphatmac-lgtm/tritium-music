@@ -25,8 +25,12 @@ public class MusicPreferences {
     static final String SONG_ROW_OPACITY_KEY = "ui.songRowOpacity";
     static final String LYRIC_HOVER_OPACITY_KEY = "ui.lyricHoverOpacity";
     static final String LYRIC_DEBUG_KEY = "lyrics.debug";
+    static final String AUTO_MIX_DEBUG_KEY = "player.autoMixDebug";
     static final String VOLUME_KEY = "player.volume";
     static final String AUTO_MIX_KEY = "player.autoMix";
+    static final String AUTO_MIX_FULL_MODE_KEY = "player.autoMixFullMode";
+    static final String AUTO_USE_BEST_LYRIC_KEY = "lyrics.autoUseBest";
+    static final String PREFERRED_LYRIC_SOURCE_KEY = "lyrics.preferredSource";
     static final String SHOW_TRANSLATION_KEY = "lyrics.showTranslation";
     static final String SHOW_ROMAN_KEY = "lyrics.showRoman";
     static final String LYRIC_HEIGHT_KEY = "lyrics.height";
@@ -49,8 +53,14 @@ public class MusicPreferences {
     private final NumberPreference songRowOpacity = new NumberPreference("Song Row Opacity", .28, 0, 1, .01);
     private final NumberPreference lyricHoverOpacity = new NumberPreference("Lyric Hover Opacity", .5, 0, 1, .01);
     private final PreferenceValue<Boolean> lyricDebug = new PreferenceValue<>("Per-word lyrics debug", false);
+    private final PreferenceValue<Boolean> autoMixDebug = new PreferenceValue<>("AutoMix debug", false);
     private final NumberPreference volume = new NumberPreference("Volume", 0.1, 0.0, 1.0, 0.01);
     private final PreferenceValue<Boolean> autoMix = new PreferenceValue<>("AutoMix", false);
+    private final PreferenceValue<Boolean> autoMixFullMode = new PreferenceValue<>("AutoMix Full Mode", false);
+    private final PreferenceValue<Boolean> autoUseBestLyric = new PreferenceValue<>("Automatically use best lyrics", true);
+    private final ModePreference preferredLyricSource = new ModePreference("Lyric matching priority", "netease",
+            new String[]{"netease", "amll", "qq", "kugou"});
+    private Runnable lyricSourceChangeCallback = () -> {};
     private final PreferenceValue<Boolean> showTranslation = new PreferenceValue<>("Show Translation", true);
     private final PreferenceValue<Boolean> showRoman = new PreferenceValue<>("Show Romanization in Japanese songs", false);
     private final NumberPreference lyricHeight = new NumberPreference("Lyric Height", 20.0, 14.0, 50.0, 0.5);
@@ -85,6 +95,7 @@ public class MusicPreferences {
             ClientSettings.DEBUG_MODE = value;
             fireChanged();
         });
+        autoMixDebug.setValueCallback(value -> fireChanged());
         volume.setValueCallback(value -> {
             CloudMusic.setVolume(value.floatValue());
             fireChanged();
@@ -93,6 +104,12 @@ public class MusicPreferences {
             CloudMusic.autoMixSettingChanged();
             fireChanged();
         });
+        autoMixFullMode.setValueCallback(value -> {
+            CloudMusic.autoMixSettingChanged();
+            fireChanged();
+        });
+        autoUseBestLyric.setValueCallback(value -> lyricSourceChanged());
+        preferredLyricSource.setValueCallback(value -> lyricSourceChanged());
         showTranslation.setValueCallback(value -> fireChanged());
         showRoman.setValueCallback(value -> fireChanged());
         lyricHeight.setValueCallback(value -> fireChanged());
@@ -108,6 +125,17 @@ public class MusicPreferences {
     public void setChangeCallback(Runnable changeCallback) {
         this.changeCallback = changeCallback == null ? () -> {
         } : changeCallback;
+    }
+
+    public void setLyricSourceChangeCallback(Runnable callback) {
+        lyricSourceChangeCallback = callback == null ? () -> {} : callback;
+    }
+
+    private void lyricSourceChanged() {
+        if (!loading) {
+            lyricSourceChangeCallback.run();
+            fireChanged();
+        }
     }
 
     private void fireChanged() {
@@ -142,8 +170,12 @@ public class MusicPreferences {
         json.addProperty(SONG_ROW_OPACITY_KEY, songRowOpacity.getValue());
         json.addProperty(LYRIC_HOVER_OPACITY_KEY, lyricHoverOpacity.getValue());
         json.addProperty(LYRIC_DEBUG_KEY, lyricDebug.getValue());
+        json.addProperty(AUTO_MIX_DEBUG_KEY, autoMixDebug.getValue());
         json.addProperty(VOLUME_KEY, volume.getValue());
         json.addProperty(AUTO_MIX_KEY, autoMix.getValue());
+        json.addProperty(AUTO_MIX_FULL_MODE_KEY, autoMixFullMode.getValue());
+        json.addProperty(AUTO_USE_BEST_LYRIC_KEY, autoUseBestLyric.getValue());
+        json.addProperty(PREFERRED_LYRIC_SOURCE_KEY, preferredLyricSource.getValue());
         json.addProperty(SHOW_TRANSLATION_KEY, showTranslation.getValue());
         json.addProperty(SHOW_ROMAN_KEY, showRoman.getValue());
         json.addProperty(LYRIC_HEIGHT_KEY, lyricHeight.getValue());
@@ -178,8 +210,12 @@ public class MusicPreferences {
                 background.loadFromJsonObject(backgroundElement.getAsJsonObject());
             }
             applyBoolean(json, LYRIC_DEBUG_KEY, lyricDebug);
+            applyBoolean(json, AUTO_MIX_DEBUG_KEY, autoMixDebug);
             applyNumber(json, VOLUME_KEY, volume);
             applyBoolean(json, AUTO_MIX_KEY, autoMix);
+            applyBoolean(json, AUTO_MIX_FULL_MODE_KEY, autoMixFullMode);
+            applyBoolean(json, AUTO_USE_BEST_LYRIC_KEY, autoUseBestLyric);
+            applyMode(json, PREFERRED_LYRIC_SOURCE_KEY, preferredLyricSource);
             applyBoolean(json, SHOW_TRANSLATION_KEY, showTranslation);
             applyBoolean(json, SHOW_ROMAN_KEY, showRoman);
             applyNumber(json, LYRIC_HEIGHT_KEY, lyricHeight);
@@ -305,6 +341,10 @@ public class MusicPreferences {
         return lyricDebug;
     }
 
+    public PreferenceValue<Boolean> autoMixDebug() {
+        return autoMixDebug;
+    }
+
     public NumberPreference volume() {
         return volume;
     }
@@ -312,6 +352,14 @@ public class MusicPreferences {
     public PreferenceValue<Boolean> autoMix() {
         return autoMix;
     }
+
+    public PreferenceValue<Boolean> autoMixFullMode() {
+        return autoMixFullMode;
+    }
+
+    public PreferenceValue<Boolean> autoUseBestLyric() { return autoUseBestLyric; }
+
+    public ModePreference preferredLyricSource() { return preferredLyricSource; }
 
     public PreferenceValue<Boolean> showTranslation() {
         return showTranslation;

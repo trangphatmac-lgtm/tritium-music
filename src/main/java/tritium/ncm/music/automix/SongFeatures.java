@@ -31,6 +31,17 @@ public final class SongFeatures {
 
     public long songId() { return songId; }
     public double durationMillis() { return durationMillis; }
+
+    /** Only diagnostic values; callers cannot mutate cached server material. Times are milliseconds. */
+    public record Summary(boolean available, double durationMillis, double bpm, String key, String genre,
+                          int downbeats, double silenceStart, double silenceEnd,
+                          double vocalStart, double vocalEnd, boolean excludedGenre) { }
+
+    public Summary summary() {
+        return new Summary(!data.entrySet().isEmpty(), durationMillis, bpm(), text("mode"), text("genre"),
+                downbeats().size(), point("silenceTime", "s"), point("silenceTime", "e"),
+                point("voiceTime", "s"), point("voiceTime", "e"), unsupportedGenre());
+    }
     public SongFeatures withDuration(double actualDurationMillis) {
         return new SongFeatures(songId, actualDurationMillis, data);
     }

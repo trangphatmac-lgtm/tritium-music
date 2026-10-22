@@ -38,6 +38,10 @@ class SettingsAppearanceRenderingTest {
         int originalAccent = DesktopAppState.preferences().accentColor().getValue();
         int originalSpectrum = DesktopAppState.preferences().hud().musicSpectrum().color().getValue();
         boolean originalFps = DesktopAppState.preferences().showFps().getValue();
+        boolean originalAutoMixDebug = DesktopAppState.preferences().autoMixDebug().getValue();
+        boolean originalBestLyrics = DesktopAppState.preferences().autoUseBestLyric().getValue();
+        String originalLyricPriority = DesktopAppState.preferences().preferredLyricSource().getValue();
+        boolean originalFullMode = DesktopAppState.preferences().autoMixFullMode().getValue();
         boolean originalAutoMix = DesktopAppState.preferences().autoMix().getValue();
         String originalLanguage = DesktopAppState.preferences().language().getValue();
         String originalAppearance = DesktopAppState.preferences().appearance().getValue();
@@ -71,6 +75,34 @@ class SettingsAppearanceRenderingTest {
             savePreview("settings-autoMix-enabled");
             click(settings, autoMix.getX() + autoMix.getWidth() - 35, autoMix.getY() + 26);
             assertFalse(DesktopAppState.preferences().autoMix().getValue());
+            AbstractWidget<?> fullMode = settingRow(scroll, "settings.autoMixFullMode");
+            DesktopAppState.preferences().autoMixFullMode().setValue(false);
+            click(settings, fullMode.getX() + fullMode.getWidth() - 35, fullMode.getY() + 26);
+            assertTrue(DesktopAppState.preferences().autoMixFullMode().getValue());
+            assertFalse(DesktopAppState.preferences().autoMix().getValue(), "Full mode does not enable AutoMix itself");
+            renderStable(settings);
+            savePreview("settings-autoMix-fullMode");
+            click(settings, fullMode.getX() + fullMode.getWidth() - 35, fullMode.getY() + 26);
+            assertFalse(DesktopAppState.preferences().autoMixFullMode().getValue());
+            AbstractWidget<?> bestLyrics = settingRow(scroll, "settings.autoUseBestLyric");
+            AbstractWidget<?> lyricPriority = settingRow(scroll, "settings.lyricMatchPriority");
+            DesktopAppState.preferences().autoUseBestLyric().setValue(true);
+            DesktopAppState.preferences().preferredLyricSource().setValue("netease");
+            scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + bestLyrics.getRelativeY() - 80;
+            renderStable(settings);
+            savePreview("settings-best-lyrics-netease");
+            click(settings, bestLyrics.getX() + bestLyrics.getWidth() - 35, bestLyrics.getY() + 26);
+            assertFalse(DesktopAppState.preferences().autoUseBestLyric().getValue());
+            click(settings, bestLyrics.getX() + bestLyrics.getWidth() - 35, bestLyrics.getY() + 26);
+            assertTrue(DesktopAppState.preferences().autoUseBestLyric().getValue());
+            for (String source : new String[]{"amll", "qq", "kugou", "netease"}) {
+                click(settings, lyricPriority.getX() + 20, lyricPriority.getY() + 26);
+                assertEquals(source, DesktopAppState.preferences().preferredLyricSource().getValue());
+            }
+            settings.setWidth(Math.min(440, RenderSystem.getWidth()));
+            renderStable(settings);
+            savePreview("settings-best-lyrics-narrow");
+            settings.setWidth(Math.min(720, RenderSystem.getWidth()));
             scroll.actualScrollOffset = scroll.targetScrollOffset = 0;
             renderStable(settings);
             AbstractWidget<?> language = scroll.getChildren().get(1);
@@ -182,7 +214,7 @@ class SettingsAppearanceRenderingTest {
             scroll.scrollToEnd();
             scroll.actualScrollOffset = scroll.targetScrollOffset;
             renderStable(settings);
-            AbstractWidget<?> fpsToggle = scroll.getChildren().get(scroll.getChildren().size() - 3);
+            AbstractWidget<?> fpsToggle = settingRow(scroll, "settings.showFps");
             click(settings, fpsToggle.getX() + 20, fpsToggle.getY() + 20);
             assertTrue(DesktopAppState.preferences().showFps().getValue());
             for (int i = 0; i < 40; i++) {
@@ -194,12 +226,51 @@ class SettingsAppearanceRenderingTest {
             savePreview("settings-fps");
             click(settings, fpsToggle.getX() + 20, fpsToggle.getY() + 20);
             assertFalse(DesktopAppState.preferences().showFps().getValue());
+
+            AbstractWidget<?> autoMixDebug = settingRow(scroll, "settings.autoMixDebug");
+            DesktopAppState.preferences().autoMixDebug().setValue(false);
+            boolean mixBeforeDebug = DesktopAppState.preferences().autoMix().getValue();
+            click(settings, autoMixDebug.getX() + 20, autoMixDebug.getY() + 20);
+            assertTrue(DesktopAppState.preferences().autoMixDebug().getValue());
+            assertEquals(mixBeforeDebug, DesktopAppState.preferences().autoMix().getValue());
+            for (int i = 0; i < 40; i++) {
+                render(settings);
+                AutoMixDebugOverlay.render();
+                Display.processMessages();
+                Thread.sleep(10);
+            }
+            savePreview("settings-autoMix-debug-enabled");
+            click(settings, autoMixDebug.getX() + 20, autoMixDebug.getY() + 20);
+            assertFalse(DesktopAppState.preferences().autoMixDebug().getValue());
+            var example = AutoMixDebugOverlayTest.fullExample();
+            for (String locale : new String[]{"zh-CN", "zh-TW", "en"}) {
+                DesktopAppState.preferences().language().setValue(locale);
+                for (int i = 0; i < 40; i++) {
+                    render(settings);
+                    AutoMixDebugOverlay.render(example, true, RenderSystem.getWidth(), RenderSystem.getHeight());
+                    Display.processMessages();
+                    Thread.sleep(10);
+                }
+                savePreview("autoMix-debug-" + locale);
+            }
+            for (int i = 0; i < 40; i++) {
+                render(settings);
+                AutoMixDebugOverlay.render(example, true, Math.min(440, RenderSystem.getWidth()),
+                        Math.min(600, RenderSystem.getHeight()));
+                Display.processMessages();
+                Thread.sleep(10);
+            }
+            savePreview("autoMix-debug-narrow");
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         } finally {
             DesktopAppState.preferences().accentColor().setValue(originalAccent);
             DesktopAppState.preferences().hud().musicSpectrum().color().setValue(originalSpectrum);
             DesktopAppState.preferences().showFps().setValue(originalFps);
+            DesktopAppState.preferences().autoUseBestLyric().setValue(originalBestLyrics);
+            DesktopAppState.preferences().preferredLyricSource().setValue(originalLyricPriority);
+            DesktopAppState.preferences().autoMixFullMode().setValue(originalFullMode);
             DesktopAppState.preferences().autoMix().setValue(originalAutoMix);
+            DesktopAppState.preferences().autoMixDebug().setValue(originalAutoMixDebug);
             DesktopAppState.preferences().language().setValue(originalLanguage);
             DesktopAppState.preferences().appearance().setValue(originalAppearance);
             if (Display.isCreated()) {
@@ -207,6 +278,16 @@ class SettingsAppearanceRenderingTest {
                 Display.destroy();
             }
         }
+    }
+
+    private static AbstractWidget<?> settingRow(ScrollPanel scroll, String key) {
+        return scroll.getChildren().stream().filter(row -> {
+            try {
+                var label = row.getClass().getSuperclass().getDeclaredField("label");
+                label.setAccessible(true);
+                return key.equals(label.get(row));
+            } catch (ReflectiveOperationException ignored) { return false; }
+        }).findFirst().orElseThrow();
     }
 
     private static void click(SettingsPanel settings, double x, double y) throws Exception {

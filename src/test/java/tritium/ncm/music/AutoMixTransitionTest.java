@@ -2,6 +2,8 @@ package tritium.ncm.music;
 
 import org.junit.jupiter.api.Test;
 import tritium.ncm.music.automix.AutoMixPlan;
+import tritium.ncm.music.automix.AutoMixAutomation;
+import java.util.List;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -248,6 +250,88 @@ class AutoMixTransitionTest {
         }
     }
 
+    private static AutoMixPlan fullPlan(double incomingStart, double endB) {
+        var ga = new AutoMixAutomation.Gain(95_000, 100_000, AutoMixPlan.Curve.LINEAR, false, true);
+        var gb = new AutoMixAutomation.Gain(2_000, endB, AutoMixPlan.Curve.LINEAR, true, true);
+        var eq = new AutoMixAutomation.EqSweep(2_000, endB, AutoMixAutomation.FilterType.LOW_PASS, 2000, 20000);
+        return new AutoMixPlan(AutoMixPlan.Strategy.VOCAL, 95_000, 2_000, 100_000, 97_500,
+                ga.curve(), gb.curve(), true, new AutoMixAutomation(incomingStart,
+                new AutoMixAutomation.Deck(ga, List.of()), new AutoMixAutomation.Deck(gb, List.of(eq)), "test"));
+    }
+
+    @Test void fullModeDelaysIncomingAndKeepsItSilentAcrossPauseAndVolumeChanges() {
+        var a = new FakeDeck(95_000, false); var b = new FakeDeck(0, true);
+        var mix = new AutoMixTransition(a, b, fullPlan(96_000, 6_000));
+        mix.start(.4f);
+        assertFalse(mix.hasIncomingStarted());
+        assertEquals(0, b.starts);
+        mix.pause(); mix.setVolume(.2f); mix.resume();
+        assertTrue(b.paused);
+        a.position = 95_999; mix.tick(() -> fail("Early switch"));
+        assertEquals(0, b.starts);
+        a.position = 96_000; mix.tick(() -> fail("Early switch"));
+        assertTrue(mix.hasIncomingStarted());
+        assertEquals(1, b.starts);
+        assertEquals(.2f, b.volumeAtStart);
+        assertEquals(0, b.gainAtStart);
+        assertEquals(2000, b.filtersAtStart.getFirst().frequencyHz());
+        mix.cancel();
+        assertTrue(a.equalizer.isEmpty());
+        assertEquals(1, a.gain);
+        assertEquals(1, b.closes);
+    }
+
+    @Test void fullModeWaitsForLongerIncomingFadeAfterReleasingOutgoing() {
+        var a = new FakeDeck(95_000, false); var b = new FakeDeck(0, true);
+        var mix = new AutoMixTransition(a, b, fullPlan(95_000, 10_000));
+        var switches = new AtomicInteger(); mix.start(1);
+        a.position = 100_000; b.position = 7_000; mix.tick(switches::incrementAndGet);
+        assertEquals(1, a.closes);
+        assertTrue(mix.hasOutgoingReleased());
+        assertFalse(mix.isComplete());
+        assertSame(b, mix.current());
+        assertEquals(.625, b.gain, 1e-12);
+        mix.pause(); mix.resume();
+        assertFalse(b.equalizer.isEmpty(), "Resume reinstalls cleared effects");
+        mix.tick(switches::incrementAndGet);
+        b.position = 10_000; mix.tick(switches::incrementAndGet);
+        assertTrue(mix.isComplete());
+        assertEquals(1, a.closes);
+        assertEquals(1, switches.get());
+        assertEquals(1, b.gain);
+        assertTrue(b.equalizer.isEmpty());
+        mix.cancel(); assertEquals(1, a.closes);
+    }
+
+    @Test void fullModeDoesNotTruncateOutgoingWhenIncomingFadeEndsFirst() {
+        var a = new FakeDeck(95_000, false); var b = new FakeDeck(0, true);
+        var mix = new AutoMixTransition(a, b, fullPlan(95_000, 4_000));
+        var switches = new AtomicInteger(); mix.start(1);
+        a.position = 97_000; b.position = 4_001; mix.tick(switches::incrementAndGet);
+        assertFalse(mix.isComplete());
+        assertEquals(0, a.closes);
+        assertEquals(0, switches.get());
+        assertEquals(.6 / 1.6, a.gain, 1e-12);
+        assertEquals(1 / 1.6, b.gain, 1e-12);
+        assertEquals(0, b.equalizer.getFirst().frequencyHz());
+        a.position = 100_000; b.position = 7_000; mix.tick(switches::incrementAndGet);
+        assertTrue(mix.isComplete());
+        assertEquals(1, switches.get());
+    }
+
+    @Test void fullModeGainsHoldBetweenFiftyMillisecondSamplesAndSurviveNaturalEof() {
+        var a = new FakeDeck(95_000, false); var b = new FakeDeck(0, true);
+        var mix = new AutoMixTransition(a, b, fullPlan(95_000, 7_000));
+        var switches = new AtomicInteger(); mix.start(1);
+        a.position = 96_025; b.position = 3_025; mix.tick(switches::incrementAndGet);
+        assertEquals(.8, a.gain, 1e-12); assertEquals(.2, b.gain, 1e-12);
+        a.position = 96_049; b.position = 3_049; mix.tick(switches::incrementAndGet);
+        assertEquals(.8, a.gain, 1e-12); assertEquals(.2, b.gain, 1e-12);
+        a.position = 0; a.finished = a.paused = true; b.position = 7_000;
+        mix.tick(switches::incrementAndGet);
+        assertEquals(1, switches.get()); assertTrue(mix.isComplete());
+    }
+
     private static final class FakeDeck implements AutoMixTransition.Deck {
         float position;
         boolean paused;
@@ -257,6 +341,7 @@ class AutoMixTransitionTest {
         float volume = .4f;
         double lowPass;
         double highPass;
+        List<AutoMixAutomation.FilterSetting> equalizer = List.of(), filtersAtStart = List.of();
         int starts;
         int closes;
         double gainAtStart;
@@ -275,19 +360,21 @@ class AutoMixTransitionTest {
         @Override public void startAt(float millis) {
             position = millis;
             gainAtStart = gain;
+            filtersAtStart = equalizer;
             volumeAtStart = volume;
             analysisAtStart = analysis;
             paused = false;
             starts++;
         }
         @Override public void setMixGain(double gain) { this.gain = gain; }
+        @Override public void setMixEqualizer(List<AutoMixAutomation.FilterSetting> settings) { equalizer = List.copyOf(settings); }
         @Override public void setMixFilter(double lowPassHz, double highPassHz) {
             lowPass = lowPassHz;
             highPass = highPassHz;
         }
         @Override public void setVolume(float volume) { this.volume = volume; }
         @Override public void setAnalysisEnabled(boolean enabled) { analysis = enabled; }
-        @Override public void pause() { paused = true; }
+        @Override public void pause() { paused = true; equalizer = List.of(); }
         @Override public void unpause() { paused = false; }
         @Override public void close() { closes++; paused = true; finished = true; }
     }

@@ -6,6 +6,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tritium.desktop.DesktopAppState;
 import tritium.ncm.music.automix.AutoMixPlan;
+import tritium.ncm.music.automix.AutoMixAutomation;
+import tritium.ncm.music.automix.AutoMixDebugSnapshot;
+import tritium.ncm.music.automix.SongFeatures;
+import static tritium.ncm.music.automix.AutoMixDebugSnapshot.Status.*;
 import tritium.ncm.music.dto.Music;
 
 import java.io.File;
@@ -25,6 +29,8 @@ class CloudMusicAutoMixTest {
     private final boolean oldBreak = CloudMusic.doBreak, oldDontAdd = CloudMusic.dontAdd;
     private final boolean oldPlaying = CloudMusic.playing.get();
     private final boolean oldEnabled = DesktopAppState.preferences().autoMix().getValue();
+    private final boolean oldFullMode = DesktopAppState.preferences().autoMixFullMode().getValue();
+    private final boolean oldDebug = DesktopAppState.preferences().autoMixDebug().getValue();
     private CloudMusic.PlayThread thread;
     private Probe a, b;
 
@@ -40,10 +46,13 @@ class CloudMusicAutoMixTest {
         a = probe(); b = probe();
         CloudMusic.player = a;
         DesktopAppState.preferences().autoMix().setValue(true);
+        DesktopAppState.preferences().autoMixFullMode().setValue(false);
     }
 
     @AfterEach void restore() {
+        DesktopAppState.preferences().autoMixDebug().setValue(oldDebug);
         thread.cancelAutoMix();
+        DesktopAppState.preferences().autoMixFullMode().setValue(oldFullMode);
         CloudMusic.playThread = oldThread;
         CloudMusic.player = oldPlayer;
         CloudMusic.currentlyPlaying = oldSong;
@@ -137,6 +146,45 @@ class CloudMusicAutoMixTest {
         assertTrue(b.closed);
     }
 
+    @Test void fullModeChangeInvalidatesPreparedPlanAndDisposesLateResults() throws Exception {
+        var request = prepare();
+        assertFalse(request.fullMode);
+        DesktopAppState.preferences().autoMixFullMode().setValue(true);
+        assertTrue(request.cancelled);
+        assertTrue(b.closed);
+        assertNull(field("preparation").get(thread));
+        var late = probe(); request.finish(late, plan()); assertTrue(late.closed);
+        assertTrue(new CloudMusic.PlayThread.Preparation(song(2), a, revision()).fullMode);
+    }
+
+    @Test void fullModeChangeKeepsActivePlanUntilSeekOrCompletion() throws Exception {
+        DesktopAppState.preferences().autoMixFullMode().setValue(true);
+        var request = new CloudMusic.PlayThread.Preparation(song(2), a, revision());
+        var ga = new AutoMixAutomation.Gain(55_000, 60_000, AutoMixPlan.Curve.LINEAR, false, true);
+        var gb = new AutoMixAutomation.Gain(0, 8_000, AutoMixPlan.Curve.LINEAR, true, true);
+        var full = new AutoMixPlan(AutoMixPlan.Strategy.VOCAL, 55_000, 0, 60_000, 57_500,
+                ga.curve(), gb.curve(), false, new AutoMixAutomation(55_000,
+                new AutoMixAutomation.Deck(ga, List.of()), new AutoMixAutomation.Deck(gb, List.of()), "test"));
+        request.finish(b, full); field("preparation").set(thread, request);
+        a.position = 55_000; thread.tickAutoMix();
+        DesktopAppState.preferences().autoMixFullMode().setValue(false);
+        var transition = (AutoMixTransition) field("transition").get(thread);
+        assertSame(full, transition.plan);
+        a.position = 60_000; b.position = 5_000; thread.tickAutoMix();
+        assertTrue(a.closed); assertFalse(b.closed);
+        assertSame(b, CloudMusic.player);
+        assertEquals(2, CloudMusic.currentlyPlaying.getId());
+        assertSame(transition, field("transition").get(thread));
+        CloudMusic.setPaused(true); assertTrue(b.paused);
+        CloudMusic.setPaused(false); assertFalse(b.paused);
+        CloudMusic.seek(12_000);
+        assertNull(field("transition").get(thread));
+        assertSame(b, CloudMusic.player);
+        assertEquals(1, b.gain);
+        assertEquals(12_000, b.position);
+        assertFalse(b.closed);
+    }
+
     @Test void tooLatePreparationDoesNotStartOrSkipTheNextSong() throws Exception {
         prepare(); a.position = 56_000; thread.tickAutoMix();
         assertTrue(b.closed);
@@ -187,6 +235,126 @@ class CloudMusicAutoMixTest {
         assertEquals(2, CloudMusic.playList.get(CloudMusic.curIdx).getId());
     }
 
+    @Test void debugIsReadOnlyAndExplainsWaitingAndIneligibleModes() throws Exception {
+        DesktopAppState.preferences().autoMix().setValue(false);
+        DesktopAppState.preferences().autoMixDebug().setValue(true);
+        thread.tickAutoMix();
+        assertEquals(DISABLED, snapshot().status());
+        assertNull(field("preparation").get(thread));
+        assertEquals(0, b.starts);
+        DesktopAppState.preferences().autoMix().setValue(true);
+        a.duration = 180_000;
+        thread.tickAutoMix();
+        assertEquals(WAITING_WINDOW, snapshot().status());
+        a.duration = 30_000;
+        thread.tickAutoMix();
+        assertEquals(SHORT_TRACK, snapshot().status());
+        CloudMusic.playMode = thread.lastMode = CloudMusic.PlayMode.LoopSingle;
+        thread.tickAutoMix();
+        assertEquals(SINGLE_REPEAT, snapshot().status());
+        CloudMusic.playMode = thread.lastMode = CloudMusic.PlayMode.Sequential;
+        CloudMusic.curIdx = 2;
+        thread.tickAutoMix();
+        assertEquals(NO_NEXT, snapshot().status());
+        assertNull(field("preparation").get(thread));
+        assertEquals(0, CloudMusic.player.getCurrentTimeMillis());
+    }
+
+    @Test void debugReportsPreparationFailureAndLateWindowWithoutRetrying() throws Exception {
+        DesktopAppState.preferences().autoMixDebug().setValue(true);
+        var request = new CloudMusic.PlayThread.Preparation(song(2), a, revision());
+        request.stage = DECODING;
+        field("preparation").set(thread, request);
+        thread.tickAutoMix();
+        assertEquals(DECODING, snapshot().status());
+        request.failureType = "IOException";
+        request.stage = PREPARATION_FAILED;
+        request.finish(null, null);
+        thread.tickAutoMix();
+        assertEquals(PREPARATION_FAILED, snapshot().status());
+        assertEquals("IOException", snapshot().detail());
+        var failed = snapshot();
+        prepare(); a.position = 56_000; thread.tickAutoMix();
+        assertEquals(LATE, snapshot().status());
+        assertNull(snapshot().voiceB());
+        assertEquals(PREPARATION_FAILED, failed.status(), "Published snapshots must not mutate");
+        thread.tickAutoMix();
+        assertEquals(LATE, snapshot().status());
+        assertEquals(0, b.starts);
+    }
+
+    @Test void debugTracksActualGainPauseSeekAndPreservesTheOriginalPair() throws Exception {
+        DesktopAppState.preferences().autoMixDebug().setValue(true);
+        var request = prepare();
+        request.featuresA = SongFeatures.empty(1, 60_000).summary();
+        request.featuresB = SongFeatures.empty(2, 60_000).summary();
+        thread.tickAutoMix();
+        assertEquals(READY, snapshot().status());
+        assertEquals(55_000, snapshot().plan().startAMillis());
+        assertFalse(snapshot().featuresA().available());
+        a.position = 55_000; thread.tickAutoMix();
+        a.position = 57_000; b.position = 2_000;
+        CloudMusic.setVolume(.4f);
+        thread.tickAutoMix();
+        var mixed = snapshot();
+        assertEquals(MIXING, mixed.status());
+        assertEquals(a.gain, mixed.voiceA().gain());
+        assertEquals(.4 * b.gain, mixed.voiceB().outputLevel(), 1e-7);
+        assertTrue(mixed.voiceB().gain() > 0);
+        CloudMusic.setPaused(true);
+        thread.tickAutoMix();
+        assertEquals(PAUSED, snapshot().status());
+        assertEquals(0, snapshot().voiceB().outputLevel());
+        assertEquals(mixed.voiceA().positionMillis(), snapshot().voiceA().positionMillis());
+        CloudMusic.setPaused(false);
+        // Simulate the logical handoff without initiating optional network/lyric notifications.
+        a.position = 58_000; b.position = 3_000;
+        ((AutoMixTransition) field("transition").get(thread)).tick(() -> { });
+        thread.tickAutoMix();
+        assertTrue(snapshot().switched());
+        assertEquals(1, snapshot().a().id());
+        assertEquals(2, snapshot().b().id());
+        CloudMusic.seek(5_000);
+        assertEquals(SEEK, snapshot().status());
+        assertNull(snapshot().voiceB());
+        assertFalse(snapshot().mixing());
+        assertTrue(snapshot().events().stream().anyMatch(event -> event.status() == SEEK));
+        assertTrue(snapshot().events().size() <= 5);
+        assertThrows(UnsupportedOperationException.class, () -> snapshot().events().clear());
+    }
+
+    @Test void stoppedPlaybackPublishesSilentVoiceAndQueueChangesHaveTheirOwnReason() throws Exception {
+        DesktopAppState.preferences().autoMixDebug().setValue(true);
+        prepare();
+        thread.queueNext(song(9));
+        assertEquals(QUEUE_CHANGED, snapshot().status());
+        CloudMusic.next();
+        var stopped = CloudMusic.autoMixDebugSnapshot();
+        assertEquals(STOPPED, stopped.status());
+        assertTrue(stopped.voiceA().finished());
+        assertEquals(0, stopped.voiceA().outputLevel());
+    }
+
+    @Test void pausedReadyStateDoesNotFloodHistoryAndDisabledDebugClearsStaleSnapshots() throws Exception {
+        DesktopAppState.preferences().autoMixDebug().setValue(true);
+        prepare(); a.paused = true;
+        thread.tickAutoMix();
+        var paused = snapshot();
+        for (int i = 0; i < 20; i++) thread.tickAutoMix();
+        assertEquals(paused.events(), snapshot().events());
+        DesktopAppState.preferences().autoMixDebug().setValue(false);
+        thread.tickAutoMix();
+        assertEquals(0, CloudMusic.autoMixDebugSnapshot().capturedAtMillis());
+        assertEquals(0, b.starts);
+        assertFalse(b.closed, "Hiding diagnostics must not dispose the prepared voice");
+    }
+
+    private AutoMixDebugSnapshot snapshot() throws Exception {
+        field("lastDebugPublishNanos").setLong(thread, 0);
+        thread.publishAutoMixDebug();
+        return CloudMusic.autoMixDebugSnapshot();
+    }
+
     private CloudMusic.PlayThread.Preparation prepare() throws Exception {
         var request = new CloudMusic.PlayThread.Preparation(song(2), a, revision());
         request.finish(b, plan());
@@ -209,21 +377,25 @@ class CloudMusicAutoMixTest {
     private Probe probe() {
         Probe result = new com.google.gson.GsonBuilder().excludeFieldsWithoutExposeAnnotation().create().fromJson("{}", Probe.class); // no device or SoundFile constructor
         result.gain = 1;
+        result.duration = 60_000;
         return result;
     }
     private static final class Probe extends AudioPlayer {
         double gain;
-        float position;
+        float position, duration;
         boolean closed, paused, finished;
         int starts;
         private Probe(File file) { super(file); }
         @Override public float getCurrentTimeMillis() { return position; }
-        @Override public float getTotalTimeMillis() { return 60_000; }
+        @Override public float getTotalTimeMillis() { return duration; }
+        @Override public double getMixGain() { return gain; }
         @Override public boolean isFinished() { return closed || finished; }
         @Override public boolean isPausing() { return paused; }
         @Override public void startAt(float millis) { position = millis; starts++; }
         @Override public void setMixGain(double gain) { this.gain = gain; }
         @Override public void setMixFilter(double low, double high) { }
+        @Override public void setMixEqualizer(List<AutoMixAutomation.FilterSetting> settings) { }
+        @Override public List<AutoMixAutomation.FilterSetting> getMixEqualizer() { return List.of(); }
         @Override public void setAnalysisEnabled(boolean enabled) { }
         @Override public void setVolume(float volume) { this.volume = volume; }
         @Override public void setPlaybackTime(float millis) { position = millis; }

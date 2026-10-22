@@ -1,6 +1,8 @@
 package repackage.processing.sound;
 
 import repackage.com.jsyn.data.FloatSample;
+import repackage.com.jsyn.data.PrefetchedFloatSample;
+import java.util.function.BooleanSupplier;
 import repackage.com.jsyn.ports.QueueDataCommand;
 import repackage.com.jsyn.ports.QueueDataEvent;
 import repackage.com.jsyn.ports.UnitDataQueueCallback;
@@ -192,6 +194,15 @@ public class AudioSample extends SoundObject {
 			this.stop();
 			this.setStartFrameCountOffset();
 		}
+	}
+
+	/** Prepare a silent, not-yet-playing sample on a worker, before publishing it to playback.
+	 * The cue stays fixed; no audio is played and the current track is not touched. */
+	public void prepareCue(float time, float duration, BooleanSupplier cancelled) {
+		if (isPlaying()) throw new IllegalStateException("Cannot prefetch an active sample");
+		cue(time);
+		int frames = (int) Math.min(Integer.MAX_VALUE, Math.ceil(duration * sample.getFrameRate()));
+		sample = PrefetchedFloatSample.prepare(sample, startFrame, frames, cancelled);
 	}
 
 	/**

@@ -21,8 +21,10 @@ class MusicPreferencesTest {
         assertTrue(preferences.musicToast().getValue());
         assertFalse(preferences.showWidgetBoundary().getValue());
         assertFalse(preferences.lyricDebug().getValue());
+        assertFalse(preferences.autoMixDebug().getValue());
         assertEquals(0.1, preferences.volume().getValue(), 0.0001);
         assertFalse(preferences.autoMix().getValue());
+        assertFalse(preferences.autoMixFullMode().getValue());
         assertTrue(preferences.showTranslation().getValue());
         assertFalse(preferences.showRoman().getValue());
     }
@@ -76,6 +78,47 @@ class MusicPreferencesTest {
 
         assertTrue(ClientSettings.SHOW_WIDGET_BOUNDARY);
         assertTrue(ClientSettings.DEBUG_MODE);
+    }
+
+    @Test
+    void debugPreferencePersistsWithoutChangingPlaybackOrLyricsDebug() {
+        MusicPreferences preferences = new MusicPreferences();
+        var changes = new java.util.concurrent.atomic.AtomicInteger();
+        preferences.setChangeCallback(changes::incrementAndGet);
+        preferences.autoMixDebug().setValue(true);
+        preferences.autoMixDebug().setValue(true);
+        assertEquals(1, changes.get());
+        assertFalse(preferences.autoMix().getValue());
+        assertFalse(preferences.lyricDebug().getValue());
+        MusicPreferences restored = new MusicPreferences();
+        restored.setChangeCallback(changes::incrementAndGet);
+        restored.loadFromJsonObject(preferences.toJsonObject());
+        assertTrue(restored.autoMixDebug().getValue());
+        assertEquals(1, changes.get());
+        assertFalse(restored.autoMix().getValue());
+    }
+
+    @Test
+    void fullAutoMixModeIsIndependentAndLoadingDoesNotSaveAgain() {
+        MusicPreferences preferences = new MusicPreferences();
+        var changes = new java.util.concurrent.atomic.AtomicInteger();
+        preferences.setChangeCallback(changes::incrementAndGet);
+        preferences.autoMixFullMode().setValue(true);
+        preferences.autoMixFullMode().setValue(true);
+        assertEquals(1, changes.get());
+        assertFalse(preferences.autoMix().getValue());
+        assertFalse(preferences.autoMixDebug().getValue());
+        assertTrue(preferences.toJsonObject().get("player.autoMixFullMode").getAsBoolean());
+
+        MusicPreferences restored = new MusicPreferences();
+        restored.setChangeCallback(changes::incrementAndGet);
+        restored.loadFromJsonObject(preferences.toJsonObject());
+        assertTrue(restored.autoMixFullMode().getValue());
+        assertFalse(restored.autoMix().getValue());
+        assertFalse(restored.autoMixDebug().getValue());
+        assertEquals(1, changes.get(), "Loading must not trigger a recursive preferences save");
+        restored.autoMixFullMode().setValue(false);
+        assertEquals(2, changes.get());
     }
 
     @Test

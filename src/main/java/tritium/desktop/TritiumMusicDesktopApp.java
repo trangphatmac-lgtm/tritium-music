@@ -182,6 +182,7 @@ public final class TritiumMusicDesktopApp {
         if (DesktopAppState.preferences().showFps().getValue()) {
             renderFpsOverlay();
         }
+        AutoMixDebugOverlay.render();
         CursorUtils.setOverride();
         DesktopTextInput.endFrame();
     }

@@ -1,0 +1,24 @@
+Folia lyric matching port
+
+Upstream: Folia by chthollyphile and contributors
+https://github.com/chthollyphile/folia-major
+Reference version: 0.7.21
+License: GNU Affero General Public License version 3 (see Folia-AGPL-3.0.txt).
+
+The matching rules, provider protocols, QRC cipher and KRC decoding in
+tritium.ncm.music.lyrics are adapted from Folia's:
+  src/utils/lyrics/autoMatchBestLyric.ts
+  src/utils/lyrics/matchScore.ts
+  src/utils/lyrics/searchQuery.ts
+  src/utils/lyrics/sourcePriority.ts
+  src/utils/lyrics/providers/amllApi.ts
+  src/services/onlineMusic/qq/qqLyricProvider.ts
+  src/services/onlineMusic/qq/qrcDecrypt.ts
+  src/services/onlineMusic/kugou/kugouLyricProvider.ts
+  src/services/onlineMusic/kugou/krcDecrypt.ts
+
+Adapted to Java and Tritium's millisecond lyric model. The default preferred
+source is NetEase per the Tritium user's request. The port includes asynchronous
+loading, expiring immutable caches, cancellation and render-thread publication.
+The ported source files remain under AGPL-3.0. This notice and the license are
+included in the application resources.

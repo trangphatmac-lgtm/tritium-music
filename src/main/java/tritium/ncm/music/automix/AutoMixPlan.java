@@ -6,7 +6,12 @@ import java.util.Objects;
  * Playback stays at its original rate; no resampling is used to imitate pitch-preserving tempo sync. */
 public record AutoMixPlan(Strategy strategy, double startAMillis, double startBMillis,
                           double endAMillis, double switchAMillis,
-                          Curve outgoingCurve, Curve incomingCurve, boolean filter) {
+                          Curve outgoingCurve, Curve incomingCurve, boolean filter, AutoMixAutomation automation) {
+    public AutoMixPlan(Strategy strategy, double startAMillis, double startBMillis, double endAMillis,
+                       double switchAMillis, Curve outgoingCurve, Curve incomingCurve, boolean filter) {
+        this(strategy, startAMillis, startBMillis, endAMillis, switchAMillis, outgoingCurve, incomingCurve, filter, null);
+    }
+
     public enum Strategy { RHYTHM, VOCAL, ATMOSPHERE, ACCOMPANIMENT, SILENCE, CROSSFADE }
     public enum Curve {
         LINEAR, EXP, LOG, S;
@@ -35,15 +40,29 @@ public record AutoMixPlan(Strategy strategy, double startAMillis, double startBM
                 || switchAMillis < startAMillis || switchAMillis > endAMillis) {
             throw new IllegalArgumentException("Invalid AutoMix timeline");
         }
+        if (automation != null && (automation.incomingStartAMillis() < startAMillis
+                || automation.incomingStartAMillis() > switchAMillis
+                || automation.a().startMillis() < startAMillis || automation.a().endMillis() != endAMillis
+                || automation.b().startMillis() != startBMillis
+                || Math.max(endAMillis, automation.incomingStartAMillis()
+                        + automation.b().endMillis() - startBMillis) - startAMillis > 60_000))
+            throw new IllegalArgumentException("Invalid independent AutoMix timeline");
     }
 
+    public boolean fullMode() { return automation != null; }
+    public double incomingStartAMillis() { return fullMode() ? automation.incomingStartAMillis() : startAMillis; }
+    public double totalDurationMillis() {
+        return Math.max(endAMillis, incomingStartAMillis() + endBMillis() - startBMillis) - startAMillis;
+    }
     public double prepareAMillis() { return Math.max(0, startAMillis - 5_000); }
     public double durationMillis() { return endAMillis - startAMillis; }
-    public double endBMillis() { return startBMillis + durationMillis(); }
+    public double endBMillis() { return fullMode() ? automation.b().endMillis() : startBMillis + durationMillis(); }
     public double outgoingGain(double aMillis) {
+        if (fullMode()) return automation.a().gain().valueAt(aMillis);
         return 1 - outgoingCurve.value((aMillis - startAMillis) / durationMillis());
     }
     public double incomingGain(double bMillis) {
+        if (fullMode()) return automation.b().gain().valueAt(bMillis);
         return incomingCurve.value((bMillis - startBMillis) / durationMillis());
     }
 

@@ -2,19 +2,29 @@ package tritium.ncm.music;
 
 import lombok.Getter;
 import repackage.processing.sound.*;
+import tritium.ncm.music.automix.AutoMixAutomation.FilterSetting;
+import tritium.ncm.music.automix.AutoMixAutomation.FilterType;
+import tritium.ncm.music.automix.AutoMixPlan;
 import tritium.widget.impl.SpectrumVisualizer;
 
 import java.io.File;
+import java.util.List;
+import java.util.function.BooleanSupplier;
 
 /** One independently controlled voice on the shared JSyn output. */
 public class AudioPlayer implements AutoMixTransition.Deck {
     public volatile SoundFile player;
     public volatile Runnable afterPlayed;
     @Getter public volatile float volume = 0.25f;
-    private double mixGain = 1;
+    @Getter private volatile double mixGain = 1;
+    @Getter private volatile double mixLowPassHz;
+    @Getter private volatile double mixHighPassHz;
     private volatile boolean analysisEnabled;
     private volatile boolean closed;
     private TransitionFilter filter;
+    private AdvancedTransitionFilter advancedFilter;
+    private float preparedCue = Float.NaN;
+    @Getter private volatile List<FilterSetting> mixEqualizer = List.of();
     @Getter private volatile boolean finished;
     private final AudioEnergy.Analyzer energyAnalyzer = new AudioEnergy.Analyzer(JSynFFT.FFT_SIZE);
     @Getter private volatile AudioEnergy energy = AudioEnergy.SILENT;
@@ -62,34 +72,66 @@ public class AudioPlayer implements AutoMixTransition.Deck {
         if (analysisEnabled == enabled || closed) return;
         analysisEnabled = enabled;
         if (enabled) {
-            if (fft == null) fft = new FFT(128, magnitudes -> {
-                if (!analysisEnabled) return;
-                callback.onFFT(magnitudes);
-                if (skipCount == 0) energy = energyAnalyzer.analyze(magnitudes, Sound.sampleRate(), System.nanoTime());
-            });
+            prepareAnalyzer();
             energyAnalyzer.reset();
             fft.input(player);
         } else if (fft != null) fft.removeInput();
         energy = AudioEnergy.SILENT;
     }
 
+    private void prepareAnalyzer() {
+        if (fft == null) fft = new FFT(128, magnitudes -> {
+            if (!analysisEnabled) return;
+            callback.onFFT(magnitudes);
+            if (skipCount == 0) energy = energyAnalyzer.analyze(magnitudes, Sound.sampleRate(), System.nanoTime());
+        });
+    }
+
+    /** Called only for an unpublished incoming deck by the preparation worker. */
+    synchronized void prepareAutoMix(AutoMixPlan plan, BooleanSupplier cancelled) {
+        if (closed || player.isPlaying()) throw new IllegalStateException("Incoming deck is unavailable");
+        setMixGain(0);
+        float cue = clampPosition((float) plan.startBMillis());
+        // Cover the entry/fade and one second beyond it, capped by the PCM cache's byte budget.
+        float seconds = (float) (Math.max(1_000, plan.endBMillis() - plan.startBMillis()) + 1_000) / 1000;
+        player.prepareCue(cue / 1000F, seconds, cancelled);
+        prepareAnalyzer(); // Allocate the FFT now; attach it only when B becomes the current song.
+        if (plan.fullMode()) setMixEqualizer(plan.automation().b().filtersAt(plan.startBMillis()));
+        else setMixFilter(plan.incomingLowPassHz(plan.startBMillis()), plan.incomingHighPassHz(plan.startBMillis()));
+        preparedCue = cue;
+    }
+
     public synchronized void play() {
         if (closed || player.isPlaying()) return;
+        preparedCue = Float.NaN;
         finished = false;
         // AudioSample.play() otherwise resets its amplitude to 1 before the first audio block.
         player.play(1, (float) (volume * mixGain));
         applyGain();
-        if (filter != null) filter.process(player);
+        if (filter != null && !filter.isProcessing()) filter.process(player);
+        if (advancedFilter != null && !advancedFilter.isProcessing()) advancedFilter.process(player);
     }
 
     @Override public synchronized void startAt(float millis) {
         if (closed) return;
-        player.cue(clampPosition(millis) / 1000F);
+        float cue = clampPosition(millis);
+        if (cue == preparedCue) {
+            preparedCue = Float.NaN;
+            play();
+            return;
+        }
+        preparedCue = Float.NaN;
+        // cue() removes the circuit's effects without clearing Effect.inputs. Detach through
+        // the wrappers first so play() can reconnect the configured entry filters afterward.
+        if (filter != null) filter.stop();
+        if (advancedFilter != null) advancedFilter.stop();
+        player.cue(cue / 1000F);
         play();
     }
 
     public synchronized void setPlaybackTime(float millis) {
         if (closed) return;
+        preparedCue = Float.NaN;
         boolean paused = isPausing();
         clearFilter();
         player.cue(clampPosition(millis) / 1000F);
@@ -105,6 +147,7 @@ public class AudioPlayer implements AutoMixTransition.Deck {
 
     public synchronized void close() {
         if (closed) return;
+        preparedCue = Float.NaN;
         setAnalysisEnabled(false);
         clearFilter();
         closed = true;
@@ -148,16 +191,50 @@ public class AudioPlayer implements AutoMixTransition.Deck {
 
     @Override public synchronized void setMixFilter(double lowPassHz, double highPassHz) {
         if (closed) return;
+        clearAdvancedFilter();
         if (lowPassHz <= 0 && highPassHz <= 0) { clearFilter(); return; }
         if (filter == null) {
             filter = new TransitionFilter();
             filter.configure(lowPassHz, highPassHz);
             filter.process(player);
         } else filter.configure(lowPassHz, highPassHz);
+        mixLowPassHz = Math.max(0, lowPassHz);
+        mixHighPassHz = Math.max(0, highPassHz);
+    }
+
+    @Override public synchronized void setMixEqualizer(List<FilterSetting> settings) {
+        if (closed) return;
+        List<FilterSetting> copy = List.copyOf(settings);
+        if (copy.size() > AdvancedTransitionFilter.MAX_STAGES)
+            throw new IllegalArgumentException("Too many AutoMix EQ stages");
+        if (copy.isEmpty()) { clearFilter(); return; }
+        if (filter != null) { filter.stop(); filter = null; }
+        if (advancedFilter == null) {
+            advancedFilter = new AdvancedTransitionFilter();
+            advancedFilter.configure(copy);
+            advancedFilter.process(player);
+        } else if (!copy.equals(mixEqualizer)) advancedFilter.configure(copy);
+        mixEqualizer = copy;
+        // These legacy summaries do not merge or replace the independent processing stages.
+        mixLowPassHz = 0;
+        mixHighPassHz = 0;
+        for (FilterSetting setting : copy) {
+            if (setting.frequencyHz() <= 0) continue;
+            if (setting.type() == FilterType.LOW_PASS)
+                mixLowPassHz = mixLowPassHz == 0 ? setting.frequencyHz() : Math.min(mixLowPassHz, setting.frequencyHz());
+            else mixHighPassHz = Math.max(mixHighPassHz, setting.frequencyHz());
+        }
+    }
+
+    private void clearAdvancedFilter() {
+        if (advancedFilter != null) { advancedFilter.stop(); advancedFilter = null; }
+        mixEqualizer = List.of();
     }
 
     private void clearFilter() {
         if (filter != null) { filter.stop(); filter = null; }
+        clearAdvancedFilter();
+        mixLowPassHz = mixHighPassHz = 0;
     }
 
     public synchronized void pause() {

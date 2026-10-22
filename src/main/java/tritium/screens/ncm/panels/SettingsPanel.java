@@ -89,11 +89,18 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new SliderRow("settings.volume", preferences.volume(), value -> Math.round(value * 100) + "%"));
         scrollPanel.addChild(new ToggleRow("settings.autoMix", preferences.autoMix()));
         scrollPanel.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixHint")));
+        scrollPanel.addChild(new ToggleRow("settings.autoMixFullMode", preferences.autoMixFullMode()));
+        scrollPanel.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixFullModeHint")));
 
         scrollPanel.addChild(new SectionHeader("settings.cache"));
         scrollPanel.addChild(new CacheRow());
 
         scrollPanel.addChild(new SectionHeader("settings.lyrics"));
+        scrollPanel.addChild(new ToggleRow("settings.autoUseBestLyric", preferences.autoUseBestLyric()));
+        scrollPanel.addChild(new LyricHintRow("settings.autoUseBestLyricHint"));
+        scrollPanel.addChild(new ChoiceRow("settings.lyricMatchPriority", preferences.preferredLyricSource(),
+                value -> I18n.text("lyrics.source." + value)));
+        scrollPanel.addChild(new LyricHintRow("settings.lyricMatchPriorityHint"));
         scrollPanel.addChild(new ToggleRow("settings.translation", preferences.showTranslation()));
         scrollPanel.addChild(new ToggleRow("settings.roman", preferences.showRoman()));
         scrollPanel.addChild(new SliderRow("settings.lyricHeight", preferences.lyricHeight(),
@@ -142,6 +149,8 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new ToggleRow("settings.showFps", preferences.showFps()));
         scrollPanel.addChild(new ToggleRow("settings.boundaries", preferences.showWidgetBoundary()));
         scrollPanel.addChild(new ToggleRow("settings.wordLyrics", preferences.lyricDebug()));
+        scrollPanel.addChild(new ToggleRow("settings.autoMixDebug", preferences.autoMixDebug()));
+        scrollPanel.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixDebugHint")));
     }
 
     private void addBackgroundSettings(ScrollPanel scroll) {
@@ -217,6 +226,29 @@ public class SettingsPanel extends NCMPanel {
         int end = text.length();
         while (end > 0 && FontManager.pf12bold.getStringWidthD(text.substring(0, end) + "…") > width) end--;
         return text.substring(0, end) + "…";
+    }
+
+    private static final class LyricHintRow extends AbstractWidget<LyricHintRow> {
+        private final String key;
+        private String[] lines = new String[0];
+
+        private LyricHintRow(String key) {
+            this.key = key;
+            setClickable(false);
+            setBeforeRenderCallback(() -> {
+                lines = FontManager.pf12bold.fitWidth(I18n.text(this.key), Math.max(40, getParentWidth() - 8));
+                setBounds(getParentWidth(), Math.max(34, lines.length * (FontManager.pf12bold.getHeight() + 4) + 12));
+            });
+        }
+
+        @Override
+        public void onRender(double mouseX, double mouseY) {
+            for (int i = 0; i < lines.length; i++) {
+                FontManager.pf12bold.drawString(lines[i], getX() + 2,
+                        getY() + 6 + i * (FontManager.pf12bold.getHeight() + 4),
+                        reAlpha(AppTheme.foreground(), getAlpha() * .65f));
+            }
+        }
     }
 
     private static final class BackgroundStatusRow extends AbstractWidget<BackgroundStatusRow> {

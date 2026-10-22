@@ -24,6 +24,11 @@ public final class AutoMixPlanner {
 
     private AutoMixPlanner() { }
 
+    public static AutoMixPlan plan(SongFeatures a, SongFeatures b, boolean fullMode) {
+        AutoMixPlan basic = plan(a, b);
+        return fullMode && basic != null ? FullAutoMixPlanner.plan(a, b, basic) : basic;
+    }
+
     /** Null means keep ordinary sequential playback. */
     public static AutoMixPlan plan(SongFeatures a, SongFeatures b) {
         if (a == null || b == null || !validLength(a) || !validLength(b)
@@ -130,10 +135,10 @@ public final class AutoMixPlanner {
         return new AutoMixPlan(strategy, aStart, bStart, aStart + duration, aStart + duration / 2, out, in, filter);
     }
 
-    private record Cues(double vocalStart, double vocalEnd, double drumStart, double drumEnd,
+    record Cues(double vocalStart, double vocalEnd, double drumStart, double drumEnd,
                         double structureStart, double structureEnd, double musicStart, double musicEnd) { }
 
-    private static Cues cues(SongFeatures f) {
+    static Cues cues(SongFeatures f) {
         double vs = cue(f, "voiceTime", true, 0, -40), ve = cue(f, "voiceTime", false, 0, -40);
         double ds = cue(f, "drumTime", true, 1, -40), de = cue(f, "drumTime", false, 1, -100);
         double ss = windowPoint(f, f.paragraphBoundary(true), true);
@@ -174,7 +179,7 @@ public final class AutoMixPlanner {
         return Double.isFinite(f.durationMillis()) && f.durationMillis() >= MIN_TRACK_MILLIS;
     }
     private static boolean validBpm(double bpm) { return bpm >= 30 && bpm <= 240; }
-    private static double bar(SongFeatures f, double bpm) { return 60_000d * f.beatsPerBar() / bpm; }
+    static double bar(SongFeatures f, double bpm) { return 60_000d * f.beatsPerBar() / bpm; }
     private static boolean finite(double... values) {
         for (double value : values) if (!Double.isFinite(value)) return false;
         return true;
@@ -186,7 +191,7 @@ public final class AutoMixPlanner {
     private static boolean strongBass(SongFeatures a, SongFeatures b) {
         return a.energy("endAccEnergy", 1) > -20 && b.energy("startAccEnergy", 1) > -20;
     }
-    private static double correctedBpm(SongFeatures f) {
+    static double correctedBpm(SongFeatures f) {
         double bpm = f.bpm();
         if (bpm > 0 && bpm < 60) {
             String genre = f.text("genre");
@@ -195,7 +200,7 @@ public final class AutoMixPlanner {
         return bpm;
     }
 
-    private static double align(List<Double> downbeats, double position, boolean forward, double deviation) {
+    static double align(List<Double> downbeats, double position, boolean forward, double deviation) {
         double selected = position;
         for (double beat : downbeats) {
             if (forward && beat >= position) { selected = beat; break; }
