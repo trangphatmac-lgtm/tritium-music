@@ -10,7 +10,10 @@ import java.util.Map;
 /** Main-window backgrounds, optionally shared with the lyrics page; HUDs remain independent. */
 public final class BackgroundPreferences {
     private final Map<String, PreferenceValue<?>> values = new LinkedHashMap<>();
-    private final ModePreference mode = mode("mode", "static", "static", "picture", "video", "shader", "latent");
+    private final ModePreference mode = mode("mode", "static", "static", "picture", "video", "shader", "latent", "cover");
+    private final ModePreference coverMode = mode("coverMode", "solid", "solid", "blur", "nomand", "monet");
+    private final ModePreference nomandEffect = mode("nomandEffect", "dithering", "dithering", "fluted-glass", "paper-texture", "halftone-dots", "lens-distortion");
+    private final ModePreference monetLayout = mode("monetLayout", "full-overlay", "full-overlay", "half-pane-gradient");
     private final LatentPreferences latent = new LatentPreferences();
     private final PreferenceValue<Boolean> applyToLyrics = add("applyToLyrics", new PreferenceValue<>("Apply to lyrics", false));
     private final NumberPreference lyricsTransparency = number("lyricsTransparency", .35, 0, 1, .01);
@@ -90,10 +93,18 @@ public final class BackgroundPreferences {
     }
 
     public ModePreference mode() { return mode; }
+    public ModePreference coverMode() { return coverMode; }
+    public ModePreference nomandEffect() { return nomandEffect; }
+    public ModePreference monetLayout() { return monetLayout; }
+    public boolean isCover() { return mode.getValue().equals("cover"); }
     public LatentPreferences latent() { return latent; }
     public PreferenceValue<Boolean> applyToLyrics() { return applyToLyrics; }
     public NumberPreference lyricsTransparency() { return lyricsTransparency; }
-    public boolean appliesToLyrics() { return applyToLyrics.getValue() && !mode.getValue().equals("static"); }
+    public boolean appliesToLyrics() {
+        // Blur keeps the original lyrics compositor, including its beat zoom and cover crossfade.
+        return isCover() ? !coverMode.getValue().equals("blur")
+                : applyToLyrics.getValue() && !mode.getValue().equals("static");
+    }
     public ModePreference pictureSource() { return pictureSource; }
     public PreferenceValue<String> pictureFile() { return pictureFile; }
     public PreferenceValue<String> pictureFolder() { return pictureFolder; }

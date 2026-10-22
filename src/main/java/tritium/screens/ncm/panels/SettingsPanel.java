@@ -77,6 +77,7 @@ public class SettingsPanel extends NCMPanel {
                 () -> !preferences.background().mode().getValue().equals("latent"));
 
         scrollPanel.addChild(new ChoiceRow("settings.layout", preferences.layout()));
+        scrollPanel.addChild(new ToggleRow("settings.coverflowCoverReflection", preferences.coverflowCoverReflection()));
 
         scrollPanel.addChild(new ChoiceRow("settings.interface", preferences.interfaceStyle()));
         scrollPanel.addChild(new BackgroundStatusRow(UiMaterials::status));
@@ -148,13 +149,20 @@ public class SettingsPanel extends NCMPanel {
         BooleanSupplier video = () -> background.mode().getValue().equals("video");
         BooleanSupplier shader = () -> background.mode().getValue().equals("shader");
         BooleanSupplier latent = () -> background.mode().getValue().equals("latent");
-        BooleanSupplier custom = () -> !background.mode().getValue().equals("static");
+        BooleanSupplier cover = background::isCover;
+        BooleanSupplier custom = () -> !background.mode().getValue().equals("static") && !cover.getAsBoolean();
         scroll.addChild(new SectionHeader("settings.background"));
         scroll.addChild(new ChoiceRow("settings.backgroundMode", background.mode()));
         scroll.addChild(new BackgroundStatusRow(DesktopAppState.background()::status));
+        backgroundRow(scroll, new ChoiceRow("settings.coverMode", background.coverMode(),
+                value -> I18n.text("cover." + value)), cover);
+        backgroundRow(scroll, new ChoiceRow("settings.nomandEffect", background.nomandEffect(),
+                value -> I18n.text("cover." + value)), () -> cover.getAsBoolean() && background.coverMode().getValue().equals("nomand"));
+        backgroundRow(scroll, new ChoiceRow("settings.monetLayout", background.monetLayout(),
+                value -> I18n.text("cover." + value)), () -> cover.getAsBoolean() && background.coverMode().getValue().equals("monet"));
         backgroundRow(scroll, new ToggleRow("settings.backgroundInLyrics", background.applyToLyrics()), custom);
         backgroundRow(scroll, new SliderRow("settings.lyricsBackgroundTransparency", background.lyricsTransparency(),
-                value -> Math.round(value * 100) + "%"), background::appliesToLyrics);
+                value -> Math.round(value * 100) + "%"), () -> custom.getAsBoolean() && background.appliesToLyrics());
         backgroundRow(scroll, new ChoiceRow("settings.pictureSource", background.pictureSource(),
                 value -> value.equals("folder") ? I18n.text("background.folder") : I18n.text("background.single")), picture);
         backgroundRow(scroll, new FileRow("settings.picture", background.pictureFile(), false, false),
@@ -186,7 +194,8 @@ public class SettingsPanel extends NCMPanel {
         backgroundRow(scroll, new ActionRow("settings.latentReset", () ->
                 latentSettings.resetPalette(preferences.appearance().getValue().equals("Light"))), latent);
         backgroundRow(scroll, new SliderRow("settings.strength", background.strength(), value -> Math.round(value * 100) + "%"), custom);
-        backgroundRow(scroll, new SliderRow("settings.panelOpacity", background.panelOpacity(), value -> Math.round(value * 100) + "%"), custom);
+        backgroundRow(scroll, new SliderRow("settings.panelOpacity", background.panelOpacity(), value -> Math.round(value * 100) + "%"),
+                () -> custom.getAsBoolean() || cover.getAsBoolean());
         BooleanSupplier glass = () -> !preferences.interfaceStyle().getValue().equals("Static");
         backgroundRow(scroll, new SliderRow("settings.songOpacity", preferences.songRowOpacity(),
                 value -> Math.round(value * 100) + "%"), glass);

@@ -34,6 +34,7 @@ class DesktopPreferenceStoreTest {
         preferences.accentColor().setValue(0xFF2DD4BF);
         preferences.appearance().setValue("Light");
         preferences.layout().setValue("TopBar");
+        preferences.coverflowCoverReflection().setValue(false);
         preferences.hud().musicSpectrum().color().setValue(0x803B719A);
 
         store.save(preferences);
@@ -53,12 +54,15 @@ class DesktopPreferenceStoreTest {
         assertEquals(0xFF2DD4BF, loaded.accentColor().getValue());
         assertEquals("Light", loaded.appearance().getValue());
         assertEquals("TopBar", loaded.layout().getValue());
+        assertFalse(loaded.coverflowCoverReflection().getValue());
         assertEquals(0x803B719A, loaded.hud().musicSpectrum().color().getValue());
 
         preferences.maxFps().setValue((double) MusicPreferences.UNLIMITED_FPS);
+        preferences.coverflowCoverReflection().setValue(true);
         store.save(preferences);
         store.load(loaded);
         assertEquals((double) MusicPreferences.UNLIMITED_FPS, loaded.maxFps().getValue());
+        assertTrue(loaded.coverflowCoverReflection().getValue());
     }
 
     @Test
@@ -81,6 +85,7 @@ class DesktopPreferenceStoreTest {
         assertEquals("Standard", loaded.quality().getValue());
         assertEquals("Dark", loaded.appearance().getValue());
         assertEquals("Sidebar", loaded.layout().getValue());
+        assertTrue(loaded.coverflowCoverReflection().getValue());
         assertEquals(1.0, loaded.volume().getValue(), 0.0001);
         assertEquals(14.0, loaded.lyricHeight().getValue(), 0.0001);
         assertFalse(loaded.showTranslation().getValue());

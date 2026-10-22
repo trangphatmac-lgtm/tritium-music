@@ -18,6 +18,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Lyric page, word-by-word lyrics, translations, and romaji
 - Cover loading and blurred backgrounds
 - Coverflow with depth-based screen-space reflections, a shared mirror plane, angle-dependent reflectivity, and gradual softening.
+- Toggle cover reflections in Settings → Appearance → Coverflow cover reflections (enabled by default and saved automatically). Background reflections and text keep their existing behavior.
 - Music download cache and cache size display
 - Simplified Chinese, Traditional Chinese, and English in Settings → General → Language; changes apply immediately and are saved automatically (default: Simplified Chinese)
 - Light and dark modes in Settings → Appearance, with smooth transitions and a saved preference; lyrics and system HUDs keep their existing appearance
@@ -78,6 +79,7 @@ target/tritium-music-1.x.x-portable.tar.gz
 - Video
 - Shader
 - Latent
+- Cover: Solid, Blur, Nomand (five effects), Monet (two layouts)
 - Static
 
 ### Windows

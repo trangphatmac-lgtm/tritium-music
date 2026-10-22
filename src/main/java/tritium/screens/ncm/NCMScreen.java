@@ -209,9 +209,13 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         double mouseY = mY;
 
         UiMaterials.beginFrame(mouseX, mouseY);
+        boolean coverLyrics = this.musicLyricsPanel != null;
+        var coverSource = tritium.desktop.background.cover.CoverArtwork.source(
+                currentPanel instanceof PlaylistPanel playlist ? playlist.playList : null,
+                CloudMusic.currentlyPlaying, coverLyrics, DesktopAppState.preferences().background().coverMode().getValue());
         DesktopAppState.background().render(Display.isVisible()
                 && (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha < .999f
-                    || DesktopAppState.preferences().background().appliesToLyrics()));
+                    || DesktopAppState.preferences().background().appliesToLyrics()), coverSource, coverLyrics);
 
         if (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha <= .9f) {
             UiMaterials.captureBackdrop(false);

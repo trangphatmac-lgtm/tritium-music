@@ -46,7 +46,7 @@ class CoverflowRenderingTest {
     void reflectsScenePixelsAndSharesLiveBackgroundAcrossModesAndResizes() throws Exception {
         var preferences = DesktopAppState.preferences();
         var background = preferences.background();
-        List<Runnable> restore = List.of(preferences.appearance(), preferences.interfaceStyle(),
+        List<Runnable> restore = List.of(preferences.appearance(), preferences.interfaceStyle(), preferences.coverflowCoverReflection(),
                         background.mode(), background.pictureFile(), background.strength(),
                         background.shader(), background.videoFile()).stream()
                 .map(CoverflowRenderingTest::restorePreference).toList();
@@ -60,6 +60,7 @@ class CoverflowRenderingTest {
             new FontManager().init();
             preferences.appearance().setValue("Dark");
             preferences.interfaceStyle().setValue("Static");
+            preferences.coverflowCoverReflection().setValue(true);
             verifyMirrorPixels();
             verifyScreenSpaceDepthHits();
 
@@ -80,6 +81,33 @@ class CoverflowRenderingTest {
             assertTrue(brightTextPixels(dark, .86, 1) > 100, "The album title remains visible below the reflection");
             assertEquals(0, brightTextPixels(dark, .66, .84), "The album title must not appear in the reflection");
             save("coverflow-dark");
+            preferences.coverflowCoverReflection().setValue(false);
+            render();
+            BufferedImage noCoverReflection = capture();
+            assertNotEquals(colorAt(dark, .5, .73), colorAt(noCoverReflection, .5, .73),
+                    "Disabling cover reflections must remove the reflected artwork");
+            assertEquals(colorAt(dark, .5, .4), colorAt(noCoverReflection, .5, .4),
+                    "The original cover stays visible");
+            assertEquals(colorAt(dark, .1, .73), colorAt(noCoverReflection, .1, .73),
+                    "Background reflections are independent of the artwork toggle");
+            // Antialiased glyph edges blend with the reflection underneath; compare opaque cores.
+            int titlePixels = 0;
+            for (int y = (int) (dark.getHeight() * .86); y < dark.getHeight(); y++) {
+                for (int x = dark.getWidth() / 3; x < dark.getWidth() * 2 / 3; x++) {
+                    if ((dark.getRGB(x, y) & 0xFFFFFF) == 0xFFFFFF) {
+                        assertEquals(dark.getRGB(x, y), noCoverReflection.getRGB(x, y),
+                                "The album title keeps the same position and color");
+                        titlePixels++;
+                    }
+                }
+            }
+            assertTrue(titlePixels > 100, "The title must remain visible with reflections disabled");
+            assertEquals(0, brightTextPixels(noCoverReflection, .66, .84), "Text remains excluded from reflections");
+            save("coverflow-reflections-disabled");
+            preferences.coverflowCoverReflection().setValue(true);
+            render();
+            assertEquals(colorAt(dark, .5, .73), colorAt(capture(), .5, .73),
+                    "Re-enabling reflections must restore the artwork without reopening Coverflow");
             verifyReflectionState();
             measureReflectionFrames();
 

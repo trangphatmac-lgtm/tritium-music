@@ -14,7 +14,7 @@ public final class BackgroundShader implements AutoCloseable {
     private final int timeUniform;
 
     public BackgroundShader(String theme) throws IOException {
-        String file = switch (theme) {
+        this("#version 120\nvoid main(){gl_Position=ftransform();}", resource(switch (theme) {
             case "aurora" -> "01_aurora.frag";
             case "nebula" -> "02_nebula.frag";
             case "liquid" -> "03_liquid.frag";
@@ -24,15 +24,20 @@ public final class BackgroundShader implements AutoCloseable {
             case "rise" -> "nebula.frag";
             case "latent" -> "latent.frag";
             default -> throw new IllegalStateException("Unexpected value: " + theme);
-        };
-        String fragment;
+        }));
+    }
+
+    public static String resource(String file) throws IOException {
         try (var input = BackgroundShader.class.getResourceAsStream("/tritium/shaders/background/" + file)) {
             if (input == null) throw new IOException("Missing background shader: " + file);
-            fragment = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(input.readAllBytes(), StandardCharsets.UTF_8);
         }
+    }
+
+    public BackgroundShader(String vertexSource, String fragment) throws IOException {
         int vertex = 0, pixel = 0, linked = 0;
         try {
-            vertex = compile(GL20.GL_VERTEX_SHADER, "#version 120\nvoid main(){gl_Position=ftransform();}");
+            vertex = compile(GL20.GL_VERTEX_SHADER, vertexSource);
             pixel = compile(GL20.GL_FRAGMENT_SHADER, fragment);
             linked = GL20.glCreateProgram();
             GL20.glAttachShader(linked, vertex);

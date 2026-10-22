@@ -127,13 +127,38 @@ class BackgroundPreferencesTest {
         var bg = new BackgroundPreferences();
         for (String mode : bg.mode().getModes()) {
             bg.mode().setValue(mode);
-            assertFalse(bg.appliesToLyrics());
+            assertEquals(mode.equals("cover"), bg.appliesToLyrics());
         }
         bg.applyToLyrics().setValue(true);
         for (String mode : bg.mode().getModes()) {
             bg.mode().setValue(mode);
             assertEquals(!mode.equals("static"), bg.appliesToLyrics());
             assertTrue(bg.applyToLyrics().getValue());
+        }
+    }
+
+    @Test
+    void coverOptionsPersistAndOnlyBlurKeepsTheOriginalLyricsCompositor() {
+        var preferences = new MusicPreferences();
+        var bg = preferences.background();
+        bg.mode().setValue("cover");
+        bg.coverMode().setValue("nomand");
+        bg.nomandEffect().setValue("paper-texture");
+        bg.monetLayout().setValue("half-pane-gradient");
+        DesktopPreferenceStore store = new DesktopPreferenceStore(temp.resolve("cover.json"));
+        store.save(preferences);
+        var restored = new MusicPreferences();
+        store.load(restored);
+        assertEquals(preferences.toJsonObject(), restored.toJsonObject());
+        bg.loadFromJsonObject(new JsonParser().parse("""
+                {"coverMode":"wrong","nomandEffect":{},"monetLayout":"wrong"}
+                """).getAsJsonObject());
+        assertEquals("nomand", bg.coverMode().getValue());
+        assertEquals("paper-texture", bg.nomandEffect().getValue());
+        assertEquals("half-pane-gradient", bg.monetLayout().getValue());
+        for (String mode : bg.coverMode().getModes()) {
+            bg.coverMode().setValue(mode);
+            assertEquals(!mode.equals("blur"), bg.appliesToLyrics());
         }
     }
 }

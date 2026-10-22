@@ -1001,7 +1001,8 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
             api.getGLStateManager().popMatrix();
         }
 
-        float backgroundTransparency = DesktopAppState.background().isAppliedToLyrics()
+        float backgroundTransparency = DesktopAppState.background().isAppliedToLyrics() && DesktopAppState.preferences().background().isCover()
+                ? 0f : DesktopAppState.background().isAppliedToLyrics()
                 ? DesktopAppState.preferences().background().lyricsTransparency().getValue().floatValue() : .35f;
         Rect.draw(posX, posY, width, height, hexColor(0, 0, 0, alpha * backgroundTransparency));
     }

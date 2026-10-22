@@ -224,7 +224,8 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         drawBackgroundReflection();
 
         this.setupProjectionTransformation();
-        coverReflection.beginFrame(-COVER_SIZE * .5 - (SCENE_CENTER_Y - .5) * paneHeight());
+        if (DesktopAppState.preferences().coverflowCoverReflection().getValue())
+            coverReflection.beginFrame(-COVER_SIZE * .5 - (SCENE_CENTER_Y - .5) * paneHeight());
 
         api.getGLStateManager().clear(GL11.GL_DEPTH_BUFFER_BIT);
         api.getGLStateManager().disableDepth();
@@ -296,7 +297,8 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
 
         this.stopProjectionTransformation();
 
-        coverReflection.draw(alpha);
+        if (DesktopAppState.preferences().coverflowCoverReflection().getValue())
+            coverReflection.draw(alpha);
         drawAlbumTitle();
 
         // Controls stay outside the reflected scene.
@@ -395,7 +397,8 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
             texture.linearFilter();
             Image.draw(offsetX, -coverSize * 0.5, coverSize, coverSize, Image.Type.Normal);
 
-            coverReflection.addCover(texture.getGlTextureId(), offsetX, -coverSize * .5, coverSize);
+            if (DesktopAppState.preferences().coverflowCoverReflection().getValue())
+                coverReflection.addCover(texture.getGlTextureId(), offsetX, -coverSize * .5, coverSize);
 
             if (renderingData.flipped || (renderingData.rotateDeg < -5 && index == i)) {
                 // flip it
