@@ -8,6 +8,15 @@ import tritium.rendering.ui.container.Panel;
  */
 public abstract class NCMPanel extends Panel {
 
+    protected tritium.screens.ncm.navigation.NavigationContent navigationContent;
+    private tritium.screens.ncm.navigation.CoverNavigationView coverNavigation;
+
+    public tritium.screens.ncm.navigation.CoverNavigationView getCoverNavigation() {
+        if (navigationContent == null) return null;
+        if (coverNavigation == null) coverNavigation = new tritium.screens.ncm.navigation.CoverNavigationView(navigationContent);
+        return coverNavigation;
+    }
+
     public abstract void onInit();
 
     protected int getColor(NCMScreen.ColorType type) {

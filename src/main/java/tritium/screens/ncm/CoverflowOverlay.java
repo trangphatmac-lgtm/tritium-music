@@ -1,591 +1,149 @@
 package tritium.screens.ncm;
 
-import tritium.i18n.I18n;
-import lombok.Getter;
-import lombok.SneakyThrows;
-import org.lwjgl.input.Keyboard;
-import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.Project;
-import tritium.desktop.DesktopScreen;
+import tritium.desktop.AppTheme;
 import tritium.desktop.DesktopAppState;
+import tritium.desktop.DesktopScreen;
 import tritium.interfaces.SharedConstants;
 import tritium.interfaces.SharedRenderingConstants;
 import tritium.management.FontManager;
-import tritium.desktop.AppTheme;
-import tritium.rendering.material.UiMaterials;
-import tritium.ncm.music.CloudMusic;
-import tritium.ncm.music.dto.Album;
-import tritium.ncm.music.dto.Music;
-import tritium.ncm.music.dto.PlayList;
-import tritium.rendering.*;
 import tritium.rendering.Image;
+import tritium.rendering.Rect;
 import tritium.rendering.animation.Interpolations;
-import tritium.rendering.entities.impl.TextField;
-import tritium.rendering.font.CFontRenderer;
+import tritium.rendering.material.UiMaterials;
 import tritium.rendering.rendersystem.RenderSystem;
-import tritium.rendering.texture.ITextureObject;
-import tritium.rendering.texture.Textures;
-import tritium.utils.KeyboardUtils;
-import tritium.utils.other.multithreading.MultiThreadingUtil;
-import tritium.utils.timing.Timer;
-
-import java.awt.*;
-import java.util.Collections;
-import java.util.HashMap;
+import tritium.rendering.shader.Shaders;
+import tritium.screens.ncm.navigation.CoverArtwork;
+import tritium.screens.ncm.navigation.FoliaGeometry.Box;
+import tritium.screens.ncm.navigation.NavigationContent.Entry;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 
-/**
- * @author IzumiiKonata
- * Date: 2025/3/14 20:31
- */
+/** Ordered cover navigation. OldSchool restores a3f70d2's projection, scale anchor and fadeout reflection. */
 public class CoverflowOverlay extends DesktopScreen implements SharedConstants, SharedRenderingConstants {
-
-    @Getter
-    private static final CoverflowOverlay instance = new CoverflowOverlay();
-
-    public boolean closing = false;
-    public float alpha = 0.0f;
-
-    private static final double CAMERA_DISTANCE = 240;
     private static final double COVER_SIZE = 96;
-    private static final double SCENE_CENTER_Y = .4;
     private final CoverflowReflection reflection = new CoverflowReflection();
     private final CoverflowSsr coverReflection = new CoverflowSsr();
+    private final CoverArtwork artwork = new CoverArtwork();
+    private final List<Box> hits = new ArrayList<>();
+    private List<Entry> entries = List.of();
+    private int index;
+    private double scrollOffset;
+    private boolean oldSchool;
+    private boolean resourcesUsed;
+    private double[] rotations = new double[0], scales = new double[0];
 
-    public void display() {
-        closing = false;
+    public void setEntries(List<Entry> value) {
+        if (entries == value) return;
+        entries = value;
+        rotations = new double[value.size()]; scales = new double[value.size()];
+        java.util.Arrays.fill(scales, .75);
+        index = 0; scrollOffset = 0;
     }
-
-    Map<Album, List<Music>> albumList = new ConcurrentHashMap<>()/*, renderList = new CopyOnWriteArrayList<>()*/;
-    Map<Album, AlbumRenderingData> albumRenderingData = new HashMap<>();
-    Map<Music, MusicRenderingData> musicRenderingData = new HashMap<>();
-    List<Album> renderList = new CopyOnWriteArrayList<>();
-
-    boolean lmbPressed, rmbPressed;
-
-    TextField textBox = new TextField(0, 0, 0, 0, 0);
-
-    boolean reloadOnClosed = false;
-
-    Timer clickResistTimer = new Timer();
-
-    private static class AlbumRenderingData {
-        public boolean flipped, coverLoaded;
-        public float rotateDeg = 0f;
-        public double scale = .75, scrollTarget = 0, scrollOffset = 0;
+    public void setIndex(int value) { index = Math.clamp(value, 0, Math.max(0, entries.size() - 1)); }
+    public void setOldSchool(boolean value) { oldSchool = value; }
+    public int hitIndex(double x, double y) {
+        for (int i = hits.size() - 1; i >= 0; i--) if (hits.get(i).contains(x,y)) return hits.get(i).index();
+        return -1;
     }
+    private double distance() { return oldSchool ? 200 : 240; }
+    private double sceneCenter() { return oldSchool ? .5 : .4; }
+    private double paneHeight() { return 2 * distance() * Math.tan(Math.toRadians(45) / 2); }
+    private boolean mirrors() { return !oldSchool && DesktopAppState.preferences().coverflowCoverReflection().getValue(); }
 
-    private static class MusicRenderingData {
-        public float hoverAlpha = 0f;
-    }
-
-    @Override
-    public void onGuiClosed() {
-
-        reflection.close();
-        coverReflection.close();
-        DesktopAppState.background().pause();
-
-        if (this.reloadOnClosed) {
-            this.albumList.clear();
-            this.reloadOnClosed = false;
-            api.displayScreen(NCMScreen.getInstance());
-        }
-
-    }
-
-    private void loadAlbumData(List<PlayList> list) {
-        MultiThreadingUtil.runAsync(() -> {
-
-            for (PlayList pl : list) {
-
-                if (pl == null)
-                    continue;
-
-                List<Music> musics = pl.getMusics();
-
-                if (musics == null)
-                    continue;
-
-                for (Music m : musics) {
-
-                    if (m == null) {
-                        continue;
-                    }
-
-                    Album album = m.getAlbum();
-                    if (album == null) {
-                        continue;
-                    }
-
-                    List<Music> playLists = albumList.computeIfAbsent(album, k -> new CopyOnWriteArrayList<>());
-                    playLists.add(m);
-                }
-
-            }
-
-            renderList.addAll(this.albumList.keySet());
-//            albumList.sort(Comparator.comparing(o -> o.name));
-        });
-    }
-
-    @Override
-    public void initGui() {
-
-//        albumList.clear();
-
-        if (!this.reloadOnClosed && this.albumList.isEmpty())
-            this.loadAlbumData(CloudMusic.playLists);
-
-    }
-
-    static String albumName(Album album) {
-        String name = album.getName();
-        return name == null || name.isBlank() ? I18n.text("album.unknown") : name;
-    }
-
-    static String musicName(Music music) {
-        String name = music.getName();
-        return name == null || name.isBlank() ? I18n.text("track.unknown") : name;
-    }
-
-    void filterAlbums(String text) {
-        String query = text.toLowerCase(Locale.ROOT);
-        renderList = albumList.entrySet().stream()
-                .filter(entry -> query.isEmpty()
-                        || albumName(entry.getKey()).toLowerCase(Locale.ROOT).contains(query)
-                        || entry.getValue().stream().anyMatch(music ->
-                                musicName(music).toLowerCase(Locale.ROOT).contains(query)
-                                        || music.getTranslatedNames().toLowerCase(Locale.ROOT).contains(query)))
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toCollection(CopyOnWriteArrayList::new));
-        index = 0;
-        scrollOffset = 0;
-    }
-
-    private void setupProjectionTransformation() {
-        double aspectRatio = RenderSystem.getWidth() / RenderSystem.getHeight();
-
-        api.getGLStateManager().matrixMode(GL11.GL_PROJECTION);
-        api.getGLStateManager().pushMatrix();
-        api.getGLStateManager().loadIdentity();
-        Project.gluPerspective(45.0f, (float) aspectRatio, 1.0F, 3000.0F);
-        api.getGLStateManager().matrixMode(GL11.GL_MODELVIEW);
-        api.getGLStateManager().pushMatrix();
-        api.getGLStateManager().loadIdentity();
-
-        // translate z
-        api.getGLStateManager().translate(0, 0, -CAMERA_DISTANCE);
-        api.getGLStateManager().scale(1, -1, 1);
-        api.getGLStateManager().translate(0, (SCENE_CENTER_Y - .5) * paneHeight(), 0);
-    }
-
-    private static double paneHeight() {
-        return 2 * CAMERA_DISTANCE * Math.tan(Math.toRadians(45) / 2);
-    }
-
-    public void stopProjectionTransformation() {
-        api.getGLStateManager().popMatrix();
-        api.getGLStateManager().matrixMode(GL11.GL_PROJECTION);
-        api.getGLStateManager().popMatrix();
-        api.getGLStateManager().matrixMode(GL11.GL_MODELVIEW);
-    }
-
-    int index = 0;
-    double scrollOffset = 0;
-
-
-    @Override
-    @SneakyThrows
-    public void drawScreen(int mouseX, int mouseY) {
-
-        alpha = Interpolations.interpolate(alpha, closing ? .0f : 1f, 0.2f);
-
-        if (alpha <= 0.05)
-            return;
-
-        if (!Mouse.isButtonDown(0) && lmbPressed)
-            lmbPressed = false;
-
-        if (!Mouse.isButtonDown(1) && rmbPressed)
-            rmbPressed = false;
-
+    /** Standalone rendering entry point used by framebuffer tests. The application embeds renderScene. */
+    @Override public void drawScreen(int mouseX, int mouseY) {
         UiMaterials.beginFrame(mouseX, mouseY);
         DesktopAppState.background().render(Display.isVisible());
-
         UiMaterials.captureBackdrop(false);
-        drawBackgroundReflection();
-
-        this.setupProjectionTransformation();
-        if (DesktopAppState.preferences().coverflowCoverReflection().getValue())
-            coverReflection.beginFrame(-COVER_SIZE * .5 - (SCENE_CENTER_Y - .5) * paneHeight());
-
+        renderScene();
+    }
+    public void renderScene() {
+        hits.clear();
+        resourcesUsed = true;
+        double height = RenderSystem.getHeight();
+        if (oldSchool) Rect.draw(0, 0, RenderSystem.getWidth(), height, AppTheme.color(0x80000000, 0x40FFFFFF));
+        else {
+            double bottom = height * (sceneCenter() + COVER_SIZE * .5 / paneHeight());
+            reflection.draw(bottom + 1.5 * Math.min(1, height / 360), 1);
+        }
+        api.getGLStateManager().matrixMode(GL11.GL_PROJECTION);
+        api.getGLStateManager().pushMatrix();
+        api.getGLStateManager().loadIdentity();
+        Project.gluPerspective(45, (float) (RenderSystem.getWidth() / height), 1, 3000);
+        api.getGLStateManager().matrixMode(GL11.GL_MODELVIEW);
+        api.getGLStateManager().pushMatrix();
+        api.getGLStateManager().loadIdentity();
+        api.getGLStateManager().translate(0, 0, -distance());
+        api.getGLStateManager().scale(1, -1, 1);
+        api.getGLStateManager().translate(0, (sceneCenter() - .5) * paneHeight(), 0);
+        if (mirrors()) coverReflection.beginFrame(-COVER_SIZE * .5 - (sceneCenter() - .5) * paneHeight());
         api.getGLStateManager().clear(GL11.GL_DEPTH_BUFFER_BIT);
         api.getGLStateManager().disableDepth();
         api.getGLStateManager().depthMask(false);
-//        api.getGLStateManager().disableDepth();
-//        api.getGLStateManager().clearDepth(1.0D);
-//        api.getGLStateManager().disableCull();
-
-        double coverSize = COVER_SIZE;
-        double spacing = 24;
-
-        float rotDegTarget = 45;
-
-        scrollOffset = Interpolations.interpolate(scrollOffset, index * (coverSize * 0.5 + spacing), 0.2f);
-
-        double offsetX = -coverSize * 0.5 - scrollOffset;
-
-        int dWheel = Mouse.getDWheel();
-
-        index = Math.max(0, Math.min(renderList.size() - 1, index));
-
-        if (dWheel != 0 && !renderList.isEmpty() && !albumRenderingData.computeIfAbsent(renderList.get(index), k -> new AlbumRenderingData()).flipped) {
-
-            int amount = 1;
-
-            if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT))
-                amount *= 5;
-
-            if (dWheel > 0) {
-                index -= amount;
-            } else {
-                index += amount;
-            }
-
-        }
-
-        index = Math.max(0, Math.min(renderList.size() - 1, index));
-
-        // 渲染 index 左边的
-        for (int i = 0; i < index; i++) {
-
-            Album al = renderList.get(i);
-
-            if (index - i <= 7) {
-                this.renderCoverImage(al, offsetX, coverSize, rotDegTarget, i, true, mouseX, mouseY, dWheel);
-            }
-
-            offsetX += coverSize * 0.5 + spacing;
-        }
-
-        offsetX = -coverSize * 0.5 + ((coverSize * 0.5 + spacing) * (renderList.size() - 1)) - scrollOffset;
-
-        // 渲染 index 右边的
-        for (int i = renderList.size() - 1; i >= index; i--) {
-            Album al = renderList.get(i);
-
-            if (i - index <= 7) {
-                this.renderCoverImage(al, offsetX, coverSize, rotDegTarget, i, false, mouseX, mouseY, dWheel);
-            }
-
-            offsetX -= coverSize * 0.5 + spacing;
-        }
-
-//        offsetX = -coverSize * 0.5;
-//        Album al = list.get(index);
-//        this.renderCoverImage(al, offsetX, coverSize, rotDegTarget, index, false, mouseX, mouseY, dWheel);
-//        api.getGLStateManager().enableDepth();
+        scrollOffset = Interpolations.interpolate(scrollOffset, index * 72.0, .2f);
+        // Back-to-front, bounded to the visible neighbourhood even for very large playlists.
+        for (int i = Math.max(0, index - 7); i < index; i++) drawCover(i);
+        for (int i = Math.min(entries.size() - 1, index + 7); i >= index; i--) drawCover(i);
         api.getGLStateManager().depthMask(true);
-
-        this.stopProjectionTransformation();
-
-        if (DesktopAppState.preferences().coverflowCoverReflection().getValue())
-            coverReflection.draw(alpha);
-        drawAlbumTitle();
-
-        // Controls stay outside the reflected scene.
-        textBox.setPosition(8, 8);
-        textBox.width = (float) Math.min(240, Math.max(1, RenderSystem.getWidth() - 16));
-        textBox.height = 34;
-        textBox.setFontRenderer(FontManager.pf40bold);
-        textBox.setTextColor(AppTheme.foreground());
-        textBox.setDisabledTextColour(Color.GRAY.getRGB());
-        textBox.setPlaceholder(I18n.text("coverflow.search"));
-        textBox.setCallback(this::filterAlbums);
-        if (UiMaterials.enabled()) UiMaterials.control(4, 4, textBox.width + 8, textBox.height + 8, 12, AppTheme.inputBackground());
-        textBox.drawTextBox(mouseX, mouseY);
-    }
-
-    private void drawBackgroundReflection() {
-        double height = RenderSystem.getHeight();
-        double coverBottom = height * (SCENE_CENTER_Y + COVER_SIZE * .5 / paneHeight());
-        double scale = Math.min(1, height / 360);
-        // Only the background enters the polished floor's perspective and blur pass.
-        reflection.draw(coverBottom + 1.5 * scale, alpha);
-    }
-
-    private void drawAlbumTitle() {
-        double height = RenderSystem.getHeight();
-        CFontRenderer font = FontManager.pf50bold;
-        double scale = Math.min(1, height / 360);
-        double titleY = height - (font.getHeight() + 18) * scale;
-        if (!renderList.isEmpty()) {
-            String title = font.trim(albumName(renderList.get(index)), Math.max(1, (RenderSystem.getWidth() - 32) / scale));
+        api.getGLStateManager().popMatrix();
+        api.getGLStateManager().matrixMode(GL11.GL_PROJECTION);
+        api.getGLStateManager().popMatrix();
+        api.getGLStateManager().matrixMode(GL11.GL_MODELVIEW);
+        if (mirrors()) coverReflection.draw(1);
+        if (!entries.isEmpty()) {
+            var font = FontManager.pf50bold;
+            double scale = Math.min(1, height / 360);
+            double titleY = height - (font.getHeight() + 18) * scale;
             api.getGLStateManager().pushMatrix();
-            api.getGLStateManager().translate(RenderSystem.getWidth() * .5, titleY, 0);
+            api.getGLStateManager().translate(RenderSystem.getWidth() / 2, titleY, 0);
             api.getGLStateManager().scale(scale, scale, 1);
-            font.drawCenteredStringWithShadow(title, 0, 0, AppTheme.foreground());
+            font.drawCenteredStringWithShadow(font.trim(entries.get(index).title(), Math.max(1, (RenderSystem.getWidth() - 40) / scale)), 0, 0, AppTheme.foreground());
             api.getGLStateManager().popMatrix();
         }
     }
-
-    private void renderCoverImage(Album al, double offsetX, double coverSize, float rotDegTarget, int i, boolean left, double mouseX, double mouseY, int dWheel) {
-
-        TextureManager textureManager = TextureManager.getInstance();
-
-        ITextureObject texture = textureManager.getTexture(al.getCoverLocation());
-
-        AlbumRenderingData renderingData = albumRenderingData.computeIfAbsent(al, k -> new AlbumRenderingData());
-
-        if (texture == null && !renderingData.coverLoaded) {
-            renderingData.coverLoaded = true;
-            int cSize = 512;
-            Textures.downloadTextureAndLoadAsync(al.getPicUrl() + "?param=" + cSize + "y" + cSize, al.getCoverLocation());
-        }
-
-        double fovy = 45.0f;
-        double aspectRatio = (RenderSystem.getWidth() / RenderSystem.getHeight());
-        double translateZ = CAMERA_DISTANCE;
-
-        // 焦点
-        double f = (1.0 / Math.tan(Math.toRadians(fovy) / 2.0));
-
-        double paneWidth = (translateZ * aspectRatio) / f * 2;
-        double paneHeight = translateZ / f * 2;
-
-        mouseX = mouseX / RenderSystem.getWidth() * paneWidth - paneWidth * 0.5;
-        mouseY = mouseY / RenderSystem.getHeight() * paneHeight - paneHeight * SCENE_CENTER_Y;
-
-        // 喜欢我的魔法数字吗
-        double fontScale = (1 / aspectRatio) * 0.618;
-
+    private void drawCover(int i) {
+        var entry = entries.get(i);
+        var texture = artwork.texture(entry);
+        rotations[i] = Interpolations.interpolate(rotations[i], i == index ? 0 : i < index ? 45 : -45, .2f);
+        scales[i] = Interpolations.interpolate(scales[i], i == index ? 1 : .75, .2f);
+        double centerX = i * 72 - scrollOffset;
+        double anchor = oldSchool ? 0 : 48;
         api.getGLStateManager().pushMatrix();
-
-        api.getGLStateManager().translate(offsetX + coverSize * 0.5, coverSize * 0.5, 0);
-
-        if (index != i) {
-            renderingData.rotateDeg = Interpolations.interpolate(renderingData.rotateDeg, rotDegTarget * (left ? 1 : -1), 0.2f);
-            renderingData.scale = Interpolations.interpolate(renderingData.scale, 0.75, 0.2f);
-            renderingData.flipped = false;
-        } else {
-            renderingData.rotateDeg = Interpolations.interpolate(renderingData.rotateDeg, renderingData.flipped ? -180 : 0, renderingData.flipped ? 0.1f : 0.2f);
-            renderingData.scale = Interpolations.interpolate(renderingData.scale, 1.0, 0.2f);
-        }
-
-        // rotate
-        api.getGLStateManager().rotate(renderingData.rotateDeg, 0, 1, 0);
-        api.getGLStateManager().translate(-(offsetX + coverSize * 0.5), -coverSize * 0.5, 0);
-
-        // scale
-        // Anchor every cover on the same floor, including the smaller side covers.
-        api.getGLStateManager().translate(offsetX + coverSize * 0.5, coverSize * .5, 0);
-        api.getGLStateManager().scale(renderingData.scale, renderingData.scale, 1);
-        api.getGLStateManager().translate(-(offsetX + coverSize * 0.5), -coverSize * .5, 0);
-
-        Rect.draw(offsetX, -coverSize * 0.5f, coverSize, coverSize, RGBA.color(128, 128, 128, 128));
-
+        api.getGLStateManager().translate(centerX, 48, 0);
+        api.getGLStateManager().rotate((float) rotations[i], 0, 1, 0);
+        api.getGLStateManager().translate(0, -48, 0);
+        api.getGLStateManager().translate(0, anchor, 0);
+        api.getGLStateManager().scale(scales[i], scales[i], 1);
+        api.getGLStateManager().translate(0, -anchor, 0);
+        Rect.draw(-48, -48, 96, 96, AppTheme.surface());
         if (texture != null) {
-            api.getGLStateManager().bindTexture(texture.getGlTextureId());
             texture.linearFilter();
-            Image.draw(offsetX, -coverSize * 0.5, coverSize, coverSize, Image.Type.Normal);
-
-            if (DesktopAppState.preferences().coverflowCoverReflection().getValue())
-                coverReflection.addCover(texture.getGlTextureId(), offsetX, -coverSize * .5, coverSize);
-
-            if (renderingData.flipped || (renderingData.rotateDeg < -5 && index == i)) {
-                // flip it
-                api.getGLStateManager().translate(offsetX + coverSize * 0.5, coverSize * 0.5, 0);
-                api.getGLStateManager().rotate(-180, 0, 1, 0);
-                api.getGLStateManager().translate(-(offsetX + coverSize * 0.5), -coverSize * 0.5, 0);
-
-                double y = -coverSize * 0.5f;
-
-                Image.drawLinearFlippedX(al.getCoverLocation(), offsetX, y, coverSize, coverSize, Image.Type.Normal);
-                // Keep the flipped face flush with the square artwork, without a glass rim.
-                Rect.draw(offsetX, y, coverSize, coverSize, AppTheme.color(0xC8000000, 0xE6FFFFFF));
-
-                double imgSpacing = 1;
-                double imgSize = 16;
-                Image.draw(offsetX + coverSize - imgSize - imgSpacing, y + imgSpacing, imgSize, imgSize, Image.Type.Normal);
-
-                CFontRenderer fr = FontManager.pf28bold;
-                fr.drawString(fr.trim(albumName(al), (coverSize - imgSpacing * 2 - 2 - imgSize) / fontScale), offsetX + 2, y + 2, fontScale, AppTheme.foreground());
-
-                double contentSpacing = 2;
-
-                double contentPaneX = offsetX + contentSpacing;
-                double contentPaneY = y + imgSpacing * 2 + imgSize + contentSpacing;
-                double contentPaneWidth = coverSize - contentSpacing * 2;
-                double contentPaneHeight = coverSize - (imgSpacing * 2 + imgSize + contentSpacing * 2);
-
-                StencilClipManager.beginClip(() -> Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, -1));
-                Rect.draw(contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight, AppTheme.color(0x14FFFFFF, 0xFFF5F5F5));
-
-                double yAdd = 5;
-
-                if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT))
-                    yAdd *= 2;
-
-                if (RenderSystem.isHovered(mouseX, mouseY, contentPaneX, contentPaneY, contentPaneWidth, contentPaneHeight) && dWheel != 0) {
-                    if (dWheel > 0)
-                        renderingData.scrollTarget -= yAdd;
-                    else
-                        renderingData.scrollTarget += yAdd;
-                }
-
-                renderingData.scrollTarget = Interpolations.interpolate(renderingData.scrollTarget, 0, 0.4f);
-                renderingData.scrollOffset = Interpolations.interpolate(renderingData.scrollOffset, renderingData.scrollTarget, 1f);
-
-                if (renderingData.scrollTarget < 0)
-                    renderingData.scrollTarget = Interpolations.interpolate(renderingData.scrollTarget, 0, 0.2f);
-
-                double yOffset = contentPaneY - renderingData.scrollOffset;
-                double entryHeight = fr.getHeight() * fontScale + 4;
-                List<Music> musics = albumList.get(al);
-
-                if (renderingData.scrollTarget > (musics.size() - 1) * entryHeight)
-                    renderingData.scrollTarget = Interpolations.interpolate(renderingData.scrollTarget, (musics.size() - 1) * entryHeight, 0.2f);
-
-                fr = FontManager.pf25;
-
-                for (int j = 0; j < musics.size(); j++) {
-                    Music music = musics.get(j);
-
-                    if ((j + 1) % 2 == 0) {
-                        UiMaterials.panel(contentPaneX, yOffset, contentPaneWidth, entryHeight, AppTheme.color(0x3C000000, 0x14000000));
-                    }
-
-                    fr.drawString((j + 1) + ".", contentPaneX + 2, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, AppTheme.foreground());
-                    fr.drawString(fr.trim(musicName(music), 58 / fontScale), contentPaneX + 4 + 12, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, AppTheme.foreground());
-
-                    long tMin = (music.getDuration() / 1000) / 60;
-                    long tSec = ((music.getDuration() / 1000) - ((music.getDuration() / 1000) / 60) * 60);
-                    String duration = (tMin < 10 ? "0" + tMin : tMin) + ":" + (tSec < 10 ? "0" + tSec : tSec);
-
-                    fr.drawString(duration, contentPaneX + 4 + 74, yOffset + entryHeight * 0.5 - fr.getHeight() * 0.5 * fontScale, fontScale, AppTheme.foreground());
-
-                    MusicRenderingData musicData = musicRenderingData.computeIfAbsent(music, m -> new MusicRenderingData());
-
-                    if (musicData.hoverAlpha > 0.05f) {
-                        UiMaterials.panel(contentPaneX, yOffset, contentPaneWidth, entryHeight, RenderSystem.reAlpha(AppTheme.foreground(), musicData.hoverAlpha));
-                    }
-
-                    boolean hovered = RenderSystem.isHovered(mouseX, mouseY, contentPaneX, yOffset, contentPaneWidth, entryHeight);
-
-                    musicData.hoverAlpha = Interpolations.interpolate(musicData.hoverAlpha, hovered ? 0.2f : 0.0f, 0.2f);
-
-                    if (hovered && Mouse.isButtonDown(0) && !lmbPressed && renderingData.rotateDeg < -145 && renderingData.flipped) {
-                        lmbPressed = true;
-                        CloudMusic.play(musics, musics.indexOf(music));
-                    }
-
-                    yOffset += entryHeight;
-                }
-
-                StencilClipManager.endClip();
-
-            }
+            api.getGLStateManager().bindTexture(texture.getGlTextureId());
+            Image.draw(-48, -48, 96, 96, Image.Type.Normal);
+            if (mirrors()) coverReflection.addCover(texture.getGlTextureId(), -48, -48, 96);
+            if (oldSchool && DesktopAppState.preferences().coverflowCoverReflection().getValue())
+                Shaders.VF_FADEOUT.draw(-48, 48, 96, 96, .5, .85f);
+        } else {
+            FontManager.music18.drawCenteredString("D", 0, -8, AppTheme.secondary());
         }
-
         api.getGLStateManager().popMatrix();
-
-        if (index == i) {
-
-            if (Mouse.isButtonDown(0) && !lmbPressed && this.clickResistTimer.isDelayed(250)) {
-
-                boolean hovered = RenderSystem.isHovered(mouseX, mouseY, offsetX, -coverSize * 0.5, coverSize, coverSize);
-
-                if (hovered && !renderingData.flipped) {
-                    renderingData.flipped = true;
-                }
-
-                if (!hovered && renderingData.flipped) {
-                    renderingData.flipped = false;
-                }
-
-                lmbPressed = true;
-            }
-
+        double minX = Double.POSITIVE_INFINITY, minY = minX, maxX = -minX, maxY = -minX;
+        double radians = Math.toRadians(rotations[i]);
+        for (int dx : new int[]{-48,48}) for (int dy : new int[]{-48,48}) {
+            double x = dx * scales[i];
+            double z = -Math.sin(radians) * x;
+            double perspective = distance() / (distance() - z);
+            double px = RenderSystem.getWidth() / 2 + (centerX + Math.cos(radians) * x) * perspective * RenderSystem.getHeight() / paneHeight();
+            double py = RenderSystem.getHeight() / 2 + ((dy - anchor) * scales[i] + anchor + (sceneCenter() - .5) * paneHeight()) * perspective * RenderSystem.getHeight() / paneHeight();
+            minX = Math.min(minX, px); maxX = Math.max(maxX, px); minY = Math.min(minY, py); maxY = Math.max(maxY, py);
         }
-
+        hits.add(new Box(i,minX,minY,maxX-minX,maxY-minY));
     }
-
-    @Override
-    public void mouseClicked(int mouseX, int mouseY, int button) {
-        this.textBox.mouseClicked(mouseX, mouseY, button);
+    @Override public void onGuiClosed() {
+        if (!resourcesUsed) return;
+        reflection.close(); coverReflection.close(); resourcesUsed = false;
     }
-
-    @Override
-    public void keyTyped(char typedChar, int keyCode) {
-
-        if (keyCode == Keyboard.KEY_ESCAPE) {
-
-            if (!renderList.isEmpty() && albumRenderingData.computeIfAbsent(renderList.get(index), a -> new AlbumRenderingData()).flipped) {
-                albumRenderingData.get(renderList.get(index)).flipped = false;
-                return;
-            }
-
-            if (this.textBox.isFocused()) {
-                this.textBox.setFocused(false);
-                return;
-            }
-
-            api.displayScreen(NCMScreen.getInstance());
-            return;
-        }
-
-        if (keyCode == Keyboard.KEY_LEFT && !textBox.isFocused()) {
-
-            if (index > 0)
-                index --;
-
-            return;
-        }
-
-        if (keyCode == Keyboard.KEY_RIGHT && !textBox.isFocused()) {
-
-            if (index < renderList.size() - 1)
-                index ++;
-
-            return;
-        }
-
-        if (textBox.isFocused()) {
-            this.textBox.textboxKeyTyped(typedChar, keyCode);
-            return;
-        }
-
-        if (KeyboardUtils.isKeyComboCtrl(keyCode, Keyboard.KEY_F)) {
-            this.textBox.setFocused(true);
-            this.textBox.setCursorPositionEnd();
-            this.textBox.setSelectionPos(0);
-        }
-
-    }
-
-    public static CoverflowOverlay byPlaylist(PlayList playList) {
-
-        CoverflowOverlay screen = getInstance();
-
-        screen.reloadOnClosed = true;
-        screen.albumList.clear();
-        screen.renderList.clear();
-        screen.index = 0;
-        screen.scrollOffset = 0;
-        screen.textBox.setText("");
-        screen.loadAlbumData(Collections.singletonList(playList));
-
-        screen.clickResistTimer.reset();
-
-        return screen;
-    }
-
 }

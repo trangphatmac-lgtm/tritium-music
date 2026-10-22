@@ -14,7 +14,6 @@ import tritium.rendering.texture.Textures;
 import tritium.rendering.ui.container.Panel;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.rendering.ui.widgets.*;
-import tritium.screens.ncm.CoverflowOverlay;
 import tritium.screens.ncm.NCMPanel;
 import tritium.screens.ncm.NCMScreen;
 import tritium.utils.KeyboardUtils;
@@ -37,6 +36,7 @@ public class PlaylistPanel extends NCMPanel {
 
     public PlaylistPanel(PlayList playlist) {
         this.playList = playlist;
+        if (!playlist.isSearchMode()) navigationContent = tritium.screens.ncm.navigation.NavigationContent.tracks(playlist);
     }
 
     private TextFieldWidget tfSearch;
@@ -112,26 +112,6 @@ public class PlaylistPanel extends NCMPanel {
                 return true;
             });
 
-            RoundedButtonWidget btnCoverflow = new RoundedButtonWidget("Coverflow", FontManager.pf16bold);
-            this.addChild(btnCoverflow);
-
-            btnCoverflow.setBeforeRenderCallback(() -> {
-                btnCoverflow.setBounds(57, ACTION_BUTTON_HEIGHT);
-                btnCoverflow.setPosition(cover.getRelativeX() + cover.getWidth() + 12 + btnPlay.getWidth() + 8 + btnPlayRandomOrder.getWidth() + 8, cover.getRelativeY() + cover.getHeight() - btnCoverflow.getHeight());
-                btnCoverflow.setRadius(3);
-                btnCoverflow.setColor(NCMScreen.getColor(NCMScreen.ColorType.ACCENT));
-                btnCoverflow.setTextColor(NCMScreen.getColor(NCMScreen.ColorType.ON_ACCENT));
-            });
-
-            btnCoverflow.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
-
-                if (mouseButton == 0) {
-                    api.displayScreen(CoverflowOverlay.byPlaylist(playList));
-                }
-
-                return true;
-            });
-
             RoundedRectWidget searchBar = new RoundedRectWidget();
             this.addChild(searchBar);
 
@@ -156,9 +136,9 @@ public class PlaylistPanel extends NCMPanel {
                                 .setAlpha(1f)
                                 .setColor(0xFF5E5E5E)
                                 .setWidth(tfOpenAnimation)
-                                .setHeight(btnCoverflow.getHeight())
+                                .setHeight(btnPlayRandomOrder.getHeight())
                                 .setRadius(7)
-                                .setPosition(btnCoverflow.getRelativeX() + btnCoverflow.getWidth() + 8, btnCoverflow.getRelativeY());
+                                .setPosition(btnPlayRandomOrder.getRelativeX() + btnPlayRandomOrder.getWidth() + 8, btnPlayRandomOrder.getRelativeY());
                     });
 
             RoundedRectWidget searchBarBg = new RoundedRectWidget();
@@ -367,7 +347,8 @@ public class PlaylistPanel extends NCMPanel {
         if (textureManager.getTexture(coverLoc) != null)
             return;
 
-        Textures.downloadTextureAndLoadAsync(playList.getCoverUrl() + "?param=256y256", coverLoc);
+        if (playList.getCoverUrl() != null && !playList.getCoverUrl().isBlank())
+            Textures.downloadTextureAndLoadAsync(playList.getCoverUrl() + "?param=256y256", coverLoc);
     }
 
     private void loadAvatar() {

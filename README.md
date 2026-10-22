@@ -19,8 +19,9 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Lyric page, word-by-word lyrics, translations, and romaji
 - Automatically select the best lyrics from NetEase, AMLLDB, QQ Music and Kugou in Settings → Lyrics. Enabled by default with NetEase priority; source preference is saved and changes apply immediately. See [matching rules and verification](docs/best-lyrics.md).
 - Cover loading and blurred backgrounds
-- Coverflow with depth-based screen-space reflections, a shared mirror plane, angle-dependent reflectivity, and gradual softening.
-- Toggle cover reflections in Settings → Appearance → Coverflow cover reflections (enabled by default and saved automatically). Background reflections and text keep their existing behavior.
+- Navigation modes in Settings → Appearance: List (default), Coverflow (OldSchool, Mirror or Card), and Wall. Explore, My playlists, Saved playlists and playlist pages share the selected mode. Covers follow source order, with one entry per song instead of album grouping.
+- OldSchool restores the original full-window Coverflow; Mirror retains screen-space reflections and the shared mirror plane. Both support the saved cover-reflection toggle.
+- Folia Card offers artwork-only and Polaroid styles, full-bleed/square options, saved focus, and size/opacity falloff. Bravais Wall offers transparency, window count, stacked collection edges, backdrop lyrics and blur. Playlist cards form a large single-row carousel; the wall repeats to fill the window. Both draw behind the original navigation and playback controls, including Blur/Liquid Glass materials, with hover, opening and reflow animations. The Bravais information strip stays hidden. See [navigation modes and controls](docs/navigation-modes.md).
 - Music download cache and cache size display
 - Simplified Chinese, Traditional Chinese, and English in Settings → General → Language; changes apply immediately and are saved automatically (default: Simplified Chinese)
 - Light and dark modes in Settings → Appearance, with smooth transitions and a saved preference; lyrics and system HUDs keep their existing appearance

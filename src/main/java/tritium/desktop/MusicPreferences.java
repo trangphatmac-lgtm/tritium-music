@@ -66,6 +66,7 @@ public class MusicPreferences {
     private final NumberPreference lyricHeight = new NumberPreference("Lyric Height", 20.0, 14.0, 50.0, 0.5);
     private final PreferenceValue<Boolean> spectrumAbsoluteVolume = new PreferenceValue<>("Absolute Volume", true);
     private final HudPreferences hud = new HudPreferences(spectrumAbsoluteVolume);
+    private final NavigationPreferences navigation = new NavigationPreferences();
     private final BackgroundPreferences background = new BackgroundPreferences();
     private Runnable changeCallback = () -> {
     };
@@ -116,6 +117,7 @@ public class MusicPreferences {
         spectrumAbsoluteVolume.setValueCallback(value -> fireChanged());
         hud.setChangeCallback(this::fireChanged);
         background.setChangeCallback(this::fireChanged);
+        navigation.setChangeCallback(this::fireChanged);
 
         applyQuality(quality.getValue());
         ClientSettings.SHOW_WIDGET_BOUNDARY = showWidgetBoundary.getValue();
@@ -182,6 +184,7 @@ public class MusicPreferences {
         json.addProperty(SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume.getValue());
         json.add(HudPreferences.HUD_KEY, hud.toJsonObject());
         json.add("background", background.toJsonObject());
+        json.add("navigation", navigation.toJsonObject());
         return json;
     }
 
@@ -192,6 +195,8 @@ public class MusicPreferences {
 
         loading = true;
         try {
+            if (json.has("navigation") && json.get("navigation").isJsonObject())
+                navigation.loadFromJsonObject(json.getAsJsonObject("navigation"));
             applyMode(json, QUALITY_KEY, quality);
             applyBoolean(json, MUSIC_TOAST_KEY, musicToast);
             applyBoolean(json, SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary);
@@ -280,6 +285,8 @@ public class MusicPreferences {
             // Keep the default when an opacity entry is malformed.
         }
     }
+
+    public NavigationPreferences navigation() { return navigation; }
 
     public ModePreference quality() {
         return quality;

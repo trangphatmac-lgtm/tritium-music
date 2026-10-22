@@ -37,6 +37,11 @@ public final class PlaylistLibraryPanel extends NCMPanel {
     public PlaylistLibraryPanel(NCMScreen screen, boolean subscribed) {
         this.screen = screen;
         this.subscribed = subscribed;
+        navigationContent = tritium.screens.ncm.navigation.NavigationContent.playlists(subscribed ? "saved" : "mine",
+                () -> I18n.text(subscribed ? "nav.subscribed" : "nav.playlists"), () -> {
+                    if (source != CloudMusic.playLists) refreshPlaylists();
+                    return playlists;
+                }, () -> CloudMusic.playLists == null);
     }
 
     public boolean isSubscribed() {

@@ -18,6 +18,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /** Shared by both navigation layouts, including text and keyboard focus. */
 public final class MusicSearchBar extends Panel {
     private final NCMScreen screen;
+    private tritium.screens.ncm.navigation.CoverNavigationView browser;
     private final TextFieldWidget field = new TextFieldWidget(FontManager.pf16bold);
 
     public MusicSearchBar(NCMScreen screen) {
@@ -29,6 +30,7 @@ public final class MusicSearchBar extends Panel {
         addChild(icon);
         field.setPlaceholder(() -> I18n.text("nav.search"));
         field.drawUnderline(false);
+        field.setTextChangedCallback(value -> { if (browser != null) browser.setQuery(value); });
         field.setBeforeRenderCallback(() -> {
             double inset = icon.getRelativeX() + icon.getWidth() + 6;
             field.setBounds(inset, 2, Math.max(0, getWidth() - inset - 8), getHeight() - 4);
@@ -37,7 +39,10 @@ public final class MusicSearchBar extends Panel {
         });
         field.setOnKeyTypedCallback((character, keyCode) -> {
             if (!field.isFocused()) return false;
-            if (keyCode == Keyboard.KEY_ESCAPE) field.setFocused(false);
+            if (keyCode == Keyboard.KEY_ESCAPE) {
+                if (browser != null) { field.setText(""); browser.setQuery(""); }
+                field.setFocused(false);
+            }
             if (keyCode == Keyboard.KEY_RETURN || keyCode == Keyboard.KEY_NUMPADENTER) submit();
             return true;
         });
@@ -63,6 +68,17 @@ public final class MusicSearchBar extends Panel {
         UiMaterials.control(getX() + 1, getY() + 1, getWidth() - 2, getHeight() - 2, radius - 1,
                 reAlpha(AppTheme.surface(), getAlpha()));
     }
+
+    public void bindBrowser(tritium.screens.ncm.navigation.CoverNavigationView view) {
+        if (browser == view) return;
+        browser = view;
+        if (browser != null) {
+            field.setText("");
+            browser.setQuery("");
+        }
+    }
+
+    public boolean isFocused() { return field.isFocused(); }
 
     public void focus() {
         field.setFocused(true);

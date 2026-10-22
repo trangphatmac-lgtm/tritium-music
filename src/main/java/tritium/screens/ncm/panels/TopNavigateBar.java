@@ -43,7 +43,7 @@ public final class TopNavigateBar extends NCMPanel {
         addChild(tab);
     }
 
-    private void arrange() {
+    public void arrange() {
         double width = screen.getPanelWidth();
         double margin = width < 600 ? 16 : 24;
         double searchWidth = Math.min(210, Math.max(120, width * .23));

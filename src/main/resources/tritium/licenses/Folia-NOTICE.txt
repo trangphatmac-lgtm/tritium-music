@@ -1,4 +1,4 @@
-Folia lyric matching port
+Folia ports
 
 Upstream: Folia by chthollyphile and contributors
 https://github.com/chthollyphile/folia-major
@@ -22,3 +22,44 @@ source is NetEase per the Tritium user's request. The port includes asynchronous
 loading, expiring immutable caches, cancellation and render-thread publication.
 The ported source files remain under AGPL-3.0. This notice and the license are
 included in the application resources.
+
+Cover navigation port (reference commit 851af347, 2026-10-22)
+
+FoliaGeometry adapts the ordered hex spiral, distance falloff, 12x8 block
+layouts, coordinate-hashed reflections and seeded reserved-window masks from:
+  src/library/suites/grid/shared/hexViewport.ts
+  src/utils/hexCardFalloff.ts
+  src/components/wall/blockTemplates.ts
+  src/components/wall/blockReservedSlots.ts
+  src/components/wall/wallSlots.ts
+
+The Card and Wall settings and rendering behavior follow:
+  src/stores/useHomeLayoutSettingsStore.ts
+  src/stores/useGridViewSettingsStore.ts
+  src/stores/useLibraryWallLookStore.ts
+  src/library/suites/bravais/bravaisLook.ts
+
+Adapted to Java/OpenGL and Tritium's page bounds, artwork cache, input and
+playback queue. The Bravais seam is permanently closed; collection tiles open
+Tritium playlist pages. Source item order is retained across every mode.
+
+The full-window field, carousel and motion port additionally adapts:
+  src/library/suites/grid/home/Grid3DSlider.tsx
+  src/library/suites/grid/transitions/morphGeometry.ts
+  src/library/suites/grid/transitions/morphFlight.ts
+  src/library/suites/grid/transitions/morphFlyIn.ts
+  src/components/wall/startTile.ts
+  src/components/wall/layout.ts
+  src/components/wall/blockReflows.ts
+  src/components/wall/wallReflowMotion.ts
+  src/components/wall/wall.css
+  src/library/suites/bravais/bravaisItemSlots.ts
+  src/library/suites/bravais/bravaisConstants.ts
+  src/library/suites/bravais/bravaisWallWave.ts
+  src/library/suites/bravais/BravaisTile.tsx
+  src/library/suites/bravais/bravais.css
+  src/library/suites/bravais/bravaisTileKinds.css
+
+FoliaWallReflows preserves the generated exact covers, indexed by original slot.
+FoliaMotion evaluates the original spring parameters analytically. Renderer
+adaptations use Tritium's existing shell and its backdrop material capture.

@@ -87,6 +87,12 @@ public class NavigateBar extends NCMPanel {
             lblPlaylists.setPosition(6, lblPlaylists.getRelativeY());
         });
 
+        lblPlaylists.setShouldOverrideMouseCursor(true);
+        lblPlaylists.setOnClickCallback((x, y, button) -> {
+            if (button != 0) return false;
+            screen.setCurrentPanel(new PlaylistLibraryPanel(screen, false));
+            return true;
+        });
         this.playlistPanel.addChild(lblPlaylists);
 
         PlaylistItem cloudStorage = new PlaylistItem("D", Color.GRAY::getRGB, () -> I18n.text("cloud.title"),
@@ -124,6 +130,12 @@ public class NavigateBar extends NCMPanel {
             lblSubscribed.setPosition(6, lblSubscribed.getRelativeY());
         });
 
+        lblSubscribed.setShouldOverrideMouseCursor(true);
+        lblSubscribed.setOnClickCallback((x, y, button) -> {
+            if (button != 0) return false;
+            screen.setCurrentPanel(new PlaylistLibraryPanel(screen, true));
+            return true;
+        });
         this.playlistPanel.addChild(lblSubscribed);
 
         if (pl != null) {

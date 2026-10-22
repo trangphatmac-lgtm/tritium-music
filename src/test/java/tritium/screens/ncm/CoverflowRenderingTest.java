@@ -66,13 +66,14 @@ class CoverflowRenderingTest {
 
             screen = new CoverflowOverlay();
             String[] titles = {"天亮以前说再见", "红尘之客", "Payphone", "午后散步"};
+            var covers = new java.util.ArrayList<tritium.screens.ncm.navigation.NavigationContent.Entry>();
             for (int i = 0; i < titles.length; i++) {
                 Album album = new Album(-810 - i, titles[i], "", List.of());
                 Music music = new Gson().fromJson("{\"id\":-1,\"name\":\"测试歌曲\",\"dt\":180000}", Music.class);
-                screen.albumList.put(album, List.of(music));
-                screen.renderList.add(album);
+                covers.add(new tritium.screens.ncm.navigation.NavigationContent.Entry("" + i, titles[i], "", titles[i], album.getCoverLocation(), "", false, () -> {}));
                 TextureManager.getInstance().loadTexture(album.getCoverLocation(), new DynamicTexture(artwork(i)));
             }
+            screen.setEntries(List.copyOf(covers));
             screen.initGui();
             background.mode().setValue("static");
             settle();
@@ -134,17 +135,15 @@ class CoverflowRenderingTest {
                 background.strength().setValue(1.0);
                 awaitBackground();
             }
-            screen.keyTyped('\0', Keyboard.KEY_RIGHT);
+            screen.setIndex(1);
             settle();
-            assertEquals(1, screen.index);
-            screen.filterAlbums("no matching album");
+            screen.setEntries(List.of());
             render();
-            assertTrue(screen.renderList.isEmpty());
             assertPixel(capture(), 3, RenderSystem.getHeight() * .3, 0x285080, 1);
             BufferedImage empty = capture();
             assertEquals(colorAt(empty, .1, .75), colorAt(empty, .5, .75),
                     "Filtering out all albums must also remove pooled reflection geometry");
-            screen.filterAlbums("");
+            screen.setEntries(List.copyOf(covers));
             settle();
 
             background.mode().setValue("shader");
@@ -159,15 +158,12 @@ class CoverflowRenderingTest {
                     "The shared shader must keep animating in Coverflow");
             save("coverflow-shader");
 
-            // The flipped track list uses stencil clipping and must also survive the capture pass.
-            Object data = screen.albumRenderingData.get(screen.renderList.get(screen.index));
-            var flipped = data.getClass().getDeclaredField("flipped");
-            flipped.setAccessible(true);
-            flipped.setBoolean(data, true);
+            screen.setOldSchool(true);
             settle();
-            save("coverflow-flipped");
-            screen.keyTyped('\0', Keyboard.KEY_ESCAPE);
-            assertFalse(flipped.getBoolean(data));
+            save("coverflow-oldschool");
+            assertNotEquals(colorAt(first, .5, .4), colorAt(capture(), .5, .4));
+            assertEquals(0, screen.hitIndex(RenderSystem.getWidth() / 2, RenderSystem.getHeight() / 2));
+            screen.setOldSchool(false);
 
             background.mode().setValue("video");
             background.videoFile().setValue(Path.of(getClass().getResource("/backgrounds/loop.mp4").toURI()).toString());

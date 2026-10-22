@@ -77,7 +77,7 @@ public class SettingsPanel extends NCMPanel {
                 () -> !preferences.background().mode().getValue().equals("latent"));
 
         scrollPanel.addChild(new ChoiceRow("settings.layout", preferences.layout()));
-        scrollPanel.addChild(new ToggleRow("settings.coverflowCoverReflection", preferences.coverflowCoverReflection()));
+        addNavigationSettings(scrollPanel);
 
         scrollPanel.addChild(new ChoiceRow("settings.interface", preferences.interfaceStyle()));
         scrollPanel.addChild(new BackgroundStatusRow(UiMaterials::status));
@@ -213,6 +213,29 @@ public class SettingsPanel extends NCMPanel {
         backgroundRow(scroll, new SliderRow("settings.lyricOpacity", preferences.lyricHoverOpacity(),
                 value -> Math.round(value * 100) + "%"), glass);
         backgroundRow(scroll, new ActionRow("settings.reloadBackground", DesktopAppState.background()::reload), custom);
+    }
+
+    private void addNavigationSettings(ScrollPanel scroll) {
+        var nav = preferences.navigation();
+        scroll.addChild(new ChoiceRow("settings.navigationMode", nav.mode()));
+        BooleanSupplier flow = () -> nav.mode().getValue().equals("Coverflow");
+        BooleanSupplier card = () -> flow.getAsBoolean() && nav.coverflow().getValue().equals("Card");
+        BooleanSupplier wall = nav::isWall;
+        BooleanSupplier transparent = () -> wall.getAsBoolean() && !nav.wallLook().getValue().equals("solid");
+        backgroundRow(scroll, new ChoiceRow("settings.coverflowMode", nav.coverflow()), flow);
+        backgroundRow(scroll, new ToggleRow("settings.coverflowCoverReflection", preferences.coverflowCoverReflection()), nav::isFullscreen);
+        backgroundRow(scroll, new ChoiceRow("settings.cardStyle", nav.cardStyle(), v -> I18n.text("navigation.card." + v)), card);
+        backgroundRow(scroll, new ToggleRow("settings.rememberCardPosition", nav.rememberPosition()), card);
+        backgroundRow(scroll, new ToggleRow("settings.cardFullBleed", nav.fullBleed()), () -> card.getAsBoolean() && nav.cardStyle().getValue().equals("card"));
+        backgroundRow(scroll, new ToggleRow("settings.cardSquare", nav.squareCards()), () -> card.getAsBoolean() && nav.cardStyle().getValue().equals("card"));
+        backgroundRow(scroll, new SliderRow("settings.cardMinScale", nav.minScale(), v -> Math.round(v * 100) + "%"), card);
+        backgroundRow(scroll, new SliderRow("settings.cardMinOpacity", nav.minOpacity(), v -> Math.round(v * 100) + "%"), card);
+        backgroundRow(scroll, new ActionRow("settings.resetCardFalloff", nav::resetFalloff), card);
+        backgroundRow(scroll, new ChoiceRow("settings.wallLook", nav.wallLook(), v -> I18n.text("navigation.wall." + v)), wall);
+        backgroundRow(scroll, new SliderRow("settings.wallWindows", nav.wallWindows(), v -> "" + Math.round(v)), () -> wall.getAsBoolean() && nav.wallLook().getValue().equals("partial"));
+        backgroundRow(scroll, new ToggleRow("settings.wallStackEdges", nav.stackEdges()), wall);
+        backgroundRow(scroll, new ToggleRow("settings.wallBackdropLyrics", nav.backdropLyrics()), transparent);
+        backgroundRow(scroll, new ToggleRow("settings.wallBackdropBlur", nav.backdropBlur()), transparent);
     }
 
     private void backgroundRow(ScrollPanel scroll, AbstractWidget<?> row, BooleanSupplier visible) {

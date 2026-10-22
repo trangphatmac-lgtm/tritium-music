@@ -23,6 +23,8 @@ import tritium.utils.json.JsonUtils;
 import tritium.utils.other.multithreading.MultiThreadingUtil;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author IzumiiKonata
@@ -32,59 +34,53 @@ public class HomePanel extends NCMPanel {
 
     public HomePanel() {
         super();
+        navigationContent = tritium.screens.ncm.navigation.NavigationContent.playlists("explore", () -> I18n.text("home.recommended"), () -> playLists, () -> loading);
     }
 
-    static final ArrayList<PlayList> playLists = new ArrayList<>();
+    static final List<PlayList> playLists = new CopyOnWriteArrayList<>();
+    private int renderedPlaylistCount = -1;
+    private static volatile boolean loading;
 
     @Override
     public void onInit() {
 
-        if (!playLists.isEmpty()) {
-            layout();
-        } else {
-            MultiThreadingUtil.runAsync(() -> {
-                JsonObject jObj = CloudMusicApi.recommendResource().toJsonObject();
-
-                if (!jObj.isJsonObject()) {
-                    return;
-                }
-
-                JsonElement codeElement = jObj.get("code");
-
-                if (codeElement == null || !codeElement.isJsonPrimitive() || codeElement.getAsDouble() != 200) {
-                    return;
-                }
-
-                JsonArray recommend = jObj.getAsJsonArray("recommend");
-
+        layout();
+        setBeforeRenderCallback(() -> {
+            if (renderedPlaylistCount != playLists.size()) layout();
+        });
+        if (!playLists.isEmpty() || loading) return;
+        loading = true;
+        MultiThreadingUtil.runAsync(() -> {
+            List<PlayList> loaded = new ArrayList<>();
+            try {
+                JsonObject response = CloudMusicApi.recommendResource().toJsonObject();
+                JsonElement code = response.get("code");
+                if (code == null || !code.isJsonPrimitive() || code.getAsInt() != 200) return;
+                JsonArray recommend = response.getAsJsonArray("recommend");
+                if (recommend == null) return;
                 for (JsonElement element : recommend) {
-                    if (!element.isJsonObject()) {
-                        continue;
-                    }
-
-                    JsonObject obj = element.getAsJsonObject();
-
+                    if (!element.isJsonObject()) continue;
+                    JsonObject object = element.getAsJsonObject();
                     // fix for missing @SerializedName(..., alternate = {})
-                    if (obj.has("picUrl")) {
-                        obj.addProperty("coverImgUrl", obj.get("picUrl").getAsString());
-                    }
-
-                    if (obj.has("playcount")) {
-                        obj.addProperty("playCount", obj.get("playcount").getAsLong());
-                    }
-
-                    playLists.add(JsonUtils.parse(obj, PlayList.class));
+                    if (object.has("picUrl")) object.addProperty("coverImgUrl", object.get("picUrl").getAsString());
+                    if (object.has("playcount")) object.addProperty("playCount", object.get("playcount").getAsLong());
+                    loaded.add(JsonUtils.parse(object, PlayList.class));
                 }
-
-                layout();
-            });
-        }
-
+            } finally {
+                MultiThreadingUtil.runOnMainThread(() -> {
+                    playLists.addAll(loaded);
+                    loading = false;
+                    layout();
+                });
+            }
+        });
     }
 
     public ScrollPanel scrollPanel;
 
     private void layout() {
+        renderedPlaylistCount = playLists.size();
+        getChildren().clear();
         LabelWidget lblWelcome = new LabelWidget(() -> I18n.text("home.welcome"), FontManager.pf25bold);
 
         this.addChild(lblWelcome);
