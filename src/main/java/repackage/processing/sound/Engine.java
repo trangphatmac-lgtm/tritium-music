@@ -96,7 +96,7 @@ public class Engine {
 
 	protected Synthesizer synth;
 	boolean hasBeenUsed = false;
-	protected final Set<UnitGenerator> addedUnits = new HashSet<>();
+	protected final Set<UnitGenerator> addedUnits = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	// multi-channel lineouts
 	protected ChannelOut[] output;

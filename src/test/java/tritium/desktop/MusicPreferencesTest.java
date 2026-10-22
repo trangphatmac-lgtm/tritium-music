@@ -22,6 +22,7 @@ class MusicPreferencesTest {
         assertFalse(preferences.showWidgetBoundary().getValue());
         assertFalse(preferences.lyricDebug().getValue());
         assertEquals(0.1, preferences.volume().getValue(), 0.0001);
+        assertFalse(preferences.autoMix().getValue());
         assertTrue(preferences.showTranslation().getValue());
         assertFalse(preferences.showRoman().getValue());
     }
@@ -75,5 +76,23 @@ class MusicPreferencesTest {
 
         assertTrue(ClientSettings.SHOW_WIDGET_BOUNDARY);
         assertTrue(ClientSettings.DEBUG_MODE);
+    }
+
+    @Test
+    void autoMixChangesNotifyPersistenceButLoadingDoesNotSaveAgain() {
+        MusicPreferences preferences = new MusicPreferences();
+        var changes = new java.util.concurrent.atomic.AtomicInteger();
+        preferences.setChangeCallback(changes::incrementAndGet);
+        preferences.autoMix().setValue(true);
+        preferences.autoMix().setValue(true);
+        assertEquals(1, changes.get());
+
+        MusicPreferences restored = new MusicPreferences();
+        restored.setChangeCallback(changes::incrementAndGet);
+        restored.loadFromJsonObject(preferences.toJsonObject());
+        assertTrue(restored.autoMix().getValue());
+        assertEquals(1, changes.get(), "Loading must not trigger a recursive preferences save");
+        restored.autoMix().setValue(false);
+        assertEquals(2, changes.get());
     }
 }

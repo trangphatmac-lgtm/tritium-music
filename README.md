@@ -15,6 +15,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Switch between Sidebar list and Top navigation in Settings → Appearance → Layout; the choice is saved automatically. Top navigation includes Explore, My playlists, Saved playlists, Settings, and search, with dedicated scrollable playlist libraries.
 - Play, pause, previous track, and next track
 - Volume adjustment and seek bar dragging
+- Optional smart transitions (AutoMix) in Settings → Playback, disabled by default and saved automatically. It follows the official client's feature-based transition approach for natural advancement to the next song, with a 5-second crossfade fallback when song features are unavailable. Manual track changes remain immediate.
 - Lyric page, word-by-word lyrics, translations, and romaji
 - Cover loading and blurred backgrounds
 - Coverflow with depth-based screen-space reflections, a shared mirror plane, angle-dependent reflectivity, and gradual softening.

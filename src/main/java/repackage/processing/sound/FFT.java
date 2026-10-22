@@ -48,6 +48,9 @@ public class FFT extends Analyzer {
 	private UnitOutputPort connectedInput = null;
 
 	public void removeInput() {
+        // remove() alone leaves explicitly started units in JSyn's running-unit list.
+        // Each AutoMix deck owns an analyzer, so it must stop scheduling FFT work on disposal.
+        if (this.fft.getSynthesisEngine() != null) this.fft.stop();
 		Engine.getEngine().remove(this.fft);
 
 		if (this.connectedInput != null) {

@@ -38,6 +38,7 @@ class SettingsAppearanceRenderingTest {
         int originalAccent = DesktopAppState.preferences().accentColor().getValue();
         int originalSpectrum = DesktopAppState.preferences().hud().musicSpectrum().color().getValue();
         boolean originalFps = DesktopAppState.preferences().showFps().getValue();
+        boolean originalAutoMix = DesktopAppState.preferences().autoMix().getValue();
         String originalLanguage = DesktopAppState.preferences().language().getValue();
         String originalAppearance = DesktopAppState.preferences().appearance().getValue();
         try {
@@ -54,6 +55,24 @@ class SettingsAppearanceRenderingTest {
             settings.onInit();
             renderStable(settings);
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
+            AbstractWidget<?> autoMix = scroll.getChildren().stream().filter(row -> {
+                try {
+                    var label = row.getClass().getSuperclass().getDeclaredField("label");
+                    label.setAccessible(true);
+                    return "settings.autoMix".equals(label.get(row));
+                } catch (ReflectiveOperationException ignored) { return false; }
+            }).findFirst().orElseThrow();
+            scroll.actualScrollOffset = scroll.targetScrollOffset = autoMix.getRelativeY() - 160;
+            DesktopAppState.preferences().autoMix().setValue(false);
+            renderStable(settings);
+            click(settings, autoMix.getX() + autoMix.getWidth() - 35, autoMix.getY() + 26);
+            assertTrue(DesktopAppState.preferences().autoMix().getValue());
+            renderStable(settings);
+            savePreview("settings-autoMix-enabled");
+            click(settings, autoMix.getX() + autoMix.getWidth() - 35, autoMix.getY() + 26);
+            assertFalse(DesktopAppState.preferences().autoMix().getValue());
+            scroll.actualScrollOffset = scroll.targetScrollOffset = 0;
+            renderStable(settings);
             AbstractWidget<?> language = scroll.getChildren().get(1);
             var title = (tritium.rendering.ui.widgets.LabelWidget) settings.getChildren().getFirst();
             assertEquals("设置", title.getLabel());
@@ -180,6 +199,7 @@ class SettingsAppearanceRenderingTest {
             DesktopAppState.preferences().accentColor().setValue(originalAccent);
             DesktopAppState.preferences().hud().musicSpectrum().color().setValue(originalSpectrum);
             DesktopAppState.preferences().showFps().setValue(originalFps);
+            DesktopAppState.preferences().autoMix().setValue(originalAutoMix);
             DesktopAppState.preferences().language().setValue(originalLanguage);
             DesktopAppState.preferences().appearance().setValue(originalAppearance);
             if (Display.isCreated()) {

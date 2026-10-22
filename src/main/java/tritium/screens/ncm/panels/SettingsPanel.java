@@ -87,6 +87,8 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new SectionHeader("settings.playback"));
         scrollPanel.addChild(new ChoiceRow("settings.quality", preferences.quality()));
         scrollPanel.addChild(new SliderRow("settings.volume", preferences.volume(), value -> Math.round(value * 100) + "%"));
+        scrollPanel.addChild(new ToggleRow("settings.autoMix", preferences.autoMix()));
+        scrollPanel.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixHint")));
 
         scrollPanel.addChild(new SectionHeader("settings.cache"));
         scrollPanel.addChild(new CacheRow());

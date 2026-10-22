@@ -140,7 +140,11 @@ public class Music {
      * @return 歌曲文件 url
      */
     public Tuple<String, String> getPlayUrl() {
-        JsonObject result = CloudMusicApi.songUrlV1(this.id, CloudMusic.quality.getQuality().toLowerCase()).toJsonObject();
+        return getPlayUrl(CloudMusic.quality);
+    }
+
+    public Tuple<String, String> getPlayUrl(tritium.ncm.music.Quality selectedQuality) {
+        JsonObject result = CloudMusicApi.songUrlV1(this.id, selectedQuality.getQuality().toLowerCase(java.util.Locale.ROOT)).toJsonObject();
         JsonObject music = result.get("data").getAsJsonArray().get(0).getAsJsonObject();
         if (music.get("code").getAsInt() != 200 || !music.has("url") || music.get("url").isJsonNull()) {
             return null;

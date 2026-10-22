@@ -82,9 +82,9 @@ public class ControlsBar extends NCMPanel {
                     boolean hasCurrentlyPlaying = CloudMusic.player != null && CloudMusic.currentlyPlaying != null;
                     if (hasCurrentlyPlaying) {
                         if (CloudMusic.player.isPausing())
-                            CloudMusic.player.unpause();
+                            CloudMusic.setPaused(false);
                         else
-                            CloudMusic.player.pause();
+                            CloudMusic.setPaused(true);
                     }
                     return true;
                 });
@@ -140,7 +140,7 @@ public class ControlsBar extends NCMPanel {
 
                     if (CloudMusic.player != null) {
                         float progress = (float) (percent * CloudMusic.player.getTotalTimeMillis());
-                        CloudMusic.player.setPlaybackTime(progress);
+                        CloudMusic.seek(progress);
                         MusicLyricsWidget.resetProgress(progress);
                         MusicLyricsPanel.resetProgress(progress);
                     }
@@ -295,7 +295,7 @@ public class ControlsBar extends NCMPanel {
                     double percent = xDelta / this.getWidth();
                     DesktopAppState.preferences().volume().setValue(percent);
                     if (CloudMusic.player != null) {
-                        CloudMusic.player.setVolume((float) percent);
+                        CloudMusic.setVolume((float) percent);
                     }
                 }
             }

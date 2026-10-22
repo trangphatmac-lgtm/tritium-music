@@ -26,6 +26,7 @@ public class MusicPreferences {
     static final String LYRIC_HOVER_OPACITY_KEY = "ui.lyricHoverOpacity";
     static final String LYRIC_DEBUG_KEY = "lyrics.debug";
     static final String VOLUME_KEY = "player.volume";
+    static final String AUTO_MIX_KEY = "player.autoMix";
     static final String SHOW_TRANSLATION_KEY = "lyrics.showTranslation";
     static final String SHOW_ROMAN_KEY = "lyrics.showRoman";
     static final String LYRIC_HEIGHT_KEY = "lyrics.height";
@@ -49,6 +50,7 @@ public class MusicPreferences {
     private final NumberPreference lyricHoverOpacity = new NumberPreference("Lyric Hover Opacity", .5, 0, 1, .01);
     private final PreferenceValue<Boolean> lyricDebug = new PreferenceValue<>("Per-word lyrics debug", false);
     private final NumberPreference volume = new NumberPreference("Volume", 0.1, 0.0, 1.0, 0.01);
+    private final PreferenceValue<Boolean> autoMix = new PreferenceValue<>("AutoMix", false);
     private final PreferenceValue<Boolean> showTranslation = new PreferenceValue<>("Show Translation", true);
     private final PreferenceValue<Boolean> showRoman = new PreferenceValue<>("Show Romanization in Japanese songs", false);
     private final NumberPreference lyricHeight = new NumberPreference("Lyric Height", 20.0, 14.0, 50.0, 0.5);
@@ -84,9 +86,11 @@ public class MusicPreferences {
             fireChanged();
         });
         volume.setValueCallback(value -> {
-            if (CloudMusic.player != null) {
-                CloudMusic.player.setVolume(value.floatValue());
-            }
+            CloudMusic.setVolume(value.floatValue());
+            fireChanged();
+        });
+        autoMix.setValueCallback(value -> {
+            CloudMusic.autoMixSettingChanged();
             fireChanged();
         });
         showTranslation.setValueCallback(value -> fireChanged());
@@ -139,6 +143,7 @@ public class MusicPreferences {
         json.addProperty(LYRIC_HOVER_OPACITY_KEY, lyricHoverOpacity.getValue());
         json.addProperty(LYRIC_DEBUG_KEY, lyricDebug.getValue());
         json.addProperty(VOLUME_KEY, volume.getValue());
+        json.addProperty(AUTO_MIX_KEY, autoMix.getValue());
         json.addProperty(SHOW_TRANSLATION_KEY, showTranslation.getValue());
         json.addProperty(SHOW_ROMAN_KEY, showRoman.getValue());
         json.addProperty(LYRIC_HEIGHT_KEY, lyricHeight.getValue());
@@ -174,6 +179,7 @@ public class MusicPreferences {
             }
             applyBoolean(json, LYRIC_DEBUG_KEY, lyricDebug);
             applyNumber(json, VOLUME_KEY, volume);
+            applyBoolean(json, AUTO_MIX_KEY, autoMix);
             applyBoolean(json, SHOW_TRANSLATION_KEY, showTranslation);
             applyBoolean(json, SHOW_ROMAN_KEY, showRoman);
             applyNumber(json, LYRIC_HEIGHT_KEY, lyricHeight);
@@ -301,6 +307,10 @@ public class MusicPreferences {
 
     public NumberPreference volume() {
         return volume;
+    }
+
+    public PreferenceValue<Boolean> autoMix() {
+        return autoMix;
     }
 
     public PreferenceValue<Boolean> showTranslation() {

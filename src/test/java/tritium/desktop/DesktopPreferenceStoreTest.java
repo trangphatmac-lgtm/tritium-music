@@ -25,6 +25,7 @@ class DesktopPreferenceStoreTest {
         preferences.quality().setValue("HiRes");
         preferences.musicToast().setValue(false);
         preferences.volume().setValue(0.42);
+        preferences.autoMix().setValue(true);
         preferences.showTranslation().setValue(false);
         preferences.showRoman().setValue(true);
         preferences.lyricHeight().setValue(32.5);
@@ -45,6 +46,7 @@ class DesktopPreferenceStoreTest {
         assertEquals("HiRes", loaded.quality().getValue());
         assertFalse(loaded.musicToast().getValue());
         assertEquals(0.42, loaded.volume().getValue(), 0.0001);
+        assertTrue(loaded.autoMix().getValue());
         assertFalse(loaded.showTranslation().getValue());
         assertTrue(loaded.showRoman().getValue());
         assertEquals(32.5, loaded.lyricHeight().getValue(), 0.0001);
@@ -58,11 +60,13 @@ class DesktopPreferenceStoreTest {
         assertEquals(0x803B719A, loaded.hud().musicSpectrum().color().getValue());
 
         preferences.maxFps().setValue((double) MusicPreferences.UNLIMITED_FPS);
+        preferences.autoMix().setValue(false);
         preferences.coverflowCoverReflection().setValue(true);
         store.save(preferences);
         store.load(loaded);
         assertEquals((double) MusicPreferences.UNLIMITED_FPS, loaded.maxFps().getValue());
         assertTrue(loaded.coverflowCoverReflection().getValue());
+        assertFalse(loaded.autoMix().getValue());
     }
 
     @Test
@@ -90,6 +94,7 @@ class DesktopPreferenceStoreTest {
         assertEquals(14.0, loaded.lyricHeight().getValue(), 0.0001);
         assertFalse(loaded.showTranslation().getValue());
         assertFalse(loaded.showFps().getValue());
+        assertFalse(loaded.autoMix().getValue(), "Existing preference files keep AutoMix disabled");
         assertEquals(60.0, loaded.maxFps().getValue());
         assertEquals(AppTheme.DEFAULT_ACCENT, loaded.accentColor().getValue());
     }

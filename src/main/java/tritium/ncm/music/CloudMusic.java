@@ -9,7 +9,6 @@ import lombok.Cleanup;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import org.apache.commons.io.IOUtils;
-import repackage.com.jsyn.exceptions.ChannelMismatchException;
 import repackage.com.jsyn.util.SampleLoader;
 import repackage.javazoom.jl.converter.Converter;
 import repackage.org.kc7bfi.jflac.FLACDecoder;
@@ -27,6 +26,9 @@ import tritium.ncm.OptionsUtil;
 import tritium.ncm.RequestUtil;
 import tritium.ncm.api.CloudMusicApi;
 import tritium.ncm.music.dto.Music;
+import tritium.ncm.music.automix.AutoMixPlan;
+import tritium.ncm.music.automix.AutoMixPlanner;
+import tritium.ncm.music.automix.SongFeatureService;
 import tritium.ncm.music.dto.PlayList;
 import tritium.ncm.music.dto.User;
 import tritium.rendering.GaussianKernel;
@@ -78,12 +80,12 @@ public class CloudMusic implements SharedConstants {
     public static volatile boolean loadingSession = false;
     public static volatile String sessionStatusText = "";
     public static volatile long loadingSessionStartedAt = 0L;
-    public static AudioPlayer player;
+    public static volatile AudioPlayer player;
     // 当前播放列表
     public static volatile List<Music> playList = new ArrayList<>();
     public static volatile int curIdx = 0;
     public static volatile Music currentlyPlaying;
-    public static Thread playThread;
+    public static volatile Thread playThread;
 
     public static volatile User profile;
     public static List<PlayList> playLists;
@@ -257,7 +259,7 @@ public class CloudMusic implements SharedConstants {
                     session.consumed();
                     session.songs.addAll(songs);
                     modeBeforeHeartbeat = playMode;
-                    playMode = PlayMode.Heartbeat;
+                    changePlayMode(PlayMode.Heartbeat);
                     heartbeatLoading = false;
                     try {
                         startPlayback.accept(session);
@@ -287,7 +289,7 @@ public class CloudMusic implements SharedConstants {
         synchronized (playbackLock) {
             heartbeatSession = null;
             heartbeatLoading = false;
-            if (playMode == PlayMode.Heartbeat) playMode = modeBeforeHeartbeat;
+            if (playMode == PlayMode.Heartbeat) changePlayMode(modeBeforeHeartbeat);
         }
     }
 
@@ -301,12 +303,20 @@ public class CloudMusic implements SharedConstants {
             PlayMode next = heartbeatLoading ? PlayMode.Heartbeat.nextMode() : playMode.nextMode();
             if (next == PlayMode.Heartbeat) return startHeartbeat.get();
             exitHeartbeat();
-            playMode = next;
+            changePlayMode(next);
             return CompletableFuture.completedFuture(I18n.text("playMode.changed", next.getDisplayName()));
         }
     }
 
-    public static Quality quality = Quality.STANDARD;
+    private static void changePlayMode(PlayMode mode) {
+        // Share the boundary lock with AutoMix promotion; a concurrent shuffle must not select C for B's audio.
+        synchronized (playThread == null ? playbackLock : playThread) {
+            if (playThread instanceof PlayThread thread) thread.cancelAutoMix();
+            playMode = mode;
+        }
+    }
+
+    public static volatile Quality quality = Quality.STANDARD;
 
     public static final List<LyricLine> lyrics = new CopyOnWriteArrayList<>();
     public static LyricLine currentLyric = null;
@@ -848,7 +858,37 @@ public class CloudMusic implements SharedConstants {
         dontAdd = true;
     }
     
+    public static void setVolume(float volume) {
+        synchronized (playThread == null ? playbackLock : playThread) {
+            if (playThread instanceof PlayThread thread && thread.transition != null) {
+                thread.transition.setVolume(volume);
+            } else if (player != null) player.setVolume(volume);
+        }
+    }
+
+    public static void autoMixSettingChanged() {
+        if (playThread instanceof PlayThread thread) thread.invalidatePreparation();
+    }
+
+    public static void setPaused(boolean paused) {
+        synchronized (playThread == null ? playbackLock : playThread) {
+            if (playThread instanceof PlayThread thread && thread.transition != null) {
+                if (paused) thread.transition.pause(); else thread.transition.resume();
+            } else if (player != null) {
+                if (paused) player.pause(); else player.unpause();
+            }
+        }
+    }
+
+    public static void seek(float millis) {
+        synchronized (playThread == null ? playbackLock : playThread) {
+            if (playThread instanceof PlayThread thread) thread.cancelAutoMix();
+            if (player != null) player.setPlaybackTime(millis);
+        }
+    }
+
     private static void stopCurrentPlayback() {
+        if (playThread instanceof PlayThread thread) thread.cancelAutoMix();
         player.close();
         playing.set(false);
     }
@@ -953,6 +993,182 @@ public class CloudMusic implements SharedConstants {
         private Music activeSong;
         private boolean previousRequested;
         private boolean queuedTrack;
+        private long mixRevision;
+        private Preparation preparation;
+        private volatile AutoMixTransition transition;
+        private Music transitionSong;
+        private PlayMode transitionMode;
+        private final SongFeatureService songFeatures = new SongFeatureService();
+
+        /** Background work has explicit ownership: late/cancelled results close their own deck. */
+        static final class Preparation {
+            final Music song;
+            final AudioPlayer outgoing;
+            final long revision;
+            final PlayMode mode;
+            final Quality quality;
+            volatile boolean cancelled;
+            volatile boolean done;
+            AudioPlayer incoming;
+            AutoMixPlan plan;
+
+            Preparation(Music song, AudioPlayer outgoing, long revision) {
+                this.song = song;
+                this.outgoing = outgoing;
+                this.revision = revision;
+                this.mode = playMode;
+                this.quality = CloudMusic.quality;
+            }
+
+            synchronized void finish(AudioPlayer incoming, AutoMixPlan plan) {
+                if (cancelled) { if (incoming != null) incoming.close(); }
+                else { this.incoming = incoming; this.plan = plan; }
+                done = true;
+            }
+
+            synchronized AudioPlayer take() {
+                AudioPlayer result = incoming;
+                incoming = null;
+                return result;
+            }
+
+            synchronized void cancel() {
+                cancelled = true;
+                if (incoming != null) { incoming.close(); incoming = null; }
+            }
+        }
+
+        synchronized void invalidatePreparation() {
+            mixRevision++;
+            if (preparation != null) { preparation.cancel(); preparation = null; }
+        }
+
+        synchronized void cancelAutoMix() {
+            invalidatePreparation();
+            if (transition != null) { transition.cancel(); transition = null; }
+            transitionSong = null;
+            // A's EOF callback is suppressed during overlap. Cancellation must release that wait.
+            if (player != null && player.isFinished()) playing.set(false);
+        }
+
+        /** Peek without consuming an explicit next request or reshuffling the queue. */
+        synchronized Music autoMixNextSong() {
+            if (pendingHeartbeat != null || playMode == PlayMode.LoopSingle || lastMode != playMode
+                    || songs != playList || curIdx < 0 || curIdx >= songs.size()) return null;
+            Music next;
+            if (!nextSongs.isEmpty()) next = nextSongs.getFirst();
+            else if (curIdx + 1 < songs.size()) next = songs.get(curIdx + 1);
+            else if ((playMode == PlayMode.LoopInList || playMode == PlayMode.Random) && songs.size() > 1)
+                next = songs.getFirst();
+            else return null;
+            return activeSong != null && activeSong.getId() == next.getId() ? null : next;
+        }
+
+        synchronized void tickAutoMix() {
+            if (dontAdd || doBreak || isInterrupted() || !playing.get()) return;
+            if (transition != null) {
+                if (transitionMode != playMode || songs != playList) { cancelAutoMix(); return; }
+                if (transition.incoming.isFinished()) {
+                    cancelAutoMix();
+                    if (player.isFinished()) playing.set(false);
+                    return;
+                }
+                transition.tick(this::promoteAutoMix);
+                if (transition.isComplete()) { transition = null; transitionSong = null; }
+                return;
+            }
+            boolean enabled = DesktopAppState.preferences().autoMix().getValue();
+            Music next = enabled ? autoMixNextSong() : null;
+            if (preparation != null && (next == null || !next.equals(preparation.song)
+                    || preparation.outgoing != player || preparation.revision != mixRevision
+                    || preparation.mode != playMode || preparation.quality != quality)) invalidatePreparation();
+            if (next == null || player == null || player.isFinished()) return;
+            // Bound the speculative work to the last minute, including a 20 s CUE window.
+            if (preparation == null && !player.isPausing() && player.getTotalTimeMillis() >= 50_000
+                    && player.getTotalTimeMillis() - player.getCurrentTimeMillis() <= 60_000) {
+                Preparation request = new Preparation(next, player, mixRevision);
+                preparation = request;
+                Music current = activeSong;
+                double duration = player.getTotalTimeMillis();
+                MultiThreadingUtil.runAsync(() -> prepareAutoMix(request, current, duration));
+            }
+            Preparation ready = preparation;
+            if (ready == null || !ready.done || ready.plan == null || ready.incoming == null
+                    || player.isPausing()) return;
+            double now = player.getCurrentTimeMillis();
+            if (now < ready.plan.startAMillis()) return;
+            // A seek or slow network/decode must not jump into the middle of an expired plan.
+            if (now > ready.plan.startAMillis() + 500) { ready.cancel(); return; }
+            AudioPlayer incoming = ready.take();
+            transitionSong = ready.song;
+            transitionMode = playMode;
+            transition = new AutoMixTransition(player, incoming, ready.plan);
+            try {
+                incoming.setAfterPlayed(() -> {
+                    if (playThread == this && CloudMusic.player == incoming && transition == null) playing.set(false);
+                });
+                transition.start(player.getVolume());
+                preparation = null;
+            } catch (RuntimeException failure) {
+                transition.cancel();
+                transition = null;
+                transitionSong = null;
+                // Leave the failed request consumed; ordinary playback remains available.
+                ready.cancel();
+            }
+        }
+
+        private void prepareAutoMix(Preparation request, Music current, double duration) {
+            AudioPlayer incoming = null;
+            AutoMixPlan plan = null;
+            try {
+                var features = songFeatures.loadPair(current.getId(), duration,
+                        request.song.getId(), request.song.getDuration());
+                if (request.cancelled) return;
+                plan = AutoMixPlanner.plan(features.a(), features.b());
+                if (plan == null) return;
+                Tuple<String, String> url = request.song.getPlayUrl(request.quality);
+                if (url == null || request.cancelled) return;
+                File file = getPreloadedMusicFile(url, request.song, request.quality, request);
+                if (request.cancelled) return;
+                incoming = new AudioPlayer(file, false);
+                // The actual decoder duration takes precedence over metadata (e.g. previews).
+                plan = AutoMixPlanner.plan(features.a(), features.b().withDuration(incoming.getTotalTimeMillis()));
+                if (plan == null) { incoming.close(); incoming = null; }
+            } catch (Exception failure) {
+                if (incoming != null) { incoming.close(); incoming = null; }
+                plan = null; // Network/format errors degrade to normal playback, not a stopped queue.
+                System.err.println("[AutoMix] Preparation unavailable: " + failure.getClass().getSimpleName());
+            } finally {
+                request.finish(incoming, plan);
+            }
+        }
+
+        private void promoteAutoMix() {
+            AudioPlayer incoming = (AudioPlayer) transition.incoming;
+            // Validate before mutating the queue. Selection changes before this point cancel the overlap.
+            if (!transitionSong.equals(autoMixNextSong()))
+                throw new IllegalStateException("AutoMix queue changed before promotion");
+            advanceAfterTrack(curIdx);
+            if (activeSong == null || !activeSong.equals(transitionSong))
+                throw new IllegalStateException("AutoMix queue changed during overlap");
+            player = incoming;
+            currentlyPlaying = transitionSong;
+            playing.set(true);
+            lyrics.clear();
+            currentLyric = null;
+            resetLyricFlags();
+            try {
+                loadLyric(transitionSong);
+                loadMusicCover(transitionSong);
+                notifySongStart(transitionSong);
+                preloadNextCover();
+            } catch (RuntimeException failure) {
+                // The audio/queue commit above is complete; optional UI work cannot roll it back.
+                System.err.println("[AutoMix] Metadata notification unavailable: " + failure.getClass().getSimpleName());
+            }
+        }
+
 
         public PlayThread(List<Music> songs, int startIdx) {
             this.songs = songs;
@@ -973,15 +1189,19 @@ public class CloudMusic implements SharedConstants {
 
         synchronized boolean queueHeartbeat(HeartbeatSession session) {
             if (!acceptingHeartbeat || doBreak || isInterrupted()) return false;
+            if (transition != null && !transition.hasSwitched()) cancelAutoMix();
             pendingHeartbeat = session;
+            invalidatePreparation();
             return true;
         }
 
         synchronized String queueNext(Music song) {
             if (!acceptingNext || doBreak || isInterrupted()) return null;
             if (activeSong != null && activeSong.getId() == song.getId()) return I18n.text("player.playing");
+            if (transition != null && !transition.hasSwitched()) cancelAutoMix();
             nextSongs.removeIf(queued -> queued.getId() == song.getId());
             nextSongs.addFirst(song);
+            invalidatePreparation();
             return I18n.text("player.queued");
         }
 
@@ -1051,6 +1271,11 @@ public class CloudMusic implements SharedConstants {
         }
 
         private void retire() {
+            cancelAutoMix();
+            if (playThread == this && player != null) {
+                player.close();
+                playing.set(false);
+            }
             final HeartbeatSession pending;
             synchronized (this) {
                 acceptingHeartbeat = false;
@@ -1119,7 +1344,7 @@ public class CloudMusic implements SharedConstants {
                 preloadNextCover();
                 waitForPlaybackCompletion();
                 handlePlaybackCompletion();
-                advanceAfterTrack(songIndex);
+                advanceAfterTrack(curIdx);
             }
         }
 
@@ -1187,8 +1412,8 @@ public class CloudMusic implements SharedConstants {
         }
         
         private boolean playSong(Music song) {
-            loadLyric(song);
             currentlyPlaying = song;
+            loadLyric(song);
             
             Tuple<String, String> playUrl = song.getPlayUrl();
             
@@ -1223,17 +1448,26 @@ public class CloudMusic implements SharedConstants {
                     break;
                 }
                 
+                try {
+                    tickAutoMix();
+                    if (transition == null && player.isFinished()) playing.set(false);
+                } catch (RuntimeException failure) {
+                    cancelAutoMix();
+                    System.err.println("[AutoMix] Transition cancelled: " + failure.getClass().getSimpleName());
+                }
                 CloudMusic.updateCurrentLyric(player.getCurrentTimeMillis());
                 
                 try {
                     Thread.sleep(10L);
                 } catch (Exception e) {
-                    // Ignore interruption exceptions during playback
+                    interrupt();
+                    break;
                 }
             }
         }
         
         private void handlePlaybackCompletion() {
+            cancelAutoMix();
             if (!dontAdd && playedFrom != null && currentlyPlaying != null) {
                 currentlyPlaying.updPlayCount(playedFrom, player.getCurrentTimeSeconds());
             }
@@ -1265,21 +1499,21 @@ public class CloudMusic implements SharedConstants {
         }
         
         private void startPlayback(Music song, Tuple<String, String> playUrl, File musicFile) {
-            try {
-                player.play();
-            } catch (ChannelMismatchException e) {
-                player.player.cleanUp();
-                musicFile.delete();
-                player = initializePlayer(getMusicFile(playUrl, song));
-            }
+            AudioPlayer source = player;
             playing.set(true);
-            
-            player.setAfterPlayed(() -> {
-                this.notifyWaitLock();
-                playing.set(false);
+            source.setAfterPlayed(() -> {
+                // A may reach EOF while B is already audible; only the active solo voice ends a track.
+                // Never take the playlist monitor on JSyn's real-time thread.
+                if (playThread == this && CloudMusic.player == source && transition == null) playing.set(false);
             });
+            try {
+                source.play();
+            } catch (RuntimeException failure) {
+                playing.set(false);
+                throw failure;
+            }
         }
-        
+
         private void preloadNextCover() {
             if (curIdx + 1 < playList.size()) {
                 loadMusicCover(playList.get(curIdx + 1));
@@ -1313,7 +1547,16 @@ public class CloudMusic implements SharedConstants {
             File music = new File(musicCacheDir, song.getId() + extension);
 
             if (!music.exists()) {
-                downloadMusic(playUrl, music);
+                // Only expose complete audio files to the foreground player and AutoMix worker.
+                File temporary;
+                try {
+                    temporary = Files.createTempFile(musicCacheDir.toPath(), "download-", ".part").toFile();
+                    try {
+                        downloadMusic(playUrl, temporary);
+                        if (!temporary.isFile() || temporary.length() == 0) throw new IOException("Empty audio download");
+                        Files.move(temporary.toPath(), music.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    } finally { Files.deleteIfExists(temporary.toPath()); }
+                } catch (IOException failure) { throw new java.io.UncheckedIOException(failure); }
 
                 // delete all other qualities
 
@@ -1326,7 +1569,7 @@ public class CloudMusic implements SharedConstants {
 
                     for (File file : files) {
 
-                        if (file.getName().startsWith(String.valueOf(song.getId())) && !file.getName().startsWith(song.getId() + "_" + quality.getQuality())) {
+                        if (file.getName().startsWith(song.getId() + "_") && !file.getName().startsWith(song.getId() + "_" + quality.getQuality())) {
                             file.delete();
                         }
 
@@ -1336,6 +1579,34 @@ public class CloudMusic implements SharedConstants {
             }
 
             return music;
+        }
+
+        private File getPreloadedMusicFile(Tuple<String, String> url, Music song, Quality selectedQuality,
+                                          Preparation request) throws IOException {
+            String type = url.getB().toLowerCase(Locale.ROOT);
+            if (!SampleLoader.isSupportedFileType(type)) throw new IOException("Unsupported audio format");
+            var directory = AppPaths.musicCacheDir();
+            Files.createDirectories(directory);
+            var destination = directory.resolve(song.getId() + "_" + selectedQuality.getQuality() + "." + type);
+            if (Files.isRegularFile(destination) && Files.size(destination) > 0) return destination.toFile();
+            var temporary = Files.createTempFile(directory, "automix-", ".part");
+            try {
+                try (InputStream input = HttpUtils.get(url.getA(), null);
+                     OutputStream output = Files.newOutputStream(temporary)) {
+                    byte[] buffer = new byte[32 * 1024];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        if (request.cancelled) throw new java.io.InterruptedIOException("AutoMix cancelled");
+                        output.write(buffer, 0, count);
+                    }
+                }
+                if (request.cancelled || Files.size(temporary) == 0) throw new IOException("Empty/cancelled preload");
+                try { Files.move(temporary, destination, java.nio.file.StandardCopyOption.ATOMIC_MOVE); }
+                catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                    Files.move(temporary, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+                return destination.toFile();
+            } finally { Files.deleteIfExists(temporary); }
         }
 
         private AudioPlayer initializePlayer(File musicFile) {
@@ -1349,10 +1620,6 @@ public class CloudMusic implements SharedConstants {
                 player.setAudio(musicFile);
             }
             return player;
-        }
-
-        private void notifyWaitLock() {
-            playing.set(false);
         }
 
         private void loadMusicCover(Music song) {
@@ -1685,8 +1952,10 @@ public class CloudMusic implements SharedConstants {
                 }
             }
 
-            // 使用集中式歌词管理
-            initLyrics(json, music, parsed);
+            // A late lyric response from the outgoing song must not replace B during a mix.
+            synchronized (playThread == null ? playbackLock : playThread) {
+                if (currentlyPlaying == music) initLyrics(json, music, parsed);
+            }
 
         });
     }
