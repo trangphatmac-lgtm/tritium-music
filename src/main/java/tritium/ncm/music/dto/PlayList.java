@@ -70,8 +70,13 @@ public class PlayList {
     }
 
     public void loadMusicsWithCallback(MusicsLoadedCallback callback) {
-        loadMusics(() -> CloudMusicApi.playlistTrackAll(id, 8), MultiThreadingUtil::runAsync)
+        loadMusicsAsync()
                 .thenAccept(callback::onMusicsLoaded);
+    }
+
+    /** Allows callers such as export to observe failures as well as successful loads. */
+    public CompletableFuture<List<Music>> loadMusicsAsync() {
+        return loadMusics(() -> CloudMusicApi.playlistTrackAll(id, 8), MultiThreadingUtil::runAsync);
     }
 
     /** Reload on the next access, without modifying lists held by playback or an open panel. */

@@ -95,6 +95,9 @@ public class SettingsPanel extends NCMPanel {
         scrollPanel.addChild(new SectionHeader("settings.cache"));
         scrollPanel.addChild(new CacheRow());
 
+        scrollPanel.addChild(new SectionHeader("歌单导出"));
+        scrollPanel.addChild(new PlaylistExportWidget());
+
         scrollPanel.addChild(new SectionHeader("settings.lyrics"));
         scrollPanel.addChild(new ToggleRow("settings.autoUseBestLyric", preferences.autoUseBestLyric()));
         scrollPanel.addChild(new LyricHintRow("settings.autoUseBestLyricHint"));

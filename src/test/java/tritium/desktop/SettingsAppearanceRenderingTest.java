@@ -16,6 +16,9 @@ import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.rendering.ui.widgets.ColorPickerWidget;
 import tritium.screens.ncm.panels.SettingsPanel;
+import tritium.screens.ncm.panels.PlaylistExportWidget;
+import tritium.ncm.music.dto.PlayList;
+import tritium.desktop.export.PlaylistExporter;
 import tritium.screens.ncm.NCMScreen;
 import tritium.screens.ncm.panels.ControlsBar;
 import tritium.screens.ncm.panels.PlayModeButton;
@@ -261,6 +264,7 @@ class SettingsAppearanceRenderingTest {
                 Thread.sleep(10);
             }
             savePreview("autoMix-debug-narrow");
+            verifyPlaylistExport(settings, scroll);
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         } finally {
             DesktopAppState.preferences().accentColor().setValue(originalAccent);
@@ -295,6 +299,54 @@ class SettingsAppearanceRenderingTest {
         settings.onMouseClickReceived(x, y, 0);
         settings.onMouseReleaseReceived(x, y, 0);
         render(settings);
+    }
+
+    private static void verifyPlaylistExport(SettingsPanel settings, ScrollPanel scroll) throws Exception {
+        var original = CloudMusic.playLists;
+        try {
+            CloudMusic.playLists = java.util.stream.IntStream.range(0, 7).mapToObj(i ->
+                    new PlayList(i + 1, "测试歌单 " + (i + 1) + " · 中文与特别长的歌单名称", "", 20 + i,
+                            0, null, "", i > 3, 0, 0)).toList();
+            PlaylistExportWidget export = scroll.getChildren().stream().filter(PlaylistExportWidget.class::isInstance)
+                    .map(PlaylistExportWidget.class::cast).findFirst().orElseThrow();
+            scroll.targetScrollOffset = scroll.actualScrollOffset = scroll.actualScrollOffset + export.getRelativeY() - 8;
+            renderStable(settings);
+            // Use actual input dispatch: select a playlist, move pages, then select another.
+            click(settings, export.getX() + 30, export.getY() + 60);
+            click(settings, export.getX() + export.getWidth() - 45, export.getY() + 194);
+            click(settings, export.getX() + 30, export.getY() + 60);
+            var selectedField = PlaylistExportWidget.class.getDeclaredField("selected");
+            selectedField.setAccessible(true);
+            assertEquals(java.util.Set.of(1L, 5L), selectedField.get(export));
+            // Change format to JSON and deselect song title, retaining the other four fields.
+            click(settings, export.getX() + 30, export.getY() + 289);
+            click(settings, export.getX() + 30, export.getY() + 351);
+            var formatField = PlaylistExportWidget.class.getDeclaredField("format");
+            formatField.setAccessible(true);
+            assertEquals(PlaylistExporter.Format.JSON, formatField.get(export));
+            var fieldsField = PlaylistExportWidget.class.getDeclaredField("fields");
+            fieldsField.setAccessible(true);
+            assertFalse(((java.util.Set<?>) fieldsField.get(export)).contains(PlaylistExporter.Field.NAME));
+            renderStable(settings);
+            savePreview("settings-playlist-export-dark-narrow");
+            DesktopAppState.preferences().appearance().setValue("Light");
+            settings.setBounds(0, 0, Math.min(720, RenderSystem.getWidth()), RenderSystem.getHeight());
+            renderStable(settings);
+            savePreview("settings-playlist-export-light");
+            scroll.targetScrollOffset += 115;
+            scroll.actualScrollOffset = scroll.targetScrollOffset;
+            renderStable(settings);
+            savePreview("settings-playlist-export-options");
+            scroll.targetScrollOffset -= 115;
+            scroll.actualScrollOffset = scroll.targetScrollOffset;
+            renderStable(settings);
+            click(settings, export.getX() + export.getWidth() - 110, export.getY() + 25);
+            assertEquals(7, ((java.util.Set<?>) selectedField.get(export)).size());
+            click(settings, export.getX() + export.getWidth() - 45, export.getY() + 25);
+            assertTrue(((java.util.Set<?>) selectedField.get(export)).isEmpty());
+        } finally {
+            CloudMusic.playLists = original;
+        }
     }
 
     private static void verifyMainWindow() throws Exception {
