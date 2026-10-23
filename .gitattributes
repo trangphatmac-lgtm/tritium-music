@@ -1,0 +1,2 @@
+# Match the exact plaintext encoded in qq-reference.hex on every platform.
+/src/test/resources/lyrics/qq-reference.txt text eol=lf
