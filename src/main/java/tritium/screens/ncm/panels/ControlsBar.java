@@ -55,7 +55,7 @@ public class ControlsBar extends NCMPanel {
                         .setRadius(2))
                 .setOnClickCallback((relativeX, relativeY, mouseButton) -> {
                     if (CloudMusic.currentlyPlaying != null) {
-                        NCMScreen.getInstance().musicLyricsPanel = new MusicLyricsPanel(CloudMusic.currentlyPlaying);
+                        NCMScreen.getInstance().toggleLyrics();
                     }
 
                     return true;

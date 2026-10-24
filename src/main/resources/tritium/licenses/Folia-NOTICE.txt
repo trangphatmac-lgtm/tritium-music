@@ -63,3 +63,34 @@ The full-window field, carousel and motion port additionally adapts:
 FoliaWallReflows preserves the generated exact covers, indexed by original slot.
 FoliaMotion evaluates the original spring parameters analytically. Renderer
 adaptations use Tritium's existing shell and its backdrop material capture.
+
+Native lyric scenes (reference version 0.7.22, commit
+1f6d0f468f5bc81b23a8b40ad7ca96ccd4b1ecbe, 2026-10-24)
+
+The Java implementations in tritium.screens.ncm.lyrics and design resources in
+tritium/lyrics/folia adapt Folia's src/components/visualizer/{hanabi,lumiere,
+tempera,diorama,sonnet,pendolo,fume,monet,claddagh,partita,classic} and shared lyric
+timing, layout and motion helpers. Copyright (c) 2026 chthollyphile and
+contributors. Licensed under AGPL-3.0-only; the complete license is distributed
+as tritium/licenses/Folia-AGPL-3.0.txt.
+
+The native port uses Tritium's Java, LWJGL 2, font atlas, artwork cache and audio
+analysis. No React, Pixi, Three.js, browser or JavaScript engine is shipped.
+Lumiere's light field and Diorama's particle shaders are adapted to GLSL 1.20.
+The JSON design resources contain the upstream Hanabi and Lumiere catalogs,
+analytic firework plans, Tempera vector compositions, Sonnet vector designs,
+and Diorama welded surfaces and formations. The development-only recorder
+tools/folia/import-profiles.mjs regenerates these resources from an upstream
+source checkout. Normal continues to use Tritium's original lyrics page.
+
+Classic (Luminous / 流光) additionally adapts:
+  src/components/visualizer/GlowWord.tsx
+  src/components/visualizer/glowWordVariants.ts
+  src/components/visualizer/glowWordTiming.ts
+  src/components/visualizer/wordGlow.ts
+  src/utils/lyrics/renderHints.ts
+  src/utils/chorusDetector.ts
+The default normal-intensity choreography is evaluated from playback time.
+The native Gaussian glyph compositor uses two reusable GL atlases, and the
+shared Latent background uses the existing native renderer. Word wrapping
+reserves animated ink bounds for narrow windows and long English lines.

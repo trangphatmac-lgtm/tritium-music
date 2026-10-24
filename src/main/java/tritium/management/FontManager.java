@@ -27,6 +27,8 @@ public class FontManager extends AbstractManager {
     public static CFontRenderer pf9, pf12, pf14, pf18, pf20, pf25, pf32;
     public static CFontRenderer icon22, icon24, icon30;
     public static CFontRenderer music18, music40;
+    // Larger atlases keep full-screen kinetic typography crisp at its maximum scale.
+    public static CFontRenderer lyricBold, lyricRegular;
 
     public static List<CFontRenderer> getAllFontRenderers() {
 
@@ -73,6 +75,8 @@ public class FontManager extends AbstractManager {
         pf40bold = create(40, boldName);
         pf50bold = create(50, boldName);
         pf65bold = create(65, boldName);
+        lyricBold = create(160, boldName);
+        lyricRegular = create(96, normalName);
 
         icon22 = create(22, "icomoon");
         icon24 = create(24, "icomoon");

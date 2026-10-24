@@ -8,6 +8,7 @@ import tritium.ncm.music.AudioPlayer;
 import tritium.ncm.music.CloudMusic;
 import tritium.rendering.material.UiMaterials;
 import tritium.rendering.StencilClipManager;
+import tritium.rendering.animation.Interpolations;
 import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.widgets.IconWidget;
 import tritium.rendering.ui.widgets.LabelWidget;
@@ -31,6 +32,9 @@ public final class FoliaMiniControls extends ControlsBar {
     private List<AbstractWidget<?>> expandedWidgets = List.of();
     private Progress expandedProgress;
     private Progress collapsedProgress;
+    private TrackButton previousTrack;
+    private TrackButton nextTrack;
+    private float trackButtonsAlpha;
 
     public void arrange(double left, double availableWidth, double bottom, double mouseX, double mouseY,
                         boolean focused, boolean captured) {
@@ -94,16 +98,16 @@ public final class FoliaMiniControls extends ControlsBar {
                 ? I18n.text("player.idle") : CloudMusic.currentlyPlaying.getName(), FontManager.pf14bold);
         title.setWidthLimitType(LabelWidget.WidthLimitType.TRIM_TO_WIDTH);
         title.setBeforeRenderCallback(() -> {
-            double width = contentWidth();
+            double width = Math.max(1, contentWidth() - 32);
             title.setMaxWidth(width).setColor(AppTheme.foreground())
-                    .setPosition(CONTENT_X + Math.max(0, width - FontManager.pf14bold.getStringWidthD(title.getLabel())) * .5,
+                    .setPosition(CONTENT_X + 16 + Math.max(0, width - FontManager.pf14bold.getStringWidthD(title.getLabel())) * .5,
                             9);
         });
         title.setShouldOverrideMouseCursor(true);
         title.setOnClickCallback((x, y, button) -> {
             if (button != 0) return false;
             if (CloudMusic.currentlyPlaying != null)
-                NCMScreen.getInstance().musicLyricsPanel = new MusicLyricsPanel(CloudMusic.currentlyPlaying);
+                NCMScreen.getInstance().toggleLyrics();
             return true;
         });
         addChild(title);
@@ -125,6 +129,13 @@ public final class FoliaMiniControls extends ControlsBar {
         favorite.setBeforeRenderCallback(() -> favorite.setPosition(getWidth() - 24, 10));
         addChild(favorite);
 
+        previousTrack = new TrackButton(false);
+        previousTrack.setBeforeRenderCallback(() -> previousTrack.setBounds(CONTENT_X, 5, 14, 14));
+        addChild(previousTrack);
+        nextTrack = new TrackButton(true);
+        nextTrack.setBeforeRenderCallback(() -> nextTrack.setBounds(CONTENT_X + contentWidth() - 14, 5, 14, 14));
+        addChild(nextTrack);
+
         expandedWidgets = List.copyOf(getChildren());
         collapsedProgress = new Progress();
         collapsedProgress.setBeforeRenderCallback(() -> collapsedProgress.setBounds(16,
@@ -141,6 +152,15 @@ public final class FoliaMiniControls extends ControlsBar {
         double amount = expansion.amount();
         for (AbstractWidget<?> widget : expandedWidgets) {
             widget.setHidden(amount == 0).setAlpha((float) (amount * amount)).setClickable(amount == 1);
+        }
+        boolean overTitle = mouseX >= getX() + CONTENT_X && mouseX <= getX() + CONTENT_X + contentWidth()
+                && mouseY >= getY() + 5 && mouseY <= getY() + 20;
+        boolean available = CloudMusic.player != null && CloudMusic.currentlyPlaying != null && !CloudMusic.playList.isEmpty();
+        trackButtonsAlpha = Interpolations.interpolate(trackButtonsAlpha, overTitle && available ? 1f : 0f, .25f);
+        for (TrackButton button : List.of(previousTrack, nextTrack)) {
+            button.setHidden(amount == 0 || !available)
+                    .setAlpha((float) (amount * amount) * trackButtonsAlpha)
+                    .setClickable(amount == 1 && overTitle && available);
         }
         collapsedProgress.setHidden(amount == 1).setAlpha((float) (1 - amount)).setClickable(amount == 0);
         UiMaterials.surface(getX(), getY(), getWidth(), getHeight(), getHeight() * .5,
@@ -163,6 +183,42 @@ public final class FoliaMiniControls extends ControlsBar {
         long seconds = Float.isFinite(millis) ? Math.max(0, (long) (millis / 1000)) : 0;
         return seconds >= 3600 ? String.format(Locale.ROOT, "%02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
                 : String.format(Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60);
+    }
+
+    /** Folia reveals track navigation beside the title without occupying the action slots. */
+    static final class TrackButton extends AbstractWidget<TrackButton> {
+        private final boolean next;
+
+        TrackButton(boolean next) {
+            this.next = next;
+            setShouldOverrideMouseCursor(true);
+        }
+
+        @Override
+        public boolean onMouseClicked(double x, double y, int button) {
+            if (button != 0 || CloudMusic.player == null || CloudMusic.currentlyPlaying == null
+                    || CloudMusic.playList.isEmpty()) return false;
+            if (next) CloudMusic.next(); else CloudMusic.prev();
+            return true;
+        }
+
+        @Override
+        public void onRender(double mouseX, double mouseY) {
+            boolean hovered = testHovered(mouseX, mouseY);
+            if (hovered) roundedRect(getX(), getY(), getWidth(), getHeight(), 7,
+                    reAlpha(AppTheme.foreground(), getAlpha() * .12f));
+            double cx = getX() + getWidth() * .5, cy = getY() + getHeight() * .5;
+            double length = Math.sqrt(12.5);
+            int color = reAlpha(AppTheme.foreground(), getAlpha() * (hovered ? 1 : .7f));
+            for (int direction : new int[]{-1, 1}) {
+                api.getGLStateManager().pushMatrix();
+                api.getGLStateManager().translate(cx, cy + direction * 1.25, 0);
+                api.getGLStateManager().rotate((next ? -1 : 1) * direction * 45, 0, 0, 1);
+                api.getGLStateManager().scale(1, .6, 1);
+                roundedRect(-length / 2 - 1, -1.5, length + 2, 3, .5, color);
+                api.getGLStateManager().popMatrix();
+            }
+        }
     }
 
     /** Capture only presses in the seek target; commit once on release, including outside the pill. */

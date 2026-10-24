@@ -37,6 +37,8 @@ public class MusicPreferences {
     static final String SHOW_TRANSLATION_KEY = "lyrics.showTranslation";
     static final String SHOW_ROMAN_KEY = "lyrics.showRoman";
     static final String LYRIC_HEIGHT_KEY = "lyrics.height";
+    static final String LYRIC_STYLE_KEY = "lyrics.style";
+    static final String SHOW_BOTTOM_LYRICS_KEY = "lyrics.showBottomLyrics";
     static final String SPECTRUM_ABSOLUTE_VOLUME_KEY = "spectrum.absoluteVolume";
 
     private final ModePreference quality = new ModePreference("Music Quality", "Standard",
@@ -70,8 +72,11 @@ public class MusicPreferences {
             new String[]{"netease", "amll", "qq", "kugou"});
     private Runnable lyricSourceChangeCallback = () -> {};
     private final PreferenceValue<Boolean> showTranslation = new PreferenceValue<>("Show Translation", true);
+    private final PreferenceValue<Boolean> showBottomLyrics = new PreferenceValue<>("Show Bottom Lyrics", true);
     private final PreferenceValue<Boolean> showRoman = new PreferenceValue<>("Show Romanization in Japanese songs", false);
     private final NumberPreference lyricHeight = new NumberPreference("Lyric Height", 20.0, 14.0, 50.0, 0.5);
+    private final ModePreference lyricStyle = new ModePreference("Lyric Page Style", "Normal",
+            tritium.screens.ncm.lyrics.LyricStyle.ids());
     private final PreferenceValue<Boolean> spectrumAbsoluteVolume = new PreferenceValue<>("Absolute Volume", true);
     private final HudPreferences hud = new HudPreferences(spectrumAbsoluteVolume);
     private final NavigationPreferences navigation = new NavigationPreferences();
@@ -124,7 +129,9 @@ public class MusicPreferences {
         preferredLyricSource.setValueCallback(value -> lyricSourceChanged());
         showTranslation.setValueCallback(value -> fireChanged());
         showRoman.setValueCallback(value -> fireChanged());
+        showBottomLyrics.setValueCallback(value -> fireChanged());
         lyricHeight.setValueCallback(value -> fireChanged());
+        lyricStyle.setValueCallback(value -> fireChanged());
         spectrumAbsoluteVolume.setValueCallback(value -> fireChanged());
         hud.setChangeCallback(this::fireChanged);
         background.setChangeCallback(this::fireChanged);
@@ -194,7 +201,9 @@ public class MusicPreferences {
         json.addProperty(PREFERRED_LYRIC_SOURCE_KEY, preferredLyricSource.getValue());
         json.addProperty(SHOW_TRANSLATION_KEY, showTranslation.getValue());
         json.addProperty(SHOW_ROMAN_KEY, showRoman.getValue());
+        json.addProperty(SHOW_BOTTOM_LYRICS_KEY, showBottomLyrics.getValue());
         json.addProperty(LYRIC_HEIGHT_KEY, lyricHeight.getValue());
+        json.addProperty(LYRIC_STYLE_KEY, lyricStyle.getValue());
         json.addProperty(SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume.getValue());
         json.add(HudPreferences.HUD_KEY, hud.toJsonObject());
         json.add("background", background.toJsonObject());
@@ -240,7 +249,9 @@ public class MusicPreferences {
             applyMode(json, PREFERRED_LYRIC_SOURCE_KEY, preferredLyricSource);
             applyBoolean(json, SHOW_TRANSLATION_KEY, showTranslation);
             applyBoolean(json, SHOW_ROMAN_KEY, showRoman);
+            applyBoolean(json, SHOW_BOTTOM_LYRICS_KEY, showBottomLyrics);
             applyNumber(json, LYRIC_HEIGHT_KEY, lyricHeight);
+            applyMode(json, LYRIC_STYLE_KEY, lyricStyle);
             applyBoolean(json, SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume);
             JsonElement hudElement = json.get(HudPreferences.HUD_KEY);
             if (hudElement != null && hudElement.isJsonObject()) {
@@ -356,6 +367,10 @@ public class MusicPreferences {
     public ModePreference playerControls() {
         return playerControls;
     }
+
+    public ModePreference lyricStyle() { return lyricStyle; }
+
+    public PreferenceValue<Boolean> showBottomLyrics() { return showBottomLyrics; }
 
     public PreferenceValue<Boolean> miniAutoCollapse() {
         return miniAutoCollapse;

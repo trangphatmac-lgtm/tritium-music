@@ -45,6 +45,13 @@ import java.util.List;
  * Date: 2025/10/17 21:56
  */
 public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstants {
+    private final tritium.screens.ncm.lyrics.FoliaLyrics foliaLyrics = new tritium.screens.ncm.lyrics.FoliaLyrics();
+
+    public boolean usesPlayerControls() {
+        return tritium.screens.ncm.lyrics.LyricStyle.from(DesktopAppState.preferences().lyricStyle().getValue()).usesPlayerControls();
+    }
+
+    public void dispose() { foliaLyrics.close(); }
 
     static double scrollOffset, scrollTarget;
 
@@ -284,6 +291,15 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     }
 
     public void onRender(double mouseX, double mouseY, double posX, double posY, double width, double height, int dWheel) {
+
+        if (usesPlayerControls()) {
+            alpha = Interpolations.interpolate(alpha, closing ? 0f : 1f, .3f);
+            double bottomInset = DesktopAppState.preferences().playerControls().getValue().equals("FoliaMini") ? 64 : height * .07;
+            foliaLyrics.render(tritium.screens.ncm.lyrics.LyricStyle.from(DesktopAppState.preferences().lyricStyle().getValue()),
+                    posX, posY, width, height, mouseX, mouseY, alpha, bottomInset);
+            return;
+        }
+        foliaLyrics.close();
 
         Framebuffer renderTarget = Framebuffer.currentlyBinding;
         GaussianBlurShader blurShader = Shaders.BLUR_SHADER;
@@ -922,6 +938,13 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     }
 
     public void mouseClicked(double mouseX, double mouseY, int mouseButton) {
+        if (usesPlayerControls()) {
+            if (mouseButton == 0) {
+                if (foliaLyrics.backAt(mouseX, mouseY)) close();
+                else foliaLyrics.click(mouseX, mouseY);
+            }
+            return;
+        }
         playPauseButton.onMouseClickReceived(mouseX, mouseY, mouseButton);
         prev.onMouseClickReceived(mouseX, mouseY, mouseButton);
         next.onMouseClickReceived(mouseX, mouseY, mouseButton);

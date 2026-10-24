@@ -60,12 +60,15 @@ public final class BackgroundShader implements AutoCloseable {
 
     private static int compile(int type, String source) throws IOException {
         int shader = GL20.glCreateShader(type);
-        GL20.glShaderSource(shader, source);
+        // LWJGL 2 encodes CharSequence shader input as single-byte text. Unicode comments
+        // can contain a zero low byte and truncate a perfectly valid shader on this API.
+        String glsl = source.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("(?m)//.*$", "");
+        GL20.glShaderSource(shader, glsl);
         GL20.glCompileShader(shader);
         if (GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
             String log = GL20.glGetShaderInfoLog(shader, 4096);
             GL20.glDeleteShader(shader);
-            throw new IOException(log);
+            throw new IOException((type == GL20.GL_VERTEX_SHADER ? "Vertex: " : "Fragment: ") + log);
         }
         return shader;
     }
@@ -75,6 +78,13 @@ public final class BackgroundShader implements AutoCloseable {
     }
 
     public int uniform(String name) { return GL20.glGetUniformLocation(program, name); }
+
+    /** Binds the same GLSL transport for native geometry such as lyric glyph atlases. */
+    public void withProgram(Runnable draw) {
+        int previous = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+        GL20.glUseProgram(program);
+        try { draw.run(); } finally { GL20.glUseProgram(previous); }
+    }
 
     public void draw(double width, double height, int framebufferWidth, int framebufferHeight, float time, Runnable uniforms) {
         int previous = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);

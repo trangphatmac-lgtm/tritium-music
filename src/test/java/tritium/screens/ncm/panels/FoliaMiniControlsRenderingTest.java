@@ -197,6 +197,7 @@ class FoliaMiniControlsRenderingTest {
             verifyForegroundLayer(screen);
             verifyListPageViewports(screen, song);
             verifyAutoCollapse(song);
+            verifyTrackNavigation(song);
         } finally {
             CloudMusic.profile = originalProfile;
             CloudMusic.currentlyPlaying = originalSong;
@@ -216,6 +217,54 @@ class FoliaMiniControlsRenderingTest {
                 FontManager.deleteLoadedTextures();
                 Display.destroy();
             }
+        }
+    }
+
+    private static void verifyTrackNavigation(Music song) throws Exception {
+        var oldQueue = CloudMusic.playList;
+        var oldThread = CloudMusic.playThread;
+        var oldSource = CloudMusic.playedFrom;
+        int oldIndex = CloudMusic.curIdx;
+        boolean oldDontAdd = CloudMusic.dontAdd;
+        try {
+            CloudMusic.playThread = null;
+            CloudMusic.playedFrom = null;
+            CloudMusic.playList = List.of(song, song, song);
+            CloudMusic.curIdx = 1;
+            CloudMusic.playMode = CloudMusic.PlayMode.Sequential;
+            FoliaMiniControls mini = new FoliaMiniControls();
+            mini.onInit();
+            renderMini(mini, -1, -1, true, false, 0);
+            var arrows = mini.getChildren().stream().filter(FoliaMiniControls.TrackButton.class::isInstance).toList();
+            assertEquals(2, arrows.size());
+            assertFalse(arrows.getFirst().isClickable(), "Arrows are revealed only over the title row");
+            var previous = arrows.getFirst();
+            var next = arrows.getLast();
+            double y = previous.getY() + 7;
+            for (int i = 1; i <= 40; i++) renderMini(mini, previous.getX() + 7, y, true, false, i * 10);
+            save("folia-mini-track-navigation", mini);
+            assertTrue(previous.isClickable());
+            assertTrue(previous.getX() + previous.getWidth() < mini.getChildren().get(1).getX());
+            mini.onMouseClickReceived(previous.getX() + 7, y, 1);
+            assertEquals(1, CloudMusic.curIdx, "Right click must not skip a track");
+            mini.onMouseClickReceived(previous.getX() + 7, y, 0);
+            assertEquals(0, CloudMusic.curIdx);
+            assertNull(NCMScreen.getInstance().musicLyricsPanel, "Track arrows must not open lyrics");
+            renderMini(mini, next.getX() + 7, y, true, false, 500);
+            mini.onMouseClickReceived(next.getX() + 7, y, 0);
+            assertEquals(1, CloudMusic.curIdx);
+            CloudMusic.curIdx = 2;
+            mini.onMouseClickReceived(next.getX() + 7, y, 0);
+            assertEquals(2, CloudMusic.curIdx, "Sequential mode cannot skip beyond the queue");
+            CloudMusic.playList = List.of();
+            renderMini(mini, next.getX() + 7, y, true, false, 600);
+            assertTrue(next.isHidden(), "Empty queues have no track navigation");
+        } finally {
+            CloudMusic.playList = oldQueue;
+            CloudMusic.playThread = oldThread;
+            CloudMusic.playedFrom = oldSource;
+            CloudMusic.curIdx = oldIndex;
+            CloudMusic.dontAdd = oldDontAdd;
         }
     }
 
@@ -453,6 +502,7 @@ class FoliaMiniControlsRenderingTest {
         @Override public void pause() { paused = true; }
         @Override public void unpause() { paused = false; }
         @Override public void setPlaybackTime(float millis) { position = millis; }
+        @Override public void close() { }
     }
 
     static final class BackdropProbe extends NCMPanel {

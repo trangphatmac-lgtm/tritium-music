@@ -280,6 +280,8 @@ public final class TritiumMusicDesktopApp {
             t.printStackTrace();
         }
         if (Display.isCreated()) {
+            var screen = tritium.screens.ncm.NCMScreen.getInstance();
+            if (screen != null && screen.musicLyricsPanel != null) screen.musicLyricsPanel.dispose();
             UiMaterials.release();
             DesktopAppState.background().close();
             Display.destroy();

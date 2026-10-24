@@ -569,6 +569,16 @@ public class CFontRenderer implements Closeable, SharedConstants {
         return true;
     }
 
+    /** Resolves advances on the render thread before asynchronous atlas uploads finish. */
+    public void prepareGlyphs(String text) {
+        for (char ch : stripControlCodes(text).toCharArray()) {
+            if (ch == '\n' || ch == '\r') continue;
+            if (ch == '（') ch = '(';
+            if (ch == '）') ch = ')';
+            locateGlyph(ch);
+        }
+    }
+
     public double getStringWidthD(String text) {
         Double f = this.stringWidthMapD.get(text);
         if (f != null)

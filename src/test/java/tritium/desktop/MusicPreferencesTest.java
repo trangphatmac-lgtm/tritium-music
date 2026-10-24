@@ -12,6 +12,29 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MusicPreferencesTest {
     @Test
+    void persistsAllLyricsStylesAndKeepsOldProfilesOnNormal() {
+        var preferences = new MusicPreferences();
+        assertEquals("Normal", preferences.lyricStyle().getValue());
+        assertEquals(12, preferences.lyricStyle().getModes().size());
+        assertTrue(preferences.showBottomLyrics().getValue());
+        preferences.showBottomLyrics().setValue(false);
+        for (var style : tritium.screens.ncm.lyrics.LyricStyle.values()) {
+            preferences.lyricStyle().setValue(style.name());
+            var restored = new MusicPreferences();
+            restored.loadFromJsonObject(preferences.toJsonObject());
+            assertEquals(style.name(), restored.lyricStyle().getValue());
+            assertFalse(restored.showBottomLyrics().getValue());
+        }
+        var unknown = new com.google.gson.JsonObject();
+        unknown.addProperty("lyrics.style", "future-mode");
+        var restored = new MusicPreferences();
+        restored.loadFromJsonObject(unknown);
+        assertEquals("Normal", restored.lyricStyle().getValue());
+        assertTrue(restored.showBottomLyrics().getValue());
+        restored.loadFromJsonObject(new com.google.gson.JsonObject());
+        assertEquals("Normal", restored.lyricStyle().getValue());
+    }
+    @Test
     void exposesDesktopDefaults() {
         MusicPreferences preferences = new MusicPreferences();
 

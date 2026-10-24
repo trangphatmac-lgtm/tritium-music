@@ -104,6 +104,10 @@ public class SettingsPanel extends NCMPanel {
         section.addChild(new PlaylistExportWidget());
 
         section = scrollPanel.addSection("settings.lyrics");
+        section.addChild(new ChoiceRow("settings.lyricStyle", preferences.lyricStyle(),
+                value -> I18n.text("lyrics.style." + value)));
+        section.addChild(new ToggleRow("settings.showBottomLyrics", preferences.showBottomLyrics()));
+        section.addChild(new HintRow("settings.showBottomLyricsHint"));
         section.addChild(new ToggleRow("settings.autoUseBestLyric", preferences.autoUseBestLyric()));
         section.addChild(new HintRow("settings.autoUseBestLyricHint"));
         section.addChild(new ChoiceRow("settings.lyricMatchPriority", preferences.preferredLyricSource(),

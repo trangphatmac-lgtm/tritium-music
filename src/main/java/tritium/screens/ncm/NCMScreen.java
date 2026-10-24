@@ -167,9 +167,9 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     private void positionMiniControls(double mouseX, double mouseY) {
         if (!(controlsBar instanceof FoliaMiniControls mini)) return;
-        double left = topBarLayout ? 0 : getPanelWidth() * .15;
+        double left = lyricsHaveControls() || topBarLayout ? 0 : getPanelWidth() * .15;
         double available = getPanelWidth() - left;
-        boolean focused = Display.isActive() && musicLyricsPanel == null;
+        boolean focused = Display.isActive() && (musicLyricsPanel == null || lyricsHaveControls());
         if (!focused && capturedPlayerControls == mini) {
             mini.cancelInteraction();
             capturedPlayerControls = null;
@@ -179,11 +179,26 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     private boolean overMiniControls(double mouseX, double mouseY) {
         return controlsBar instanceof FoliaMiniControls mini && mini.contains(mouseX, mouseY)
-                && !(coverNavigation() != null && DesktopAppState.preferences().navigation().isFullscreen());
+                && (lyricsHaveControls() || !(coverNavigation() != null && DesktopAppState.preferences().navigation().isFullscreen()));
+    }
+
+    public boolean lyricsHaveControls() { return musicLyricsPanel != null && musicLyricsPanel.usesPlayerControls(); }
+
+    public void toggleLyrics() {
+        if (musicLyricsPanel != null) musicLyricsPanel.close();
+        else if (CloudMusic.currentlyPlaying != null) musicLyricsPanel = new MusicLyricsPanel(CloudMusic.currentlyPlaying);
+    }
+
+    private boolean overLyricsControls(double x, double y) {
+        if (!lyricsHaveControls() || controlsBar == null) return false;
+        if (controlsBar instanceof FoliaMiniControls mini) return mini.contains(x, y);
+        return x >= controlsBar.getX() && x <= controlsBar.getX() + controlsBar.getWidth()
+                && y >= controlsBar.getY() && y <= controlsBar.getY() + controlsBar.getHeight();
     }
 
     @Override
     public void onGuiClosed() {
+        if (musicLyricsPanel != null) musicLyricsPanel.dispose();
         Keyboard.enableRepeatEvents(false);
         DesktopAppState.background().pause();
         if (activeCoverNavigation != null) activeCoverNavigation.leave();
@@ -445,11 +460,25 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             if (!DesktopAppState.background().isAppliedToLyrics()) {
                 Rect.draw(basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), RenderSystem.reAlpha(0xFF1E1E1E, this.musicLyricsPanel.alpha));
             }
-            this.musicLyricsPanel.onRender(mouseX, mouseY, basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), dWheel);
+            boolean overControls = overLyricsControls(mouseX, mouseY) || capturedPlayerControls != null;
+            this.musicLyricsPanel.onRender(overControls ? -1 : mouseX, overControls ? -1 : mouseY,
+                    basePanel.getX(), basePanel.getY(), basePanel.getWidth(), basePanel.getHeight(), overControls ? 0 : dWheel);
             StencilClipManager.endClip();
 
-            if (this.musicLyricsPanel.shouldClose())
+            if (lyricsHaveControls()) {
+                UiMaterials.captureBackdrop(false);
+                controlsBar.setAlpha(musicLyricsPanel.alpha);
+                if (!(controlsBar instanceof FoliaMiniControls)) {
+                    double barHeight = getPanelHeight() * .07;
+                    controlsBar.setBounds(0, getPanelHeight() - barHeight, getPanelWidth(), barHeight);
+                }
+                controlsBar.renderWidget(mouseX, mouseY, dWheel);
+            }
+
+            if (this.musicLyricsPanel.shouldClose()) {
+                this.musicLyricsPanel.dispose();
                 this.musicLyricsPanel = null;
+            }
         }
     }
 
@@ -635,6 +664,12 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             return;
         }
 
+        if (overLyricsControls(mouseX, mouseY)) {
+            if (mouseButton == 0) capturedPlayerControls = controlsBar;
+            controlsBar.onMouseClickReceived(mouseX, mouseY, mouseButton);
+            return;
+        }
+
         if (musicLyricsPanel == null) {
             if (mouseButton == 3) {
                 if (currentActionPointer > 0) actions.get(--currentActionPointer).run();
@@ -688,6 +723,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             capturedPlayerControls = null;
             return;
         }
+        if (lyricsHaveControls()) return;
         if (coverNavigation() != null && musicLyricsPanel == null) {
             coverNavigation().release(mouseX, mouseY, mouseButton);
             if (DesktopAppState.preferences().navigation().isFullscreen()) return;
