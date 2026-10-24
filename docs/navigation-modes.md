@@ -40,15 +40,21 @@ its original position in the full playlist. The old Coverflow button is removed.
   typing (Ctrl/Cmd + F or G). Enter retains its original global online search.
   Escape clears the focused filter first. There is no additional search field.
 - Mouse back/forward retains page history. Space continues to pause/resume.
+- All Coverflow styles show a circular back button at the upper left of playlist
+  details. Details fade in a dark background overlay; returning to a library
+  removes it, including in OldSchool.
 
 ## Card options
 
 Choose **Artwork only** or **Polaroid cards**. Library covers use Folia's single-row
-centre enlargement, side fading and hover lighting. Song cards additionally use
+centre enlargement, side fading and hover lighting. The focused library card is
+only slightly wider than a song card, with room for two neighbours on each side
+inside the navigation safe area. Song cards additionally use
 full-bleed/square options and configurable size/opacity falloff (defaults 45%/40%).
 Remember card position stores the focused item separately for up to 100 pages.
-Opening a collection flies the sleeve into the song grid and cascades surrounding
-cards in; it hands the sleeve over to the first song after landing.
+Opening a collection flips its sleeve horizontally while it flies into the song
+grid and surrounding cards cascade in. The sleeve switches to the focused song
+at the edge-on midpoint; the destination is drawn only once throughout the flip.
 
 ## Wall options
 
@@ -74,7 +80,7 @@ Folia reference: `851af347`. Ports include Grid3DSlider's row transform,
 hexViewport/falloff, the 12×8 block templates and their reflections, reserved
 windows, wrap periods and nearest-copy lookup, all 48 exact 6×6 block reflows,
 the stiffness-300/damping-34 reflow spring, 150/210ms tile flips, diagonal wall
-waves and the 460ms sleeve flight with 140ms handover. See
+waves and the 460ms sleeve flight, now combined with a 600ms horizontal flip. See
 `src/main/resources/tritium/licenses/Folia-NOTICE.txt` for source attribution.
 
 Unit coverage checks ordered and duplicate songs, original playback indices,

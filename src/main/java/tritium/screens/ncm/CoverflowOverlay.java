@@ -64,8 +64,7 @@ public class CoverflowOverlay extends DesktopScreen implements SharedConstants, 
         hits.clear();
         resourcesUsed = true;
         double height = RenderSystem.getHeight();
-        if (oldSchool) Rect.draw(0, 0, RenderSystem.getWidth(), height, AppTheme.color(0x80000000, 0x40FFFFFF));
-        else {
+        if (!oldSchool) {
             double bottom = height * (sceneCenter() + COVER_SIZE * .5 / paneHeight());
             reflection.draw(bottom + 1.5 * Math.min(1, height / 360), 1);
         }

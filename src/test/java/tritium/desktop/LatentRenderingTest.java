@@ -101,7 +101,7 @@ class LatentRenderingTest {
             frame();
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
             AbstractWidget<?> colorRow = row(scroll, "settings.latent.ACCENT");
-            scroll.actualScrollOffset = scroll.targetScrollOffset = colorRow.getRelativeY() - 8;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = (colorRow.getY() - scroll.getY()) - 8;
             settle();
             click(colorRow.getX() + 68, colorRow.getY() + 61);
             assertEquals(0xFF58A6FF, latent.color(true, LatentPreferences.Color.ACCENT).getValue());
@@ -179,7 +179,7 @@ class LatentRenderingTest {
         frame();
     }
     private static AbstractWidget<?> row(ScrollPanel scroll, String label) throws Exception {
-        for (AbstractWidget<?> row : scroll.getChildren()) {
+        for (AbstractWidget<?> row : scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).toList()) {
             try {
                 var field = row.getClass().getSuperclass().getDeclaredField("label");
                 field.setAccessible(true);

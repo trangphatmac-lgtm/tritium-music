@@ -36,6 +36,7 @@ class DesktopPreferenceStoreTest {
         preferences.accentColor().setValue(0xFF2DD4BF);
         preferences.appearance().setValue("Light");
         preferences.layout().setValue("TopBar");
+        preferences.settingsLayout().setValue("TwoColumns");
         preferences.coverflowCoverReflection().setValue(false);
         preferences.hud().musicSpectrum().color().setValue(0x803B719A);
 
@@ -58,6 +59,7 @@ class DesktopPreferenceStoreTest {
         assertEquals(0xFF2DD4BF, loaded.accentColor().getValue());
         assertEquals("Light", loaded.appearance().getValue());
         assertEquals("TopBar", loaded.layout().getValue());
+        assertEquals("TwoColumns", loaded.settingsLayout().getValue());
         assertFalse(loaded.coverflowCoverReflection().getValue());
         assertEquals(0x803B719A, loaded.hud().musicSpectrum().color().getValue());
 

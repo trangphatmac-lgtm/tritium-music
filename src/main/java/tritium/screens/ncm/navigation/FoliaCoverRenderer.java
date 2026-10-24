@@ -28,7 +28,7 @@ final class FoliaCoverRenderer implements SharedConstants, SharedRenderingConsta
         double radius=wall?0:image?8:6, pad=bleed?0:Math.max(7,b.width()*.055);
         if(wall&&entry.collection()&&prefs.stackEdges().getValue()) {
             double pixelScale=RenderSystem.getFramebufferWidth()/RenderSystem.getWidth();
-            int ink=AppTheme.color(0xFFAAA69C,0xFF514D46);
+            int ink=AppTheme.color(0xFF000000,0xFFFFFFFF);
             int edge=reAlpha(ink,alpha*(float)(.32*(1-hover)));
             // The lifted face grows over its paper stack; the stack itself stays in
             // its original gutter instead of chasing the face into the next cover.

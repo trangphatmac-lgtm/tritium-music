@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import tritium.management.FontManager;
 import tritium.ncm.music.CloudMusic;
@@ -62,14 +63,14 @@ class SettingsAppearanceRenderingTest {
             settings.onInit();
             renderStable(settings);
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
-            AbstractWidget<?> autoMix = scroll.getChildren().stream().filter(row -> {
+            AbstractWidget<?> autoMix = scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).filter(row -> {
                 try {
                     var label = row.getClass().getSuperclass().getDeclaredField("label");
                     label.setAccessible(true);
                     return "settings.autoMix".equals(label.get(row));
                 } catch (ReflectiveOperationException ignored) { return false; }
             }).findFirst().orElseThrow();
-            scroll.actualScrollOffset = scroll.targetScrollOffset = autoMix.getRelativeY() - 160;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = (autoMix.getY() - scroll.getY()) - 160;
             DesktopAppState.preferences().autoMix().setValue(false);
             renderStable(settings);
             click(settings, autoMix.getX() + autoMix.getWidth() - 35, autoMix.getY() + 26);
@@ -91,7 +92,7 @@ class SettingsAppearanceRenderingTest {
             AbstractWidget<?> lyricPriority = settingRow(scroll, "settings.lyricMatchPriority");
             DesktopAppState.preferences().autoUseBestLyric().setValue(true);
             DesktopAppState.preferences().preferredLyricSource().setValue("netease");
-            scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + bestLyrics.getRelativeY() - 80;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + (bestLyrics.getY() - scroll.getY()) - 80;
             renderStable(settings);
             savePreview("settings-best-lyrics-netease");
             click(settings, bestLyrics.getX() + bestLyrics.getWidth() - 35, bestLyrics.getY() + 26);
@@ -108,7 +109,7 @@ class SettingsAppearanceRenderingTest {
             settings.setWidth(Math.min(720, RenderSystem.getWidth()));
             scroll.actualScrollOffset = scroll.targetScrollOffset = 0;
             renderStable(settings);
-            AbstractWidget<?> language = scroll.getChildren().get(1);
+            AbstractWidget<?> language = settingRow(scroll, "settings.language");
             var title = (tritium.rendering.ui.widgets.LabelWidget) settings.getChildren().getFirst();
             assertEquals("设置", title.getLabel());
             savePreview("settings-locale-zh-CN");
@@ -127,7 +128,7 @@ class SettingsAppearanceRenderingTest {
             settings.setWidth(Math.min(720, RenderSystem.getWidth()));
             renderStable(settings);
             assertEquals("zh-CN", DesktopAppState.preferences().language().getValue());
-            AbstractWidget<?> mode = scroll.getChildren().get(3);
+            AbstractWidget<?> mode = settingRow(scroll, "settings.displayMode");
             assertRgb(8, 8, 30, 30, 30, 1);
             savePreview("settings-dark");
             click(settings, mode.getX() + 20, mode.getY() + 20);
@@ -172,9 +173,9 @@ class SettingsAppearanceRenderingTest {
             renderStable(settings);
             assertEquals("Dark", DesktopAppState.preferences().appearance().getValue());
             assertRgb(8, 8, 30, 30, 30, 1);
-            AbstractWidget<?> theme = scroll.getChildren().get(4);
+            AbstractWidget<?> theme = settingRow(scroll, "settings.accent");
             // Keep the expanded picker within the viewport below the new General section.
-            scroll.actualScrollOffset = scroll.targetScrollOffset = 92;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = theme.getY() - scroll.getY() - 92;
             renderStable(settings);
             click(settings, theme.getX() + 68, theme.getY() + 61);
             assertEquals(0xFF58A6FF, DesktopAppState.preferences().accentColor().getValue());
@@ -195,11 +196,12 @@ class SettingsAppearanceRenderingTest {
             savePreview("settings-narrow");
 
             AbstractWidget<?> spectrum = scroll.getChildren().stream()
+                    .flatMap(section -> section.getChildren().stream())
                     .filter(row -> row.getChildren().stream().anyMatch(ColorPickerWidget.class::isInstance))
                     .reduce((first, second) -> second).orElseThrow();
             // Expand and scroll the spectrum section to the top of the visible viewport.
             spectrum.onMouseClicked(30, 20, 0);
-            scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + spectrum.getRelativeY() - 12;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + (spectrum.getY() - scroll.getY()) - 12;
             renderStable(settings);
             ColorPickerWidget spectrumPicker = (ColorPickerWidget) spectrum.getChildren().getFirst();
             assertFalse(spectrumPicker.isHidden());
@@ -265,6 +267,7 @@ class SettingsAppearanceRenderingTest {
             }
             savePreview("autoMix-debug-narrow");
             verifyPlaylistExport(settings, scroll);
+            verifySettingsLayout();
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         } finally {
             DesktopAppState.preferences().accentColor().setValue(originalAccent);
@@ -285,13 +288,125 @@ class SettingsAppearanceRenderingTest {
     }
 
     private static AbstractWidget<?> settingRow(ScrollPanel scroll, String key) {
-        return scroll.getChildren().stream().filter(row -> {
+        return scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).filter(row -> {
             try {
                 var label = row.getClass().getSuperclass().getDeclaredField("label");
                 label.setAccessible(true);
                 return key.equals(label.get(row));
             } catch (ReflectiveOperationException ignored) { return false; }
         }).findFirst().orElseThrow();
+    }
+
+    private static void verifySettingsLayout() throws Exception {
+        var preferences = DesktopAppState.preferences();
+        String originalLayout = preferences.settingsLayout().getValue();
+        String originalBackground = preferences.background().mode().getValue();
+        String originalAppearance = preferences.appearance().getValue();
+        String originalLanguage = preferences.language().getValue();
+        String originalScale = System.getProperty("tritium.uiScale");
+        DisplayMode originalDisplayMode = Display.getDisplayMode();
+        try {
+            System.setProperty("tritium.uiScale", "1");
+            Display.setDisplayMode(new DisplayMode(1100, 850));
+            Display.update();
+            Framebuffer.updateMcFramebuffer();
+            preferences.settingsLayout().setValue("SingleColumn");
+            preferences.background().mode().setValue("static");
+            preferences.appearance().setValue("Dark");
+            preferences.language().setValue("zh-CN");
+            SettingsPanel settings = new SettingsPanel();
+            settings.setBounds(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight());
+            settings.onInit();
+            renderStable(settings);
+            ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
+            var layout = settingRow(scroll, "settings.settingsLayout");
+            click(settings, layout.getX() + 20, layout.getY() + 26);
+            renderStable(settings);
+            assertEquals("TwoColumns", preferences.settingsLayout().getValue());
+            var general = scroll.getChildren().get(0);
+            var appearance = scroll.getChildren().get(1);
+            assertEquals(general.getY(), appearance.getY());
+            assertEquals(general.getX() + general.getWidth() + 24, appearance.getX());
+            assertSettingsDoNotOverlap(scroll);
+            savePreview("settings-two-columns-dark");
+
+            // Exercise real input dispatch in the right column, including an expanding row.
+            var mode = settingRow(scroll, "settings.displayMode");
+            click(settings, mode.getX() + 20, mode.getY() + 26);
+            assertEquals("Light", preferences.appearance().getValue());
+            var accent = settingRow(scroll, "settings.accent");
+            click(settings, accent.getX() + 20, accent.getY() + 20);
+            renderStable(settings);
+            assertFalse(accent.getChildren().getFirst().isHidden());
+            assertSettingsDoNotOverlap(scroll);
+            savePreview("settings-two-columns-light-picker");
+
+            preferences.background().mode().setValue("picture");
+            preferences.language().setValue("en");
+            renderStable(settings);
+            assertSettingsDoNotOverlap(scroll);
+            savePreview("settings-two-columns-english");
+            scroll.scrollToEndImmediately();
+            renderStable(settings);
+            double bottom = scroll.getChildren().stream().mapToDouble(section -> section.getRelativeY() + section.getHeight())
+                    .max().orElseThrow();
+            assertEquals(scroll.getHeight(), bottom, .01);
+            savePreview("settings-two-columns-bottom");
+
+            settings.setWidth(712);
+            scroll.actualScrollOffset = scroll.targetScrollOffset = 0;
+            renderStable(settings);
+            assertEquals(320, general.getWidth());
+            assertSettingsDoNotOverlap(scroll);
+            savePreview("settings-two-columns-compact");
+            settings.setWidth(711);
+            renderStable(settings);
+            assertEquals("TwoColumns", preferences.settingsLayout().getValue());
+            assertTrue(scroll.getChildren().stream().allMatch(section -> section.getRelativeX() == 0));
+            assertSettingsDoNotOverlap(scroll);
+            scroll.actualScrollOffset = scroll.targetScrollOffset = 0;
+            settings.setWidth(440);
+            renderStable(settings);
+            savePreview("settings-two-columns-narrow-fallback");
+            settings.setWidth(1100);
+            renderStable(settings);
+            assertTrue(appearance.getRelativeX() > 0);
+            click(settings, layout.getX() + 20, layout.getY() + 26);
+            renderStable(settings);
+            assertEquals("SingleColumn", preferences.settingsLayout().getValue());
+            assertEquals(0, appearance.getRelativeX());
+            assertSettingsDoNotOverlap(scroll);
+        } finally {
+            preferences.settingsLayout().setValue(originalLayout);
+            preferences.background().mode().setValue(originalBackground);
+            preferences.appearance().setValue(originalAppearance);
+            preferences.language().setValue(originalLanguage);
+            if (originalScale == null) System.clearProperty("tritium.uiScale");
+            else System.setProperty("tritium.uiScale", originalScale);
+            Display.setDisplayMode(originalDisplayMode);
+        }
+    }
+
+    private static void assertSettingsDoNotOverlap(ScrollPanel scroll) {
+        var sections = scroll.getChildren();
+        for (int i = 0; i < sections.size(); i++) {
+            var section = sections.get(i);
+            double bottom = 0;
+            for (var row : section.getChildren()) {
+                if (row.isHidden()) continue;
+                assertEquals(section.getWidth(), row.getWidth());
+                assertTrue(row.getRelativeY() >= bottom);
+                bottom = row.getRelativeY() + row.getHeight();
+            }
+            assertEquals(section.getHeight(), bottom);
+            for (int j = i + 1; j < sections.size(); j++) {
+                var other = sections.get(j);
+                assertTrue(section.getX() + section.getWidth() <= other.getX()
+                        || other.getX() + other.getWidth() <= section.getX()
+                        || section.getY() + section.getHeight() <= other.getY()
+                        || other.getY() + other.getHeight() <= section.getY());
+            }
+        }
     }
 
     private static void click(SettingsPanel settings, double x, double y) throws Exception {
@@ -307,9 +422,9 @@ class SettingsAppearanceRenderingTest {
             CloudMusic.playLists = java.util.stream.IntStream.range(0, 7).mapToObj(i ->
                     new PlayList(i + 1, "测试歌单 " + (i + 1) + " · 中文与特别长的歌单名称", "", 20 + i,
                             0, null, "", i > 3, 0, 0)).toList();
-            PlaylistExportWidget export = scroll.getChildren().stream().filter(PlaylistExportWidget.class::isInstance)
+            PlaylistExportWidget export = scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).filter(PlaylistExportWidget.class::isInstance)
                     .map(PlaylistExportWidget.class::cast).findFirst().orElseThrow();
-            scroll.targetScrollOffset = scroll.actualScrollOffset = scroll.actualScrollOffset + export.getRelativeY() - 8;
+            scroll.targetScrollOffset = scroll.actualScrollOffset = scroll.actualScrollOffset + (export.getY() - scroll.getY()) - 8;
             renderStable(settings);
             // Use actual input dispatch: select a playlist, move pages, then select another.
             click(settings, export.getX() + 30, export.getY() + 60);

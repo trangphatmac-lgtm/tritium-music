@@ -2,6 +2,8 @@ package tritium.desktop;
 
 import tritium.rendering.material.UiMaterials;
 import tritium.desktop.input.DesktopTextInput;
+import tritium.desktop.media.SystemMediaControls;
+import tritium.desktop.media.WindowsAppIdentity;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
@@ -25,12 +27,15 @@ public final class TritiumMusicDesktopApp {
     private static final int DEFAULT_HEIGHT = 1080;
     private static volatile Throwable lastRenderError;
     private static final FrameRateCounter FRAME_RATE = new FrameRateCounter();
+    private static SystemMediaControls systemMediaControls;
+    private static final DesktopPlaybackStore PLAYBACK_STORE = new DesktopPlaybackStore(AppPaths.playbackFile());
 
     private TritiumMusicDesktopApp() {
     }
 
     public static void main(String[] args) throws Exception {
         applyStartupOptions(args);
+        WindowsAppIdentity.initialize();
         DesktopNativeLoader.configureLibraryPath();
         DesktopAppState.markMainThread();
         DesktopAppState.loadPreferences();
@@ -40,10 +45,11 @@ public final class TritiumMusicDesktopApp {
 
         try {
             createDisplay();
+            systemMediaControls = SystemMediaControls.start();
             DesktopTextInput.install();
             initializeOpenGL();
             new FontManager().init();
-            MultiThreadingUtil.runAsync(CloudMusic::initNCM);
+            MultiThreadingUtil.runAsync(TritiumMusicDesktopApp::initializeMusicSession);
             DesktopAppState.api().displayScreen(NCMScreen.getInstance());
             DesktopAppState.hudManager().start(hasArg(args, "--hud-smoke"));
             runLoop(smokeExitAt);
@@ -51,6 +57,18 @@ public final class TritiumMusicDesktopApp {
             shutdown();
         }
         System.exit(0);
+    }
+
+    private static void initializeMusicSession() {
+        var savedPlayback = PLAYBACK_STORE.load();
+        try {
+            CloudMusic.initNCM();
+        } finally {
+            // Use the restored cookie for fresh song URLs, and serialize startup with UI actions/exit.
+            DesktopAppState.runOnMainThread(() -> {
+                if (DesktopAppState.isRunning()) CloudMusic.restorePlayback(savedPlayback);
+            });
+        }
     }
 
     private static long parseSmokeExitAt(String[] args) {
@@ -233,8 +251,14 @@ public final class TritiumMusicDesktopApp {
     }
 
     private static void shutdown() {
+        if (systemMediaControls != null) systemMediaControls.close();
         DesktopTextInput.close();
         DesktopAppState.setRunning(false);
+        try {
+            PLAYBACK_STORE.save(CloudMusic.capturePlaybackSession());
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
         try {
             DesktopAppState.savePreferences();
         } catch (Throwable t) {

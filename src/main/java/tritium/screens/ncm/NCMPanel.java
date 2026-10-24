@@ -19,6 +19,12 @@ public abstract class NCMPanel extends Panel {
 
     public abstract void onInit();
 
+    /** Floating controls overlay the scroll viewport instead of leaving a bottom gutter. */
+    protected double scrollBottomInset(double standardInset) {
+        return tritium.desktop.DesktopAppState.preferences().playerControls().getValue().equals("FoliaMini")
+                ? 0 : standardInset;
+    }
+
     protected int getColor(NCMScreen.ColorType type) {
         return 0xFF000000 | NCMScreen.getColor(type);
     }

@@ -8,6 +8,9 @@ import tritium.rendering.font.CFontRenderer;
 import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.ui.AbstractWidget;
 
+import java.awt.font.FontRenderContext;
+import java.awt.geom.Rectangle2D;
+
 /**
  * @author IzumiiKonata
  * Date: 2025/10/8 19:13
@@ -31,6 +34,24 @@ public class IconWidget extends AbstractWidget<IconWidget> {
 
     boolean run = false;
     private boolean inheritMaterial;
+    private boolean fitIconToBounds;
+    private double fittedIconScale = 1;
+    private CFontRenderer measuredFont;
+    private String measuredIcon;
+    private Rectangle2D inkBounds;
+    private static final FontRenderContext ICON_METRICS = new FontRenderContext(null, true, true);
+
+    /** Size the visible glyph, excluding the icon font's internal whitespace. */
+    public IconWidget setFitIconToBounds(boolean fit) {
+        return setFitIconToBounds(fit, 1);
+    }
+
+    /** Apply a linear scale after fitting, without changing the button's hit area. */
+    public IconWidget setFitIconToBounds(boolean fit, double linearScale) {
+        fitIconToBounds = fit;
+        fittedIconScale = linearScale;
+        return this;
+    }
 
     /** Nested actions share their parent's surface instead of adding another glass disc. */
     public IconWidget setInheritMaterial(boolean inheritMaterial) {
@@ -80,7 +101,21 @@ public class IconWidget extends AbstractWidget<IconWidget> {
         int w = fr.getStringWidth(icon);
         double h = fr.getFontHeight();
 
+        if (fitIconToBounds) {
+            if (measuredFont != fr || !icon.equals(measuredIcon)) {
+                inkBounds = fr.font.createGlyphVector(ICON_METRICS, icon).getVisualBounds();
+                measuredFont = fr;
+                measuredIcon = icon;
+            }
+            // Font glyphs render at half their measured size. Keep a half-unit antialiasing inset.
+            double scale = inkBounds.isEmpty() ? 1 : Math.max(0, Math.min(
+                    (getWidth() - 1) * 2 / inkBounds.getWidth(),
+                    (getHeight() - 1) * 2 / inkBounds.getHeight())) * fittedIconScale;
+            api.getGLStateManager().pushMatrix();
+            scaleAtPos(getX() + getWidth() * .5, getY() + getHeight() * .5, scale);
+        }
         fr.drawString(icon, this.getX() + this.getWidth() * 0.5 - w * 0.5 + fontOffsetX, this.getY() + this.getHeight() * 0.5 - h * 0.5 + fontOffsetY, this.getHexColor());
+        if (fitIconToBounds) api.getGLStateManager().popMatrix();
     }
 
     @Override

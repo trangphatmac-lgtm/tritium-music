@@ -881,10 +881,87 @@ public class CloudMusic implements SharedConstants {
         }
     }
 
+    /** System media integration reads this off the render thread. Never inspect a disposed sample. */
+    public static PlaybackState playbackState() {
+        synchronized (playThread == null ? playbackLock : playThread) {
+            Music song = currentlyPlaying;
+            if (song == null) return PlaybackState.empty();
+            AudioPlayer current = player;
+            boolean ready = current != null && !current.isFinished();
+            boolean loading = !ready && playThread != null && playThread.isAlive() && !doBreak;
+            PlaybackState.Status status = loading ? PlaybackState.Status.OPENING
+                    : !ready ? PlaybackState.Status.STOPPED
+                    : current.isPausing() ? PlaybackState.Status.PAUSED : PlaybackState.Status.PLAYING;
+            long duration = ready ? (long) current.getTotalTimeMillis() : song.getDuration();
+            long position = ready ? (long) current.getCurrentTimeMillis() : 0;
+            boolean previous = curIdx > 0 || playMode == PlayMode.LoopInList || playMode == PlayMode.LoopSingle;
+            return new PlaybackState(song, status, position, duration, ready, ready,
+                    ready && !playList.isEmpty() && previous,
+                    ready && !playList.isEmpty() && canPlayNext());
+        }
+    }
+
     public static void seek(float millis) {
         synchronized (playThread == null ? playbackLock : playThread) {
             if (playThread instanceof PlayThread thread) thread.cancelAutoMix(SEEK);
             if (player != null) player.setPlaybackTime(millis);
+        }
+    }
+
+    /** Capture the active deck before shutdown disposes it, including pending play-next requests. */
+    public static PlaybackSession capturePlaybackSession() {
+        synchronized (playbackLock) {
+            synchronized (playThread == null ? playbackLock : playThread) {
+                Music song = currentlyPlaying;
+                if (song == null) return null;
+                PlayThread thread = playThread instanceof PlayThread active ? active : null;
+                List<Music> queue = new ArrayList<>(playList);
+                int index = curIdx;
+                if (index < 0 || index >= queue.size() || !song.equals(queue.get(index))) index = queue.indexOf(song);
+                if (index < 0) {
+                    queue.add(song);
+                    index = queue.size() - 1;
+                }
+                PlaybackState state = playbackState();
+                long position = state.positionMillis();
+                boolean paused = state.status() != PlaybackState.Status.PLAYING
+                        && state.status() != PlaybackState.Status.OPENING;
+                // Preserve the original cue if the user exits while restoring/buffering or after a load failure.
+                if (thread != null && thread.resumeSession != null && thread.resumeSession.song().equals(song)) {
+                    position = thread.resumeSession.positionMillis();
+                    paused = thread.resumeSession.paused();
+                }
+                PlayMode mode = playMode == PlayMode.Heartbeat ? modeBeforeHeartbeat : playMode;
+                return new PlaybackSession(queue, index, position, paused, mode,
+                        thread == null ? List.of() : new ArrayList<>(thread.nextSongs));
+            }
+        }
+    }
+
+    public static boolean restorePlayback(PlaybackSession session) {
+        return restorePlayback(session, Thread::start);
+    }
+
+    static boolean restorePlayback(PlaybackSession session, Consumer<PlayThread> start) {
+        if (session == null) return false;
+        synchronized (playbackLock) {
+            // A slow login must never replace a song the user has already chosen.
+            if (playThread != null || currentlyPlaying != null || player != null) return false;
+            playMode = session.mode();
+            playList = new ArrayList<>(session.songs());
+            curIdx = session.index();
+            currentlyPlaying = session.song();
+            playedFrom = null;
+            PlayThread thread = new PlayThread(playList, curIdx);
+            thread.resumeSession = session;
+            thread.nextSongs.addAll(session.nextSongs());
+            playThread = thread;
+            doBreak = false;
+            dontAdd = false;
+            playing.set(false);
+            // Start directly: normal play() reshuffles Random queues, losing the saved order.
+            start.accept(thread);
+            return true;
         }
     }
 
@@ -993,6 +1070,7 @@ public class CloudMusic implements SharedConstants {
         private boolean acceptingNext = true;
         private final List<Music> nextSongs = new ArrayList<>();
         private Music activeSong;
+        private PlaybackSession resumeSession;
         private boolean previousRequested;
         private boolean queuedTrack;
         private long mixRevision;
@@ -1357,6 +1435,7 @@ public class CloudMusic implements SharedConstants {
 
         /** Consume pending queue requests only at a natural or AutoMix track boundary. */
         synchronized void advanceAfterTrack(int completedIndex) {
+            resumeSession = null;
             boolean previous = previousRequested;
             previousRequested = false;
             boolean manual = dontAdd;
@@ -1690,7 +1769,7 @@ public class CloudMusic implements SharedConstants {
             System.out.printf("[NCM] Now playing: %s, id %d\n", song.getName(), song.getId());
         }
         
-        private void startPlayback() {
+        void startPlayback() {
             AudioPlayer source = player;
             playing.set(true);
             source.setAfterPlayed(() -> {
@@ -1699,7 +1778,10 @@ public class CloudMusic implements SharedConstants {
                 if (playThread == this && CloudMusic.player == source && transition == null) playing.set(false);
             });
             try {
-                source.play();
+                PlaybackSession resume = resumeSession;
+                if (resume != null) source.setPlaybackTime(resume.positionMillis());
+                if (resume == null || !resume.paused()) source.play();
+                resumeSession = null;
             } catch (RuntimeException failure) {
                 playing.set(false);
                 throw failure;

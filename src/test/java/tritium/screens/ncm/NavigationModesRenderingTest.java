@@ -144,6 +144,7 @@ class NavigationModesRenderingTest {
             }
             verifySparseLayoutsAndMotion(playlists);
             verifyGlassBackdrop();
+            verifyCoverflowDetailChrome(playlists);
             nav.mode().setValue("Wall"); nav.wallLook().setValue("partial");
             Display.setDisplayMode(new DisplayMode(900,640));
             var highResolution=Class.forName("tritium.desktop.MacOpenGLSurface").getDeclaredMethod("enableHighResolution");
@@ -195,6 +196,43 @@ class NavigationModesRenderingTest {
         }
         prefs.interfaceStyle().setValue("Static");
     }
+    private void verifyCoverflowDetailChrome(List<PlayList> playlists) throws Exception {
+        var prefs=DesktopAppState.preferences(); var nav=prefs.navigation();
+        String appearance=prefs.appearance().getValue();
+        String coverflow=nav.coverflow().getValue();
+        var empty=new PlayList(9999,"Empty playlist","",0,0,CloudMusic.profile,"",false,0,0);
+        empty.musics=List.of(); empty.musicsLoaded=true;
+        CloudMusic.playLists=List.of();
+        try {
+            for(String theme:List.of("Dark","Light")) for(String layout:List.of("TopBar","Sidebar"))
+                for(String style:List.of("Card","Mirror","OldSchool")) {
+                    prefs.appearance().setValue(theme); prefs.layout().setValue(layout);
+                    nav.mode().setValue("Coverflow"); nav.coverflow().setValue(style);
+                    var library=new PlaylistLibraryPanel(screen,false);
+                    screen.setCurrentPanel(library);
+                    for(int i=0;i<40;i++) frame(-1,-1);
+                    double x=RenderSystem.getWidth()-5,y=100;
+                    int root=pixel(x,y);
+                    assertEquals(AppTheme.background()&0xFFFFFF,root,"The library must not have a dark overlay: "+style);
+                    screen.setCurrentPanel(new PlaylistPanel(empty));
+                    for(int i=0;i<40;i++) frame(-1,-1);
+                    int detail=pixel(x,y);
+                    for(int shift:new int[]{0,8,16})
+                        assertEquals(((root>>shift)&255)*.5,(detail>>shift)&255,2,"Every Coverflow detail dims its background: "+style);
+                    var backField=NCMScreen.class.getDeclaredField("coverBackButton"); backField.setAccessible(true);
+                    var back=(tritium.rendering.ui.widgets.RoundedRectWidget)backField.get(screen);
+                    assertTrue(back.getX()>=screen.currentPanelBg.getX());
+                    assertTrue(back.getY()>=screen.basePanel.getChildren().getFirst().getY());
+                    int mx=(int)(back.getX()+back.getWidth()/2),my=(int)(back.getY()+back.getHeight()/2);
+                    screen.mouseClicked(mx,my,0); screen.mouseReleased(mx,my,0);
+                    assertSame(library,screen.getCurrentPanel(),"The back control returns exactly one page: "+style);
+                    for(int i=0;i<40;i++) frame(-1,-1);
+                    assertEquals(root,pixel(x,y),"Returning to the library removes the shade: "+style);
+                }
+        } finally {
+            prefs.appearance().setValue(appearance); nav.coverflow().setValue(coverflow); CloudMusic.playLists=playlists;
+        }
+    }
     private void verifySparseLayoutsAndMotion(List<PlayList> playlists) throws Exception {
         var prefs=DesktopAppState.preferences(); var nav=prefs.navigation(); prefs.layout().setValue("TopBar");
         nav.wallLook().setValue("solid"); nav.mode().setValue("Wall");
@@ -245,16 +283,51 @@ class NavigationModesRenderingTest {
             }
         }
         nav.mode().setValue("Coverflow"); nav.coverflow().setValue("Card"); nav.cardStyle().setValue("card");
-        screen.setCurrentPanel(new PlaylistLibraryPanel(screen,false)); settle(); screen.keyTyped('\0',Keyboard.KEY_RIGHT); settle();
+        nav.rememberPosition().setValue(false);
+        screen.setCurrentPanel(new PlaylistLibraryPanel(screen,false)); settle();
+        screen.keyTyped('\0',Keyboard.KEY_HOME); screen.keyTyped('\0',Keyboard.KEY_RIGHT); screen.keyTyped('\0',Keyboard.KEY_RIGHT); settle();
         save("navigation-card-sparse-five");
         var view=screen.getCurrentPanel().getCoverNavigation();
         var geom=view.getClass().getDeclaredField("geometry"); geom.setAccessible(true);
         @SuppressWarnings("unchecked") var cards=(List<tritium.screens.ncm.navigation.FoliaGeometry.Box>)geom.get(view);
         assertEquals(1,cards.stream().map(tritium.screens.ncm.navigation.FoliaGeometry.Box::centerY).distinct().count());
-        assertTrue(cards.getFirst().height()*1.2>screen.currentPanelBg.getHeight()*.65,"Carousel must use the available height");
+        var hitField=view.getClass().getDeclaredField("hits"); hitField.setAccessible(true);
+        @SuppressWarnings("unchecked") var visible=(List<tritium.screens.ncm.navigation.FoliaGeometry.Box>)hitField.get(view);
+        assertEquals(5,visible.size(),"A centred library carousel must show two cards on each side");
+        assertTrue(visible.stream().allMatch(b->b.x()>=screen.currentPanelBg.getX()
+                &&b.x()+b.width()<=screen.currentPanelBg.getX()+screen.currentPanelBg.getWidth()),"All five cards fit the safe area");
+        double libraryWidth=visible.stream().filter(b->b.index()==2).findFirst().orElseThrow().width();
         screen.keyTyped('\n',Keyboard.KEY_RETURN);
-        for(int i=0;i<7;i++) frame(-1,-1);
-        save("navigation-card-flight-middle"); settle();
+        frame(-1,-1);
+        var detail=screen.getCurrentPanel().getCoverNavigation();
+        var transition=detail.getClass().getDeclaredField("transitionAt"); transition.setAccessible(true);
+        for(int age:new int[]{150,300,450,600}) {
+            transition.setLong(detail,System.nanoTime()/1_000_000-age);
+            frame(-1,-1); save("navigation-card-flip-"+age);
+            var paintedField=detail.getClass().getDeclaredField("painted"); paintedField.setAccessible(true);
+            var painted=(List<?>)paintedField.get(detail);
+            int sleeves=0,songs=0;
+            for(Object face:painted) {
+                var boxMethod=face.getClass().getDeclaredMethod("box"); boxMethod.setAccessible(true);
+                var box=(tritium.screens.ncm.navigation.FoliaGeometry.Box)boxMethod.invoke(face);
+                var entryMethod=face.getClass().getDeclaredMethod("entry"); entryMethod.setAccessible(true);
+                var entry=(tritium.screens.ncm.navigation.NavigationContent.Entry)entryMethod.invoke(face);
+                if(entry.key().equals("playlist:8802")) sleeves++;
+                else if(!entry.collection()&&box.index()==0) {
+                    songs++;
+                    if(age==450) for(double fraction:new double[]{.55,.6,.65,.7,.75})
+                        assertTrue(((pixel(box.x()+box.width()*fraction,box.y()+box.height()*.4)>>16)&255)>70,
+                                "The turning song artwork must stay solid, without depth stripes or clipped glyph planes");
+                }
+            }
+            assertTrue(sleeves+songs<=1,"The flight slot must never paint both the old sleeve and the new song");
+            if(age==150) assertEquals(0,songs,"The new song stays hidden until the sleeve turns edge-on");
+            if(age>=450) assertEquals(0,sleeves,"The old sleeve is gone after the flip midpoint");
+        }
+        settle();
+        @SuppressWarnings("unchecked") var songs=(List<tritium.screens.ncm.navigation.FoliaGeometry.Box>)hitField.get(detail);
+        double songWidth=songs.stream().filter(b->b.index()==0).findFirst().orElseThrow().width();
+        assertTrue(libraryWidth>songWidth&&libraryWidth<songWidth*1.2,"The library sleeve is only slightly wider than a song card");
         CloudMusic.playLists=playlists;
     }
     private static int pixel(double x,double y) {
@@ -272,7 +345,7 @@ class NavigationModesRenderingTest {
         var wall=settingRow(scroll,"settings.wallLook");
         var prefs=DesktopAppState.preferences().navigation();
         prefs.mode().setValue("List"); settle();
-        scroll.actualScrollOffset=scroll.targetScrollOffset=scroll.actualScrollOffset+mode.getRelativeY()-12;
+        scroll.actualScrollOffset=scroll.targetScrollOffset=scroll.actualScrollOffset+(mode.getY() - scroll.getY())-12;
         settle();
         click(mode); settle(); assertEquals("Coverflow",prefs.mode().getValue());
         assertFalse(style.isHidden()); assertFalse(card.isHidden()); assertTrue(wall.isHidden());
@@ -287,7 +360,7 @@ class NavigationModesRenderingTest {
         screen.mouseClicked(x,y,0); screen.mouseReleased(x,y,0);
     }
     private static tritium.rendering.ui.AbstractWidget<?> settingRow(tritium.rendering.ui.container.ScrollPanel scroll,String key) {
-        return scroll.getChildren().stream().filter(row -> {
+        return scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).filter(row -> {
             try { var label=row.getClass().getSuperclass().getDeclaredField("label"); label.setAccessible(true); return key.equals(label.get(row)); }
             catch(ReflectiveOperationException ignored) { return false; }
         }).findFirst().orElseThrow();

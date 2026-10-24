@@ -97,7 +97,7 @@ public class CloudStoragePanel extends NCMPanel {
 
         addChild(songsPanel);
         songsPanel.setBeforeRenderCallback(() -> songsPanel.setBounds(24, 114,
-                Math.max(0, getWidth() - 48), Math.max(0, getHeight() - 130)));
+                Math.max(0, getWidth() - 48), Math.max(0, getHeight() - 114 - scrollBottomInset(16))));
         refresh();
     }
 

@@ -87,7 +87,7 @@ public final class PlaylistLibraryPanel extends NCMPanel {
 
         list.setSpacing(ROW_SPACING);
         list.setBeforeRenderCallback(() -> list.setBounds(MARGIN, LIST_TOP,
-                Math.max(0, getWidth() - MARGIN * 2), Math.max(0, getHeight() - LIST_TOP - MARGIN)));
+                Math.max(0, getWidth() - MARGIN * 2), Math.max(0, getHeight() - LIST_TOP - scrollBottomInset(MARGIN))));
         addChild(list);
         LabelWidget empty = new LabelWidget(() -> I18n.text(source == null ? "library.loading"
                 : subscribed ? "library.emptySaved" : "library.emptyMine"), FontManager.pf18bold);

@@ -80,7 +80,7 @@ class UiMaterialRenderingTest {
             assertTrue(DesktopAppState.background().isActive());
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
             var styleRow = interfaceStyleRow(scroll, preferences.interfaceStyle());
-            scroll.actualScrollOffset = scroll.targetScrollOffset = styleRow.getRelativeY() - 8;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = (styleRow.getY() - scroll.getY()) - 8;
             render();
             for (String expected : new String[]{"Blur", "LiquidGlass", "Static"}) {
                 double x = styleRow.getX() + 20, y = styleRow.getY() + 20;
@@ -201,7 +201,7 @@ class UiMaterialRenderingTest {
     }
 
     private static tritium.rendering.ui.AbstractWidget<?> interfaceStyleRow(ScrollPanel scroll, ModePreference preference) throws Exception {
-        for (var row : scroll.getChildren()) {
+        for (var row : scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).toList()) {
             try {
                 var field = row.getClass().getDeclaredField("preference");
                 field.setAccessible(true);

@@ -108,14 +108,11 @@ public class HomePanel extends NCMPanel {
 
         scrollPanel
                 .setAlignment(ScrollPanel.Alignment.VERTICAL_WITH_HORIZONTAL_FILL)
-                .setBeforeRenderCallback(() -> scrollPanel
-                        .setMargin(margin)
-                        .setBounds(
-                                scrollPanel.getRelativeX(),
-                                scrollPanel.getRelativeY() + lblWelcome.getHeight() + margin,
-                                scrollPanel.getWidth(),
-                                scrollPanel.getHeight() - lblWelcome.getHeight() - margin
-                        ));
+                .setBeforeRenderCallback(() -> {
+                    double top = margin * 2 + lblWelcome.getHeight();
+                    scrollPanel.setBounds(margin, top, Math.max(0, getWidth() - margin * 2),
+                            Math.max(0, getHeight() - top - scrollBottomInset(margin)));
+                });
 
         playLists.forEach(pl -> scrollPanel.addChild(new PlaylistWidget(pl).setShouldOverrideMouseCursor(true)));
 

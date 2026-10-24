@@ -125,6 +125,19 @@ class AudioPlayerMixTest {
         assertTrue(outputs[0].peak > 0);
     }
 
+    @Test void freshDeckCanRestoreAPausedCueWithoutAnAudibleStart() {
+        AudioPlayer deck = deck(false);
+        deck.setPlaybackTime(1_000);
+        render(2);
+        assertTrue(deck.isPausing());
+        assertEquals(1_000, deck.getCurrentTimeMillis(), 1);
+        assertEquals(0, outputs[0].peak, 0);
+        deck.play();
+        render(2);
+        assertTrue(deck.getCurrentTimeMillis() > 1_000);
+        assertTrue(outputs[0].peak > 0);
+    }
+
     @Test void streamingDeckPreservesVolumePauseSeekAndOtherVoices() throws Exception {
         byte[] audio = Files.readAllBytes(file.toPath());
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

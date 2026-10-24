@@ -79,7 +79,7 @@ class BackgroundRenderingTest {
             AbstractWidget<?> lyricsTransparency = preferenceRow(scroll, bg.lyricsTransparency());
             assertTrue(lyricsToggle.isHidden(), "Solid color has no lyrics-background option");
             assertTrue(lyricsTransparency.isHidden());
-            scroll.actualScrollOffset = scroll.targetScrollOffset = modeRow.getRelativeY() - 8;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = (modeRow.getY() - scroll.getY()) - 8;
             render();
             render(modeRow.getX() + 20, modeRow.getY() + 20);
             settings.onMouseClickReceived(modeRow.getX() + 20, modeRow.getY() + 20, 0);
@@ -256,7 +256,7 @@ class BackgroundRenderingTest {
             for (String mode : new String[]{"picture", "video"}) {
                 String sample = System.getProperty("tritium.backgroundSample." + mode);
                 if (sample == null) continue;
-                scroll.actualScrollOffset = scroll.targetScrollOffset = modeRow.getRelativeY() - 8;
+                scroll.actualScrollOffset = scroll.targetScrollOffset = (modeRow.getY() - scroll.getY()) - 8;
                 bg.mode().setValue(mode);
                 (mode.equals("picture") ? bg.pictureFile() : bg.videoFile()).setValue(sample);
                 render();
@@ -287,7 +287,7 @@ class BackgroundRenderingTest {
     }
 
     private static AbstractWidget<?> preferenceRow(ScrollPanel scroll, PreferenceValue<?> preference) throws Exception {
-        for (AbstractWidget<?> row : scroll.getChildren()) {
+        for (AbstractWidget<?> row : scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).toList()) {
             try {
                 var field = row.getClass().getDeclaredField("preference");
                 field.setAccessible(true);

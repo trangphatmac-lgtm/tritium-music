@@ -20,7 +20,9 @@ import tritium.rendering.animation.Interpolations;
 import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.ui.container.Panel;
 import tritium.rendering.ui.widgets.RectWidget;
+import tritium.rendering.ui.widgets.RoundedRectWidget;
 import tritium.screens.ncm.panels.ControlsBar;
+import tritium.screens.ncm.panels.FoliaMiniControls;
 import tritium.screens.ncm.panels.HomePanel;
 import tritium.screens.ncm.panels.NavigateBar;
 import tritium.screens.ncm.panels.TopNavigateBar;
@@ -58,6 +60,14 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
     private boolean topBarLayout;
     private tritium.screens.ncm.navigation.CoverNavigationView activeCoverNavigation;
     private String activeNavigationMode = "";
+    private RoundedRectWidget coverBackButton;
+    private float coverDetailShade;
+
+    private boolean isCoverflowDetail() {
+        var view = coverNavigation();
+        return view != null && DesktopAppState.preferences().navigation().mode().getValue().equals("Coverflow")
+                && !view.content().isCollectionLibrary();
+    }
 
     private tritium.screens.ncm.navigation.CoverNavigationView coverNavigation() {
         return currentPanel == null || DesktopAppState.preferences().navigation().isList() ? null : currentPanel.getCoverNavigation();
@@ -79,6 +89,8 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     public void navigateBack() {
         if (currentActionPointer > 0) actions.get(--currentActionPointer).run();
+        else if (isCoverflowDetail()) setCurrentPanel(new PlaylistLibraryPanel(this,
+                getNavigationSection() == NavigationSection.SAVED_PLAYLISTS));
         else setCurrentPanel(new SettingsPanel());
     }
 
@@ -92,6 +104,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     @Getter
     ControlsBar controlsBar;
+    private ControlsBar capturedPlayerControls;
 
     public MusicLyricsPanel musicLyricsPanel = null;
 
@@ -135,6 +148,38 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             // Only replace navigation. Keep page/scroll state, history, and player controls.
             this.layoutNavigation();
         }
+        syncPlayerControls();
+    }
+
+    private void syncPlayerControls() {
+        boolean mini = DesktopAppState.preferences().playerControls().getValue().equals("FoliaMini");
+        if (controlsBar == null || mini != (controlsBar instanceof FoliaMiniControls)) {
+            controlsBar = mini ? new FoliaMiniControls() : new ControlsBar();
+            controlsBar.onInit();
+        }
+    }
+
+    private double contentBottom() {
+        return controlsBar instanceof FoliaMiniControls
+                ? getPanelHeight()
+                : getPanelHeight() * .93;
+    }
+
+    private void positionMiniControls(double mouseX, double mouseY) {
+        if (!(controlsBar instanceof FoliaMiniControls mini)) return;
+        double left = topBarLayout ? 0 : getPanelWidth() * .15;
+        double available = getPanelWidth() - left;
+        boolean focused = Display.isActive() && musicLyricsPanel == null;
+        if (!focused && capturedPlayerControls == mini) {
+            mini.cancelInteraction();
+            capturedPlayerControls = null;
+        }
+        mini.arrange(left, available, getPanelHeight(), mouseX, mouseY, focused, capturedPlayerControls == mini);
+    }
+
+    private boolean overMiniControls(double mouseX, double mouseY) {
+        return controlsBar instanceof FoliaMiniControls mini && mini.contains(mouseX, mouseY)
+                && !(coverNavigation() != null && DesktopAppState.preferences().navigation().isFullscreen());
     }
 
     @Override
@@ -147,19 +192,28 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
     public void layout() {
         this.basePanel.setBeforeRenderCallback(() -> this.basePanel.center());
         if (searchBar == null) searchBar = new MusicSearchBar(this);
+        if (coverBackButton == null) {
+            coverBackButton = new RoundedRectWidget();
+            coverBackButton.setRadius(11);
+            coverBackButton.setShouldOverrideMouseCursor(true);
+            coverBackButton.setOnClickCallback((x, y, button) -> {
+                if (button != 0) return false;
+                navigateBack();
+                return true;
+            });
+        }
         this.layoutNavigation();
 
         this.currentPanelBg.setBeforeRenderCallback(() -> {
             double left = topBarLayout ? 0 : navigation.getWidth();
             double top = topBarLayout ? navigation.getHeight() : 0;
             this.currentPanelBg.setBounds(left, top, this.getPanelWidth() - left,
-                    Math.max(0, this.getPanelHeight() * .93 - top));
+                    Math.max(0, contentBottom() - top));
             this.currentPanelBg.setColor(getColor(ColorType.GENERIC_BACKGROUND));
             this.currentPanelBg.setAlpha((activeCoverNavigation != null || DesktopAppState.background().isActive() || UiMaterials.enabled()) ? 0f : 1f);
         });
 
-        this.controlsBar = new ControlsBar();
-        this.controlsBar.onInit();
+        syncPlayerControls();
     }
 
     private void layoutNavigation() {
@@ -228,12 +282,17 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         this.checkDirty();
 
         syncCoverNavigation();
+        positionMiniControls(mX, mY);
         int dWheel = Mouse.getDWheel();
 
         RenderSystem.FIXED_SCALE = false;
         api.getGLStateManager().pushMatrix();
         double mouseX = mX;
         double mouseY = mY;
+        boolean blockPagePointer = overMiniControls(mouseX, mouseY) || capturedPlayerControls != null;
+        double pageMouseX = blockPagePointer ? -1 : mouseX;
+        double pageMouseY = blockPagePointer ? -1 : mouseY;
+        int pageWheel = blockPagePointer ? 0 : dWheel;
 
         UiMaterials.beginFrame(mouseX, mouseY);
         boolean coverLyrics = this.musicLyricsPanel != null;
@@ -244,6 +303,11 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
                 && (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha < .999f
                     || DesktopAppState.preferences().background().appliesToLyrics()), coverSource, coverLyrics);
 
+        // Shared by Card, Mirror and OldSchool; the library itself stays undimmed.
+        coverDetailShade = Interpolations.interpolate(coverDetailShade, isCoverflowDetail() ? 1f : 0f, .16f);
+        if (coverDetailShade > .001f && (musicLyricsPanel == null || musicLyricsPanel.alpha <= .9f))
+            Rect.draw(0, 0, getPanelWidth(), getPanelHeight(), RenderSystem.reAlpha(0xFF000000, coverDetailShade * .5f));
+
         // Draw the cover field as part of the scene BEFORE the material capture, so the
         // original glass/blur controls refract the covers underneath them in this same frame.
         if (activeCoverNavigation != null && CloudMusic.profile != null
@@ -253,11 +317,11 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             else navigation.setBounds(0, 0, getPanelWidth() * .15, getPanelHeight());
             double left = topBarLayout ? 0 : navigation.getWidth();
             double top = topBarLayout ? navigation.getHeight() : 0;
-            double bottom = getPanelHeight() * .93;
+            double bottom = contentBottom();
             activeCoverNavigation.setSafeArea(left, top, getPanelWidth() - left, bottom - top);
             boolean overShell = mouseX < left || mouseY < top || mouseY >= bottom;
             activeCoverNavigation.render(0, 0, getPanelWidth(), getPanelHeight(),
-                    mouseX, mouseY, overShell ? 0 : dWheel);
+                    pageMouseX, pageMouseY, overShell ? 0 : pageWheel);
         }
         if (musicLyricsPanel == null || musicLyricsPanel.alpha <= .9f) UiMaterials.captureBackdrop(false);
 
@@ -277,6 +341,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
             // The same shell and search field remain the only navigation controls.
             navigation.setAlpha(alpha);
             navigation.renderWidget(mouseX, mouseY, dWheel);
+            renderCoverBackButton(mouseX, mouseY);
             renderLyricsPanel(mouseX, mouseY, dWheel);
             renderDownloadingPanel();
             api.getGLStateManager().popMatrix();
@@ -290,7 +355,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
         if (this.musicLyricsPanel == null || this.musicLyricsPanel.alpha <= .9f) {
             this.basePanel.setAlpha(alpha);
-            this.basePanel.renderWidget(mouseX, mouseY, dWheel);
+            this.basePanel.renderWidget(pageMouseX, pageMouseY, pageWheel);
 
             float alphaInterpolateSpeed = 0.4f;
             if (activeCoverNavigation != null) {
@@ -302,7 +367,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
                 api.getGLStateManager().pushMatrix();
                 this.scaleAtPos(this.currentPanelBg.getX() + this.currentPanelBg.getWidth() * .5, this.currentPanelBg.getY() + this.currentPanelBg.getHeight() * .5, 0.9 + (this.prevAnimatingPanel.getAlpha() * 0.1));
-                this.prevAnimatingPanel.renderWidget(mouseX, mouseY, dWheel);
+                this.prevAnimatingPanel.renderWidget(pageMouseX, pageMouseY, pageWheel);
                 api.getGLStateManager().popMatrix();
 
                 if (this.prevAnimatingPanelAlpha <= 0.02f)
@@ -317,7 +382,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
                 api.getGLStateManager().pushMatrix();
                 this.scaleAtPos(this.currentPanelBg.getX() + this.currentPanelBg.getWidth() * .5, this.currentPanelBg.getY() + this.currentPanelBg.getHeight() * .5, 1.1 - (curPanelAlphaAnimation * 0.1));
 
-                this.currentPanel.renderWidget(mouseX, mouseY, dWheel);
+                this.currentPanel.renderWidget(pageMouseX, pageMouseY, pageWheel);
                 api.getGLStateManager().popMatrix();
 
                 StencilClipManager.endClip();
@@ -325,8 +390,14 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
             this.controlsBar.setAlpha(alpha);
             double controlsY = this.currentPanelBg.getY() + this.currentPanelBg.getHeight();
-            this.controlsBar.setBounds(this.currentPanelBg.getX(), controlsY, this.currentPanelBg.getWidth(), this.getPanelHeight() - controlsY);
+            if (controlsBar instanceof FoliaMiniControls) {
+                // A separate foreground layer samples the fully drawn page, including its cards and text.
+                UiMaterials.captureBackdrop(false);
+            } else {
+                this.controlsBar.setBounds(this.currentPanelBg.getX(), controlsY, this.currentPanelBg.getWidth(), this.getPanelHeight() - controlsY);
+            }
             this.controlsBar.renderWidget(mouseX, mouseY, dWheel);
+            renderCoverBackButton(mouseX, mouseY);
         }
 
         renderLyricsPanel(mouseX, mouseY, dWheel);
@@ -338,6 +409,34 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         CursorUtils.setOverride();
         api.getGLStateManager().enableTexture2D();
 
+    }
+
+    private void renderCoverBackButton(double mouseX, double mouseY) {
+        if (!isCoverflowDetail() || musicLyricsPanel != null) return;
+        double left = topBarLayout ? 0 : navigation.getWidth();
+        double top = topBarLayout ? navigation.getHeight() : 0;
+        coverBackButton.setBounds(left + 12, top + 4, 22, 22);
+        boolean hovered = mouseX >= coverBackButton.getX() && mouseX < coverBackButton.getX() + coverBackButton.getWidth()
+                && mouseY >= coverBackButton.getY() && mouseY < coverBackButton.getY() + coverBackButton.getHeight();
+        coverBackButton.setColor(hovered ? AppTheme.color(0xFF383838, 0xFFE8E8E8)
+                : AppTheme.color(0xFF242424, 0xFFF7F7F7));
+        coverBackButton.setAlpha(alpha);
+        coverBackButton.renderWidget(mouseX, mouseY, 0);
+        // Centre the chevron's visible strokes, independent of font bearings/baselines.
+        double cx = coverBackButton.getX() + coverBackButton.getWidth() / 2;
+        double cy = coverBackButton.getY() + coverBackButton.getHeight() / 2;
+        double length = Math.sqrt(18);
+        int arrowColor = reAlpha(AppTheme.color(0xFFFFFFFF, 0xFF000000), alpha);
+        for (int direction : new int[]{-1, 1}) {
+            double lineY = cy + direction * 1.5;
+            api.getGLStateManager().pushMatrix();
+            api.getGLStateManager().translate(cx, lineY, 0);
+            api.getGLStateManager().rotate(direction * 45, 0, 0, 1);
+            api.getGLStateManager().scale(1, .5, 1);
+            // The rounded-rectangle shader reserves one unit per edge for antialiasing.
+            roundedRect(-length / 2 - 1, -1.5, length + 2, 3, .5, arrowColor);
+            api.getGLStateManager().popMatrix();
+        }
     }
 
     private void renderLyricsPanel(double mouseX, double mouseY, int dWheel) {
@@ -545,7 +644,18 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
                 if (currentActionPointer < actions.size() - 1) actions.get(++currentActionPointer).run();
                 return;
             }
+            if (overMiniControls(mouseX, mouseY)) {
+                if (mouseButton == 0) capturedPlayerControls = controlsBar;
+                controlsBar.onMouseClickReceived(mouseX, mouseY, mouseButton);
+                return;
+            }
             if (searchBar != null) searchBar.unfocusOutside(mouseX, mouseY);
+            if (isCoverflowDetail() && coverBackButton != null
+                    && mouseX >= coverBackButton.getX() && mouseX < coverBackButton.getX() + coverBackButton.getWidth()
+                    && mouseY >= coverBackButton.getY() && mouseY < coverBackButton.getY() + coverBackButton.getHeight()) {
+                coverBackButton.onMouseClickReceived(mouseX, mouseY, mouseButton);
+                return;
+            }
             this.basePanel.onMouseClickReceived(mouseX, mouseY, mouseButton);
             if (mouseButton < 3 && navigation != null
                     && mouseX >= navigation.getX() && mouseX <= navigation.getX() + navigation.getWidth()
@@ -556,11 +666,13 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
                 return;
             }
             if (coverNavigation() != null) {
-                if (mouseY < controlsBar.getY()) coverNavigation().click(mouseX, mouseY, mouseButton);
+                if (controlsBar instanceof FoliaMiniControls || mouseY < controlsBar.getY())
+                    coverNavigation().click(mouseX, mouseY, mouseButton);
             } else if (this.currentPanel != null)
                 this.currentPanel.onMouseClickReceived(mouseX, mouseY, mouseButton);
 
-            this.controlsBar.onMouseClickReceived(mouseX, mouseY, mouseButton);
+            if (!(controlsBar instanceof FoliaMiniControls))
+                this.controlsBar.onMouseClickReceived(mouseX, mouseY, mouseButton);
 
 
         } else {
@@ -571,6 +683,11 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     @Override
     public void mouseReleased(int mouseX, int mouseY, int mouseButton) {
+        if (mouseButton == 0 && capturedPlayerControls != null) {
+            capturedPlayerControls.onMouseReleaseReceived(mouseX, mouseY, mouseButton);
+            capturedPlayerControls = null;
+            return;
+        }
         if (coverNavigation() != null && musicLyricsPanel == null) {
             coverNavigation().release(mouseX, mouseY, mouseButton);
             if (DesktopAppState.preferences().navigation().isFullscreen()) return;

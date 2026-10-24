@@ -14,6 +14,8 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Home page, playlists, search, and liked songs
 - Switch between Sidebar list and Top navigation in Settings → Appearance → Layout; the choice is saved automatically. Top navigation includes Explore, My playlists, Saved playlists, Settings, and search, with dedicated scrollable playlist libraries.
 - Play, pause, previous track, and next track
+- Restore the last song, playback position, playing/paused state, queue (including play-next requests), and play mode on startup. State is saved on normal exit; a saved Heartbeat queue resumes in the preceding regular play mode. A song selected during startup takes priority over restoration.
+- Windows 10/11 system media controls (SMTC): song, artist, album, cover art, playback status and timeline, with play/pause, previous/next and seeking from Windows and supported media keys. Enabled automatically; see [Windows SMTC](docs/windows-smtc.md).
 - Stream uncached MP3, FLAC, WAV and M4A/MP4 songs after a short initial buffer while downloading and decoding in the background. Playback and lyrics wait when the buffer runs out; completed downloads remain reusable in the music cache. See [streaming playback](docs/streaming.md).
 - Volume adjustment and seek bar dragging
 - Optional smart transitions (AutoMix) in Settings → Playback, disabled by default and saved automatically. It follows the official client's feature-based transition approach for natural advancement to the next song, with a 5-second crossfade fallback when song features are unavailable. Manual track changes remain immediate. An optional Full AutoMix mode adds independent fade windows, 50 ms gain sampling and multi-stage EQ at the original playback speed. See [AutoMix details](docs/automix.md).
@@ -22,7 +24,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Cover loading and blurred backgrounds
 - Navigation modes in Settings → Appearance: List (default), Coverflow (OldSchool, Mirror or Card), and Wall. Explore, My playlists, Saved playlists and playlist pages share the selected mode. Covers follow source order, with one entry per song instead of album grouping.
 - OldSchool restores the original full-window Coverflow; Mirror retains screen-space reflections and the shared mirror plane. Both support the saved cover-reflection toggle.
-- Folia Card offers artwork-only and Polaroid styles, full-bleed/square options, saved focus, and size/opacity falloff. Bravais Wall offers transparency, window count, stacked collection edges, backdrop lyrics and blur. Playlist cards form a large single-row carousel; the wall repeats to fill the window. Both draw behind the original navigation and playback controls, including Blur/Liquid Glass materials, with hover, opening and reflow animations. The Bravais information strip stays hidden. See [navigation modes and controls](docs/navigation-modes.md).
+- Folia Card offers artwork-only and Polaroid styles, full-bleed/square options, saved focus, and size/opacity falloff. Bravais Wall offers transparency, window count, stacked collection edges, backdrop lyrics and blur. Playlist cards form a compact single-row carousel with two neighbours on either side and flip into the song view; the wall repeats to fill the window. Both draw behind the original navigation and playback controls, including Blur/Liquid Glass materials, with hover, opening and reflow animations. All Coverflow styles have a back button and a darkened background in playlist details. The Bravais information strip stays hidden. See [navigation modes and controls](docs/navigation-modes.md).
 - Music download cache and cache size display
 - Simplified Chinese, Traditional Chinese, and English in Settings → General → Language; changes apply immediately and are saved automatically (default: Simplified Chinese)
 - Settings → Playlist Export: select created or subscribed playlists and export HTML, Markdown, plain text, JSON, or CSV with optional song title, artists, NetEase ID, song URL, and duration. Selected playlists are combined in one UTF-8 file; JSON uses `name`/`songs` groups and string fields (duration is `m:ss` or `h:mm:ss`), while CSV includes a playlist column and a UTF-8 BOM for Excel.
@@ -178,6 +180,7 @@ Main files:
 
 - `NCMCookie.txt`: NetEase Cloud Music login cookie
 - `preferences.json`: player and HUD settings
+- `playback.json`: last playback session (saved atomically on exit)
 - `MusicCache/`: music cache
 - `natives/`: native runtime extracted at startup
 

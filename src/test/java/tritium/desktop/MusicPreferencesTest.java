@@ -18,6 +18,7 @@ class MusicPreferencesTest {
         assertEquals("Standard", preferences.quality().getValue());
         assertEquals("Dark", preferences.appearance().getValue());
         assertEquals("Static", preferences.interfaceStyle().getValue());
+        assertEquals("SingleColumn", preferences.settingsLayout().getValue());
         assertTrue(preferences.musicToast().getValue());
         assertFalse(preferences.showWidgetBoundary().getValue());
         assertFalse(preferences.lyricDebug().getValue());
@@ -78,6 +79,33 @@ class MusicPreferencesTest {
 
         assertTrue(ClientSettings.SHOW_WIDGET_BOUNDARY);
         assertTrue(ClientSettings.DEBUG_MODE);
+    }
+
+    @Test
+    void settingsLayoutPersistsIndependentlyAndAcceptsLegacyPreferences() {
+        MusicPreferences preferences = new MusicPreferences();
+        var changes = new java.util.concurrent.atomic.AtomicInteger();
+        preferences.setChangeCallback(changes::incrementAndGet);
+        preferences.settingsLayout().setValue("TwoColumns");
+        assertEquals(1, changes.get());
+        assertEquals("Sidebar", preferences.layout().getValue());
+
+        var stored = preferences.toJsonObject();
+        MusicPreferences restored = new MusicPreferences();
+        restored.setChangeCallback(changes::incrementAndGet);
+        restored.loadFromJsonObject(stored);
+        assertEquals("TwoColumns", restored.settingsLayout().getValue());
+        assertEquals(1, changes.get(), "Loading must not save again");
+
+        for (String value : new String[]{null, "unknown"}) {
+            if (value == null) stored.remove("ui.settingsLayout");
+            else stored.addProperty("ui.settingsLayout", value);
+            stored.addProperty("ui.layout", "TopBar");
+            MusicPreferences legacy = new MusicPreferences();
+            legacy.loadFromJsonObject(stored);
+            assertEquals("SingleColumn", legacy.settingsLayout().getValue());
+            assertEquals("TopBar", legacy.layout().getValue());
+        }
     }
 
     @Test

@@ -55,6 +55,10 @@ public final class AppPaths {
         return appDataDir().resolve("preferences.json");
     }
 
+    public static Path playbackFile() {
+        return appDataDir().resolve("playback.json");
+    }
+
     public static Path musicCacheDir() {
         return cacheDir().resolve("MusicCache");
     }

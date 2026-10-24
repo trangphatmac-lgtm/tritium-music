@@ -99,8 +99,8 @@ class NavigationLayoutRenderingTest {
             settle();
             var controls = screen.getControlsBar();
             var settingsScroll = scroll(settings);
-            var layoutRow = settingsScroll.getChildren().get(5);
-            settingsScroll.actualScrollOffset = settingsScroll.targetScrollOffset = layoutRow.getRelativeY() - 12;
+            var layoutRow = settingsScroll.getChildren().get(1).getChildren().get(3);
+            settingsScroll.actualScrollOffset = settingsScroll.targetScrollOffset = layoutRow.getY() - settingsScroll.getY() - 12;
             settle();
             double scrollOffset = settingsScroll.targetScrollOffset;
             click(layoutRow);

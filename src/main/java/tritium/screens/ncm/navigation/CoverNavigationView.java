@@ -40,7 +40,7 @@ public final class CoverNavigationView implements SharedConstants, SharedRenderi
     private String query="",layoutKey="";
     private int selected,wallOffset;
     private FoliaWall.Address startAddress;
-    private double x,y,width,height,cameraX,cameraY,targetX,targetY,zoom=1,wallScale;
+    private double x,y,width,height,cameraX,cameraY,targetX,targetY,zoom=1,wallScale,cardSpacing;
     private boolean entered,dragging,moved,keyboardFocus,opening,flip,wasWall,preserveCamera;
     private double pressX,pressY,pressCameraX,pressCameraY;
     private double safeX,safeY,safeWidth,safeHeight;
@@ -143,10 +143,16 @@ public final class CoverNavigationView implements SharedConstants, SharedRenderi
             }
         } else if(content.isCollectionLibrary()) {
             boolean image=preferences.cardStyle().getValue().equals("image");
-            double w=Math.max(60,Math.min(width*.28,(image?(cardHeight-65)/1.25:(cardHeight-65)/1.2-34)));
+            double availableWidth=safeWidth>0?safeWidth:width;
+            // Two neighbours on either side fit inside the shell's safe area. Keep
+            // the centre sleeve only slightly larger than the focused song card.
+            double songWidth=Math.max(70,Math.min(width*.24,cardHeight*.43));
+            double w=Math.max(32,Math.min(songWidth*1.01,(availableWidth-32)*.26));
+            w=Math.min(w,Math.max(32,image?(cardHeight-80)/1.25:(cardHeight-80)/1.2-34));
             double h=image?w:w+34;
+            cardSpacing=Math.max(1,Math.min(w+24,(availableWidth-32-w*.5)/4));
             List<FoliaGeometry.Box> row=new ArrayList<>();
-            for(int i=0;i<entries.size();i++) row.add(new FoliaGeometry.Box(i,i*(w+24)-w/2,-h/2,w,h));
+            for(int i=0;i<entries.size();i++) row.add(new FoliaGeometry.Box(i,i*cardSpacing-w/2,-h/2,w,h));
             geometry=row;
         } else {
             double w=Math.max(70,Math.min(width*.24,cardHeight*.43));
@@ -249,12 +255,14 @@ public final class CoverNavigationView implements SharedConstants, SharedRenderi
         List<Painted> scene=new ArrayList<>();
         for(var b:geometry) {
             double dx=b.centerX()-cameraX,dy=b.centerY()-cameraY;
+            double rowDistance=Math.abs(dx)/Math.max(1,cardSpacing);
+            if(library&&rowDistance>=2.5) continue;
             if(Math.abs(dx)>width/2+b.width()*2||Math.abs(dy)>height/2+b.height()*2) continue;
             double distance=library?Math.abs(dx):Math.hypot(dx,dy);
-            double fraction=unit(distance/Math.max(300,width*.52));
+            double fraction=library?unit(rowDistance/2):unit(distance/Math.max(300,width*.52));
             var falloff=FoliaGeometry.falloff(distance,Math.max(220,Math.hypot(width,height)*.48),preferences.minScale().getValue(),preferences.minOpacity().getValue());
             double scale=library?lerp(image?1.25:1.2,.5,fraction):falloff.scale();
-            float alpha=library?(float)Math.max(.15,1-.85*fraction):falloff.opacity();
+            float alpha=library?(float)((1-.75*fraction)*(1-unit((rowDistance-2)*2))):falloff.opacity();
             var draw=new FoliaGeometry.Box(b.index(),cardCenterX()+dx-b.width()*scale/2,
                     cardCenterY()+dy-b.height()*scale/2-(library?18+3*(1-fraction):0),b.width()*scale,b.height()*scale);
             boolean over=inside(mx,my)&&draw.contains(mx,my)&&!moved;
@@ -264,14 +272,16 @@ public final class CoverNavigationView implements SharedConstants, SharedRenderi
             scene.add(new Painted(b.index(),entries.get(b.index()),draw,alpha,hover,false,library));
         }
         scene.sort(Comparator.comparingDouble(p->-Math.abs(p.box.centerX()-(cardCenterX()))));
+        Painted hero=scene.stream().filter(p->p.box.index()==selected).findFirst().orElse(null);
+        boolean turning=hero!=null&&flightFrom!=null&&!flightFrom.wall&&age<600;
         if(!previous.isEmpty()&&age<460) for(var p:previous) {
-            if(p==flightFrom) continue;
+            if(turning&&p==flightFrom) continue;
             double t=ease(age/420),dx=p.box.centerX()-(cardCenterX()),dy=p.box.centerY()-(cardCenterY());
             paint(shift(p,dx*t*.45,dy*t*.45,.94,(float)(1-t)));
         }
-        Painted hero=null;
         for(var tile:scene) {
-            if(tile.box.index()==selected) hero=tile;
+            // The flipping sleeve owns this slot until its new face has landed.
+            if(turning&&tile==hero) continue;
             double d=Math.hypot(tile.box.centerX()-(cardCenterX()),tile.box.centerY()-(cardCenterY()));
             double delay=tile.box.index()==selected?0:Math.min(320,40+d/Math.max(1,width)*340);
             double p=ease((age-delay)/500);
@@ -280,10 +290,26 @@ public final class CoverNavigationView implements SharedConstants, SharedRenderi
             paint(shift(tile,Math.cos(angle)*travel,Math.sin(angle)*travel,.94+.06*p,(float)p));
             hits.add(tile.box);
         }
-        if(hero!=null&&flightFrom!=null&&age<600) {
+        if(turning) {
             var box=mix(flightFrom.box,hero.box,flight(age));
-            // Retain the opened sleeve throughout the flight, then hand it to the first song.
-            paint(new Painted(hero.id,library?hero.entry:flightFrom.entry,box,(float)(1-unit((age-460)/140)),1,false,hero.library));
+            double progress=unit(age/600);
+            double turn=progress*progress*(3-2*progress);
+            boolean front=turn<.5;
+            var face=front?flightFrom:hero;
+            double faceWidth=Math.abs(Math.cos(turn*Math.PI));
+            // Switch artwork and card style only while edge-on, never by fading
+            // an opaque old sleeve over an already visible song underneath it.
+            if(faceWidth>.002) {
+                api.getGLStateManager().pushMatrix();
+                api.getGLStateManager().translate(box.centerX(),box.centerY(),0);
+                // Project a Y-axis turn onto this orthographic UI plane. Keeping
+                // Z flat also keeps the rounded-card shaders and glyphs aligned.
+                api.getGLStateManager().scale(faceWidth,1,1);
+                api.getGLStateManager().translate(-box.centerX(),-box.centerY(),0);
+                paint(new Painted(hero.id,face.entry,box,(float)lerp(flightFrom.alpha,hero.alpha,flight(age)),
+                        lerp(flightFrom.hover,hero.hover,flight(age)),false,face.library));
+                api.getGLStateManager().popMatrix();
+            }
         }
         if(library&&!entries.isEmpty()) {
             var entry=entries.get(selected); double ty=(safeHeight>0?safeY+safeHeight:y+height)-42;
@@ -322,7 +348,7 @@ public final class CoverNavigationView implements SharedConstants, SharedRenderi
                 else expand((FoliaWall.Address)p.id);
             } else if(old==selected) activate(); else focusCamera();
         } else if(moved&&!preferences.isWall()&&content.isCollectionLibrary()&&!geometry.isEmpty()) {
-            select((int)Math.round(targetX/(geometry.getFirst().width()+24)));
+            select((int)Math.round(targetX/cardSpacing));
         }
         moved=false;
     }

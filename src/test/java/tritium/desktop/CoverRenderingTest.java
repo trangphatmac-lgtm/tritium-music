@@ -101,7 +101,7 @@ class CoverRenderingTest {
             assertTrue(row(scroll, bg.monetLayout()).isHidden());
             assertTrue(row(scroll, bg.applyToLyrics()).isHidden());
             AbstractWidget<?> submode = row(scroll, bg.coverMode());
-            scroll.actualScrollOffset = scroll.targetScrollOffset = row(scroll, bg.mode()).getRelativeY() - 8;
+            scroll.actualScrollOffset = scroll.targetScrollOffset = (row(scroll, bg.mode()).getY() - scroll.getY()) - 8;
             frame();
             click(settings, submode);
             assertEquals("nomand", bg.coverMode().getValue());
@@ -187,7 +187,7 @@ class CoverRenderingTest {
         frame();
     }
     private static AbstractWidget<?> row(ScrollPanel scroll, PreferenceValue<?> preference) throws Exception {
-        for (AbstractWidget<?> row : scroll.getChildren()) {
+        for (AbstractWidget<?> row : scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).toList()) {
             try { var field = row.getClass().getDeclaredField("preference"); field.setAccessible(true); if (field.get(row) == preference) return row; }
             catch (NoSuchFieldException ignored) { }
         }

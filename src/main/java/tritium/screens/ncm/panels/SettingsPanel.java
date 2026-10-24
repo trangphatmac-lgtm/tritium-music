@@ -57,65 +57,70 @@ public class SettingsPanel extends NCMPanel {
                 .setColor(NCMScreen.getColor(NCMScreen.ColorType.SECONDARY_TEXT))
                 .setPosition(MARGIN, title.getRelativeY() + title.getHeight() + 4));
 
-        ScrollPanel scrollPanel = new ScrollPanel();
+        SettingsScrollPanel scrollPanel = new SettingsScrollPanel(preferences.settingsLayout());
         this.addChild(scrollPanel);
-        scrollPanel.setSpacing(8);
         scrollPanel.setBeforeRenderCallback(() -> {
             backgroundRows.forEach((row, visible) -> row.setHidden(!visible.getAsBoolean()));
             double top = subtitle.getRelativeY() + subtitle.getHeight() + 22;
-            scrollPanel.setBounds(MARGIN, top, this.getWidth() - MARGIN * 2.0, this.getHeight() - top - MARGIN);
+            double bottom = scrollBottomInset(MARGIN);
+            scrollPanel.setBounds(MARGIN, top, this.getWidth() - MARGIN * 2.0, this.getHeight() - top - bottom);
         });
 
-        scrollPanel.addChild(new SectionHeader("settings.general"));
-        scrollPanel.addChild(new ChoiceRow("settings.language", preferences.language(),
+        SettingsSection section = scrollPanel.addSection("settings.general");
+        section.addChild(new ChoiceRow("settings.language", preferences.language(),
                 tag -> Language.fromTag(tag).nativeName()));
+        section.addChild(new ChoiceRow("settings.settingsLayout", preferences.settingsLayout()));
+        section.addChild(new HintRow("settings.settingsLayoutHint"));
 
-        scrollPanel.addChild(new SectionHeader("settings.appearance"));
-        scrollPanel.addChild(new ChoiceRow("settings.displayMode", preferences.appearance(),
+        section = scrollPanel.addSection("settings.appearance");
+        section.addChild(new ChoiceRow("settings.displayMode", preferences.appearance(),
                 mode -> I18n.text("mode." + mode)));
-        backgroundRow(scrollPanel, new ColorRow("settings.accent", preferences.accentColor(), false),
+        backgroundRow(section, new ColorRow("settings.accent", preferences.accentColor(), false),
                 () -> !preferences.background().mode().getValue().equals("latent"));
 
-        scrollPanel.addChild(new ChoiceRow("settings.layout", preferences.layout()));
-        addNavigationSettings(scrollPanel);
+        section.addChild(new ChoiceRow("settings.layout", preferences.layout()));
+        addNavigationSettings(section);
 
-        scrollPanel.addChild(new ChoiceRow("settings.interface", preferences.interfaceStyle()));
-        scrollPanel.addChild(new BackgroundStatusRow(UiMaterials::status));
+        section.addChild(new ChoiceRow("settings.interface", preferences.interfaceStyle()));
+        section.addChild(new BackgroundStatusRow(UiMaterials::status));
+        section.addChild(new ChoiceRow("settings.playerControls", preferences.playerControls()));
+        backgroundRow(section, new ToggleRow("settings.miniAutoCollapse", preferences.miniAutoCollapse()),
+                () -> preferences.playerControls().getValue().equals("FoliaMini"));
 
         addBackgroundSettings(scrollPanel);
 
-        scrollPanel.addChild(new SectionHeader("settings.playback"));
-        scrollPanel.addChild(new ChoiceRow("settings.quality", preferences.quality()));
-        scrollPanel.addChild(new SliderRow("settings.volume", preferences.volume(), value -> Math.round(value * 100) + "%"));
-        scrollPanel.addChild(new ToggleRow("settings.autoMix", preferences.autoMix()));
-        scrollPanel.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixHint")));
-        scrollPanel.addChild(new ToggleRow("settings.autoMixFullMode", preferences.autoMixFullMode()));
-        scrollPanel.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixFullModeHint")));
+        section = scrollPanel.addSection("settings.playback");
+        section.addChild(new ChoiceRow("settings.quality", preferences.quality()));
+        section.addChild(new SliderRow("settings.volume", preferences.volume(), value -> Math.round(value * 100) + "%"));
+        section.addChild(new ToggleRow("settings.autoMix", preferences.autoMix()));
+        section.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixHint")));
+        section.addChild(new ToggleRow("settings.autoMixFullMode", preferences.autoMixFullMode()));
+        section.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixFullModeHint")));
 
-        scrollPanel.addChild(new SectionHeader("settings.cache"));
-        scrollPanel.addChild(new CacheRow());
+        section = scrollPanel.addSection("settings.cache");
+        section.addChild(new CacheRow());
 
-        scrollPanel.addChild(new SectionHeader("歌单导出"));
-        scrollPanel.addChild(new PlaylistExportWidget());
+        section = scrollPanel.addSection("歌单导出");
+        section.addChild(new PlaylistExportWidget());
 
-        scrollPanel.addChild(new SectionHeader("settings.lyrics"));
-        scrollPanel.addChild(new ToggleRow("settings.autoUseBestLyric", preferences.autoUseBestLyric()));
-        scrollPanel.addChild(new LyricHintRow("settings.autoUseBestLyricHint"));
-        scrollPanel.addChild(new ChoiceRow("settings.lyricMatchPriority", preferences.preferredLyricSource(),
+        section = scrollPanel.addSection("settings.lyrics");
+        section.addChild(new ToggleRow("settings.autoUseBestLyric", preferences.autoUseBestLyric()));
+        section.addChild(new HintRow("settings.autoUseBestLyricHint"));
+        section.addChild(new ChoiceRow("settings.lyricMatchPriority", preferences.preferredLyricSource(),
                 value -> I18n.text("lyrics.source." + value)));
-        scrollPanel.addChild(new LyricHintRow("settings.lyricMatchPriorityHint"));
-        scrollPanel.addChild(new ToggleRow("settings.translation", preferences.showTranslation()));
-        scrollPanel.addChild(new ToggleRow("settings.roman", preferences.showRoman()));
-        scrollPanel.addChild(new SliderRow("settings.lyricHeight", preferences.lyricHeight(),
+        section.addChild(new HintRow("settings.lyricMatchPriorityHint"));
+        section.addChild(new ToggleRow("settings.translation", preferences.showTranslation()));
+        section.addChild(new ToggleRow("settings.roman", preferences.showRoman()));
+        section.addChild(new SliderRow("settings.lyricHeight", preferences.lyricHeight(),
                 value -> String.format(Locale.ROOT, "%.1f", value)));
 
-        scrollPanel.addChild(new SectionHeader("settings.systemHud"));
-        scrollPanel.addChild(new ToggleRow("settings.toast", preferences.musicToast()));
-        scrollPanel.addChild(new ToggleRow("settings.infoHudEnabled", preferences.hud().musicInfo().enabled()));
-        scrollPanel.addChild(new ToggleRow("settings.lyricsHudEnabled", preferences.hud().musicLyrics().enabled()));
-        scrollPanel.addChild(new ToggleRow("settings.spectrumHudEnabled", preferences.hud().musicSpectrum().enabled()));
-        scrollPanel.addChild(new ToggleRow("settings.editHud", preferences.hud().editMode()));
-        scrollPanel.addChild(new ActionRow("settings.resetHud", () -> {
+        section = scrollPanel.addSection("settings.systemHud");
+        section.addChild(new ToggleRow("settings.toast", preferences.musicToast()));
+        section.addChild(new ToggleRow("settings.infoHudEnabled", preferences.hud().musicInfo().enabled()));
+        section.addChild(new ToggleRow("settings.lyricsHudEnabled", preferences.hud().musicLyrics().enabled()));
+        section.addChild(new ToggleRow("settings.spectrumHudEnabled", preferences.hud().musicSpectrum().enabled()));
+        section.addChild(new ToggleRow("settings.editHud", preferences.hud().editMode()));
+        section.addChild(new ActionRow("settings.resetHud", () -> {
             Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment()
                     .getDefaultScreenDevice()
                     .getDefaultConfiguration()
@@ -125,38 +130,38 @@ public class SettingsPanel extends NCMPanel {
             DesktopAppState.savePreferences();
         }));
 
-        scrollPanel.addChild(new SectionHeader("settings.infoHud"));
-        scrollPanel.addChild(new SliderRow("settings.opacity", preferences.hud().musicInfo().opacity(),
+        section = scrollPanel.addSection("settings.infoHud");
+        section.addChild(new SliderRow("settings.opacity", preferences.hud().musicInfo().opacity(),
                 value -> Math.round(value * 100) + "%"));
-        scrollPanel.addChild(new ToggleRow("settings.artistLyric", preferences.hud().musicInfo().turnComposerIntoLyric()));
+        section.addChild(new ToggleRow("settings.artistLyric", preferences.hud().musicInfo().turnComposerIntoLyric()));
 
-        scrollPanel.addChild(new SectionHeader("settings.lyricsHud"));
-        scrollPanel.addChild(new ChoiceRow("settings.scrollEffect", preferences.hud().musicLyrics().scrollEffect()));
-        scrollPanel.addChild(new ChoiceRow("settings.align", preferences.hud().musicLyrics().align()));
-        scrollPanel.addChild(new ToggleRow("settings.singleLine", preferences.hud().musicLyrics().singleLine()));
-        scrollPanel.addChild(new ToggleRow("settings.shadow", preferences.hud().musicLyrics().shadow()));
-        scrollPanel.addChild(new ToggleRow("settings.graceScroll", preferences.hud().musicLyrics().graceScroll()));
+        section = scrollPanel.addSection("settings.lyricsHud");
+        section.addChild(new ChoiceRow("settings.scrollEffect", preferences.hud().musicLyrics().scrollEffect()));
+        section.addChild(new ChoiceRow("settings.align", preferences.hud().musicLyrics().align()));
+        section.addChild(new ToggleRow("settings.singleLine", preferences.hud().musicLyrics().singleLine()));
+        section.addChild(new ToggleRow("settings.shadow", preferences.hud().musicLyrics().shadow()));
+        section.addChild(new ToggleRow("settings.graceScroll", preferences.hud().musicLyrics().graceScroll()));
 
-        scrollPanel.addChild(new SectionHeader("settings.spectrumHud"));
-        scrollPanel.addChild(new ChoiceRow("settings.spectrumStyle", preferences.hud().musicSpectrum().style()));
-        scrollPanel.addChild(new ToggleRow("settings.compact", preferences.hud().musicSpectrum().compact()));
-        scrollPanel.addChild(new ToggleRow("settings.indicator", preferences.hud().musicSpectrum().indicator()));
-        scrollPanel.addChild(new ToggleRow("settings.absoluteVolume", preferences.hud().musicSpectrum().absoluteVolume()));
-        scrollPanel.addChild(new SliderRow("settings.multiplier", preferences.hud().musicSpectrum().multiplier(),
+        section = scrollPanel.addSection("settings.spectrumHud");
+        section.addChild(new ChoiceRow("settings.spectrumStyle", preferences.hud().musicSpectrum().style()));
+        section.addChild(new ToggleRow("settings.compact", preferences.hud().musicSpectrum().compact()));
+        section.addChild(new ToggleRow("settings.indicator", preferences.hud().musicSpectrum().indicator()));
+        section.addChild(new ToggleRow("settings.absoluteVolume", preferences.hud().musicSpectrum().absoluteVolume()));
+        section.addChild(new SliderRow("settings.multiplier", preferences.hud().musicSpectrum().multiplier(),
                 value -> String.format(Locale.ROOT, "%.1fx", value)));
-        scrollPanel.addChild(new ColorRow("settings.spectrumColor", preferences.hud().musicSpectrum().color(), true));
+        section.addChild(new ColorRow("settings.spectrumColor", preferences.hud().musicSpectrum().color(), true));
 
-        scrollPanel.addChild(new SectionHeader("settings.debug"));
-        scrollPanel.addChild(new SliderRow("settings.maxFps", preferences.maxFps(),
+        section = scrollPanel.addSection("settings.debug");
+        section.addChild(new SliderRow("settings.maxFps", preferences.maxFps(),
                 value -> Math.round(value) >= MusicPreferences.UNLIMITED_FPS ? I18n.text("common.unlimited") : Math.round(value) + " FPS"));
-        scrollPanel.addChild(new ToggleRow("settings.showFps", preferences.showFps()));
-        scrollPanel.addChild(new ToggleRow("settings.boundaries", preferences.showWidgetBoundary()));
-        scrollPanel.addChild(new ToggleRow("settings.wordLyrics", preferences.lyricDebug()));
-        scrollPanel.addChild(new ToggleRow("settings.autoMixDebug", preferences.autoMixDebug()));
-        scrollPanel.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixDebugHint")));
+        section.addChild(new ToggleRow("settings.showFps", preferences.showFps()));
+        section.addChild(new ToggleRow("settings.boundaries", preferences.showWidgetBoundary()));
+        section.addChild(new ToggleRow("settings.wordLyrics", preferences.lyricDebug()));
+        section.addChild(new ToggleRow("settings.autoMixDebug", preferences.autoMixDebug()));
+        section.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixDebugHint")));
     }
 
-    private void addBackgroundSettings(ScrollPanel scroll) {
+    private void addBackgroundSettings(SettingsScrollPanel scrollPanel) {
         BackgroundPreferences background = preferences.background();
         BooleanSupplier picture = () -> background.mode().getValue().equals("picture");
         BooleanSupplier folder = () -> picture.getAsBoolean() && background.pictureSource().getValue().equals("folder");
@@ -165,7 +170,7 @@ public class SettingsPanel extends NCMPanel {
         BooleanSupplier latent = () -> background.mode().getValue().equals("latent");
         BooleanSupplier cover = background::isCover;
         BooleanSupplier custom = () -> !background.mode().getValue().equals("static") && !cover.getAsBoolean();
-        scroll.addChild(new SectionHeader("settings.background"));
+        SettingsSection scroll = scrollPanel.addSection("settings.background");
         scroll.addChild(new ChoiceRow("settings.backgroundMode", background.mode()));
         scroll.addChild(new BackgroundStatusRow(DesktopAppState.background()::status));
         backgroundRow(scroll, new ChoiceRow("settings.coverMode", background.coverMode(),
@@ -218,7 +223,7 @@ public class SettingsPanel extends NCMPanel {
         backgroundRow(scroll, new ActionRow("settings.reloadBackground", DesktopAppState.background()::reload), custom);
     }
 
-    private void addNavigationSettings(ScrollPanel scroll) {
+    private void addNavigationSettings(SettingsSection scroll) {
         var nav = preferences.navigation();
         scroll.addChild(new ChoiceRow("settings.navigationMode", nav.mode()));
         BooleanSupplier flow = () -> nav.mode().getValue().equals("Coverflow");
@@ -241,7 +246,7 @@ public class SettingsPanel extends NCMPanel {
         backgroundRow(scroll, new ToggleRow("settings.wallBackdropBlur", nav.backdropBlur()), transparent);
     }
 
-    private void backgroundRow(ScrollPanel scroll, AbstractWidget<?> row, BooleanSupplier visible) {
+    private void backgroundRow(SettingsSection scroll, AbstractWidget<?> row, BooleanSupplier visible) {
         backgroundRows.put(row, visible);
         row.setHidden(!visible.getAsBoolean());
         scroll.addChild(row);
@@ -254,17 +259,106 @@ public class SettingsPanel extends NCMPanel {
         return text.substring(0, end) + "…";
     }
 
-    private static final class LyricHintRow extends AbstractWidget<LyricHintRow> {
+    /** One shared scroll position; entire sections flow into the shorter column. */
+    static final class SettingsScrollPanel extends ScrollPanel {
+        private static final double MIN_COLUMN_WIDTH = 320;
+        private static final double COLUMN_GAP = 24;
+        private final ModePreference layout;
+
+        SettingsScrollPanel(ModePreference layout) {
+            this.layout = layout;
+            setSpacing(8);
+        }
+
+        SettingsSection addSection(String title) {
+            SettingsSection section = new SettingsSection();
+            section.addChild(new SectionHeader(title));
+            addChild(section);
+            return section;
+        }
+
+        private boolean usesTwoColumns() {
+            return layout.getValue().equals("TwoColumns")
+                    && getWidth() >= MIN_COLUMN_WIDTH * 2 + COLUMN_GAP;
+        }
+
+        private double layoutSections(boolean position) {
+            boolean twoColumns = usesTwoColumns();
+            double width = Math.max(0, twoColumns ? (getWidth() - COLUMN_GAP) / 2 : getWidth());
+            double gap = twoColumns ? COLUMN_GAP : getSpacing();
+            double[] bottoms = new double[2];
+            for (AbstractWidget<?> child : getChildren()) {
+                if (child.isHidden()) continue;
+                SettingsSection section = (SettingsSection) child;
+                section.measureRows(width, getSpacing());
+                int column = twoColumns && bottoms[1] < bottoms[0] ? 1 : 0;
+                if (position) {
+                    section.setPosition(column * (width + COLUMN_GAP), bottoms[column] - actualScrollOffset);
+                }
+                bottoms[column] += section.getHeight() + gap;
+            }
+            return Math.max(0, Math.max(bottoms[0], bottoms[1]) - gap);
+        }
+
+        @Override
+        protected double getChildrenHeightSum() {
+            return layoutSections(false);
+        }
+
+        @Override
+        public void alignChildren() {
+            // Keep ScrollPanel's offset clamping and scrollbar behavior for the measured content height.
+            super.alignChildren();
+            layoutSections(true);
+        }
+    }
+
+    static final class SettingsSection extends AbstractWidget<SettingsSection> {
+        SettingsSection() {
+            setClickable(false);
+        }
+
+        private void measureRows(double width, double spacing) {
+            double y = 0;
+            for (AbstractWidget<?> row : getChildren()) {
+                if (row.isHidden()) continue;
+                row.setBounds(width, row.getHeight());
+                if (row instanceof HintRow hint) hint.measure(width);
+                row.setPosition(0, y);
+                y += row.getHeight() + spacing;
+            }
+            setBounds(width, Math.max(0, y - spacing));
+        }
+
+        @Override
+        public void onRender(double mouseX, double mouseY) { }
+
+        @Override
+        protected boolean shouldRenderChildren(AbstractWidget<?> child, double mouseX, double mouseY) {
+            return child.getY() + child.getHeight() >= getParent().getY()
+                    && child.getY() <= getParent().getY() + getParent().getHeight();
+        }
+    }
+
+    private static final class HintRow extends AbstractWidget<HintRow> {
         private final String key;
         private String[] lines = new String[0];
+        private String measuredText;
+        private double measuredWidth = -1;
 
-        private LyricHintRow(String key) {
+        private HintRow(String key) {
             this.key = key;
             setClickable(false);
-            setBeforeRenderCallback(() -> {
-                lines = FontManager.pf12bold.fitWidth(I18n.text(this.key), Math.max(40, getParentWidth() - 8));
-                setBounds(getParentWidth(), Math.max(34, lines.length * (FontManager.pf12bold.getHeight() + 4) + 12));
-            });
+        }
+
+        private void measure(double width) {
+            String text = I18n.text(key);
+            if (width != measuredWidth || !text.equals(measuredText)) {
+                lines = FontManager.pf12bold.fitWidth(text, Math.max(40, width - 8));
+                measuredWidth = width;
+                measuredText = text;
+            }
+            setBounds(width, Math.max(34, lines.length * (FontManager.pf12bold.getHeight() + 4) + 12));
         }
 
         @Override
