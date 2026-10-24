@@ -15,6 +15,8 @@ import tritium.ncm.music.automix.AutoMixPlan;
 import tritium.ncm.music.automix.AutoMixAutomation;
 import tritium.ncm.music.automix.AutoMixAutomation.FilterSetting;
 import repackage.com.jsyn.data.FloatSample;
+import tritium.ncm.music.stream.StreamingAudioSample;
+import com.sun.net.httpserver.HttpServer;
 import tritium.ncm.music.automix.AutoMixAutomation.FilterType;
 
 import javax.sound.sampled.AudioFileFormat;
@@ -26,6 +28,8 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -119,6 +123,54 @@ class AudioPlayerMixTest {
         render(2);
         assertTrue(deck.getCurrentTimeMillis() > 1_000);
         assertTrue(outputs[0].peak > 0);
+    }
+
+    @Test void streamingDeckPreservesVolumePauseSeekAndOtherVoices() throws Exception {
+        byte[] audio = Files.readAllBytes(file.toPath());
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/audio", exchange -> {
+            exchange.sendResponseHeaders(200, audio.length);
+            try (var output = exchange.getResponseBody()) { output.write(audio); }
+        });
+        server.start();
+        StreamingAudioSample stream = null;
+        try {
+            stream = StreamingAudioSample.open("http://127.0.0.1:" + server.getAddress().getPort() + "/audio",
+                    directory.resolve("stream.wav"), 2_000, () -> false);
+            AudioPlayer a = new AudioPlayer(stream);
+            decks.add(a);
+            a.setVolume(.4f);
+            a.setMixGain(.5);
+            a.play(); render(2);
+            assertEquals(.1, outputs[0].peak, 1e-5);
+            assertEquals(.05, outputs[1].peak, 1e-5);
+            a.pause(); render(2);
+            float paused = a.getCurrentTimeMillis();
+            render(10);
+            assertEquals(paused, a.getCurrentTimeMillis());
+            assertEquals(0, outputs[0].peak);
+            a.setPlaybackTime(1_000);
+            assertTrue(a.isPausing());
+            assertEquals(1_000, a.getCurrentTimeMillis(), 1);
+            a.unpause();
+            for (int i = 0; i < 100 && a.getCurrentTimeMillis() <= 1_000; i++) { render(1); Thread.sleep(10); }
+            assertTrue(a.getCurrentTimeMillis() > 1_000);
+            assertEquals(.1, outputs[0].peak, 1e-5);
+            AudioPlayer b = deck(false);
+            b.play(); render(2);
+            a.close(); render(3);
+            assertEquals(.125, outputs[0].peak, 1e-5);
+            assertFalse(b.isFinished());
+        } finally {
+            if (stream != null) stream.cleanUp();
+            server.stop(0);
+            for (int i = 0; i < 1_000; i++) {
+                try (var paths = Files.list(directory)) {
+                    if (paths.noneMatch(path -> path.toString().endsWith(".part"))) break;
+                }
+                Thread.sleep(10);
+            }
+        }
     }
 
     @Test void closingOneVoiceLeavesTheOtherAudibleAndDetachesItsFft() throws Exception {

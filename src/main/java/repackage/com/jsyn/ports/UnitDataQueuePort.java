@@ -17,6 +17,7 @@
 package repackage.com.jsyn.ports;
 
 import repackage.com.jsyn.data.SequentialData;
+import repackage.com.jsyn.data.ProgressiveData;
 import repackage.com.jsyn.engine.SynthesisEngine;
 import repackage.com.jsyn.exceptions.ChannelMismatchException;
 import repackage.com.softsynth.shared.time.ScheduledCommand;
@@ -168,6 +169,26 @@ public class UnitDataQueuePort extends UnitPort {
         return (currentBlock != null) || (!blocks.isEmpty());
     }
 
+    /** Distinguish a temporary underrun from EOF without advancing time or blocking audio. */
+    public boolean hasAvailableFrame() {
+        if (!hasMore()) return false;
+        checkBlock();
+        if (currentBlock.currentData instanceof ProgressiveData progressive) {
+            if (progressive.isComplete() && frameIndex >= progressive.getNumFrames()) {
+                finishCurrentBlock();
+                return false;
+            }
+            return progressive.isFrameAvailable(frameIndex);
+        }
+        return true;
+    }
+
+    private void finishCurrentBlock() {
+        if (currentBlock.isAutoStop()) autoStopPending = true;
+        finishingBlock = currentBlock;
+        setCurrentBlock(null);
+    }
+
     private void checkBlock() {
         if (currentBlock == null) {
             synchronized (blocks) {
@@ -197,11 +218,7 @@ public class UnitDataQueuePort extends UnitPort {
             }
             // We are done.
             else {
-                if (currentBlock.isAutoStop()) {
-                    autoStopPending = true;
-                }
-                finishingBlock = currentBlock;
-                setCurrentBlock(null);
+                finishCurrentBlock();
                 // LOGGER.debug("advanceFrameIndex: currentBlock set null");
             }
         }

@@ -96,7 +96,7 @@ public class VariableRateMonoReader extends VariableRateDataReader {
         // Fire callbacks before getting next value because we already got the
         // target value previously.
         dataQueue.firePendingCallbacks();
-        if (dataQueue.hasMore()) {
+        if (dataQueue.hasAvailableFrame()) {
             starved = false;
             target = dataQueue.readNextMonoDouble(getFramePeriod());
 
@@ -104,7 +104,8 @@ public class VariableRateMonoReader extends VariableRateDataReader {
             return getFramePeriod() * dataQueue.getNormalizedRate();
         } else {
             starved = true;
-            ranout = true;
+            ranout = !dataQueue.hasMore();
+            source = target = current = 0;
             phase = 0.0;
             return 0.0;
         }

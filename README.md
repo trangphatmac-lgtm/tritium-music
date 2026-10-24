@@ -14,6 +14,7 @@ A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, 
 - Home page, playlists, search, and liked songs
 - Switch between Sidebar list and Top navigation in Settings → Appearance → Layout; the choice is saved automatically. Top navigation includes Explore, My playlists, Saved playlists, Settings, and search, with dedicated scrollable playlist libraries.
 - Play, pause, previous track, and next track
+- Stream uncached MP3, FLAC, WAV and M4A/MP4 songs after a short initial buffer while downloading and decoding in the background. Playback and lyrics wait when the buffer runs out; completed downloads remain reusable in the music cache. See [streaming playback](docs/streaming.md).
 - Volume adjustment and seek bar dragging
 - Optional smart transitions (AutoMix) in Settings → Playback, disabled by default and saved automatically. It follows the official client's feature-based transition approach for natural advancement to the next song, with a 5-second crossfade fallback when song features are unavailable. Manual track changes remain immediate. An optional Full AutoMix mode adds independent fade windows, 50 ms gain sampling and multi-stage EQ at the original playback speed. See [AutoMix details](docs/automix.md).
 - Lyric page, word-by-word lyrics, translations, and romaji

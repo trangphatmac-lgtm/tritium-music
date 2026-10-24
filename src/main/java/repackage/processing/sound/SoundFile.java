@@ -2,6 +2,7 @@ package repackage.processing.sound;
 
 import lombok.Getter;
 import repackage.com.jsyn.util.SampleLoader;
+import repackage.com.jsyn.data.FloatSample;
 
 import java.io.File;
 
@@ -16,6 +17,12 @@ import java.io.File;
  * @webBrief This is a Soundfile Player which allows to play back and manipulate soundfiles.
  **/
 public class SoundFile extends AudioSample {
+
+	public SoundFile(FloatSample sample) {
+		super();
+		this.sample = sample;
+		this.initiatePlayer();
+	}
 
 	public SoundFile(String path) {
 		super();

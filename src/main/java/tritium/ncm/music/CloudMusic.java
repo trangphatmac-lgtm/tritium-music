@@ -26,6 +26,8 @@ import tritium.ncm.OptionsUtil;
 import tritium.ncm.RequestUtil;
 import tritium.ncm.api.CloudMusicApi;
 import tritium.ncm.music.dto.Music;
+import tritium.ncm.music.stream.StreamingAudioSample;
+import tritium.desktop.DesktopCacheManager;
 import tritium.ncm.music.automix.AutoMixPlan;
 import tritium.ncm.music.automix.AutoMixDebugSnapshot;
 import tritium.ncm.music.automix.SongFeatures;
@@ -51,7 +53,6 @@ import tritium.utils.Tuple;
 import tritium.utils.json.JsonUtils;
 import tritium.utils.network.HttpUtils;
 import tritium.utils.other.StringUtils;
-import tritium.utils.other.WrappedInputStream;
 import tritium.utils.other.multithreading.MultiThreadingUtil;
 
 import java.awt.*;
@@ -61,7 +62,6 @@ import java.awt.image.Kernel;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -1406,6 +1406,7 @@ public class CloudMusic implements SharedConstants {
             cancelAutoMix(STOPPED);
             if (playThread == this && player != null) {
                 player.close();
+                setDownloading(false);
                 playing.set(false);
                 refreshAutoMixDebug();
             }
@@ -1452,6 +1453,11 @@ public class CloudMusic implements SharedConstants {
                 }
                 if (!started) {
                     synchronized (this) {
+                        if (doBreak || isInterrupted()) break;
+                        if (dontAdd) {
+                            advanceAfterTrack(songIndex);
+                            continue;
+                        }
                         if (queuedTrack || hasQueuedNext()) {
                             skipUnavailableTrack(songIndex);
                             continue;
@@ -1560,28 +1566,67 @@ public class CloudMusic implements SharedConstants {
         
         private boolean initializeAndPlaySong(Music song, Tuple<String, String> playUrl) {
             setDownloading(false);
-            File musicFile;
-            
+            int songIndex = curIdx;
+            AudioPlayer prepared = null;
             try {
-                musicFile = getMusicFile(playUrl, song);
-                player = initializePlayer(musicFile);
+                if (dontAdd || doBreak || isInterrupted()) return false;
+                String type = playUrl.getB().toLowerCase(Locale.ROOT);
+                if (!SampleLoader.isSupportedFileType(type)) throw new IOException("Unsupported audio format: " + type);
+                Quality selectedQuality = quality;
+                var cache = AppPaths.musicCacheDir().resolve(song.getId() + "_" + selectedQuality.getQuality() + "." + type);
+                if (Files.isRegularFile(cache) && Files.size(cache) > 0) {
+                    prepared = new AudioPlayer(cache.toFile());
+                } else {
+                    setDownloading(true);
+                    setDownloadProgress(0);
+                    setDownloadSpeed("0 B/s");
+                    StreamingAudioSample stream = StreamingAudioSample.open(playUrl.getA(), cache, song.getDuration(),
+                            () -> doBreak || isInterrupted() || dontAdd || curIdx != songIndex);
+                    try { prepared = new AudioPlayer(stream); }
+                    catch (RuntimeException | LinkageError e) { stream.cleanUp(); throw e; }
+                }
+                synchronized (this) {
+                    if (doBreak || isInterrupted() || dontAdd || curIdx != songIndex) {
+                        prepared.close();
+                        setDownloading(false);
+                        return false;
+                    }
+                    prepared.setVolume(DesktopAppState.preferences().volume().getValue().floatValue());
+                    player = prepared;
+                    notifySongStart(song);
+                    startPlayback();
+                }
             } catch (Exception e) {
-                handlePlayerInitializationError(e);
+                if (prepared != null) prepared.close();
+                setDownloading(false);
+                if (e instanceof InterruptedException) interrupt();
+                if (!doBreak && !isInterrupted() && !dontAdd) handlePlayerInitializationError(e);
                 return false;
             }
-            
-            notifySongStart(song);
-            startPlayback(song, playUrl, musicFile);
             return true;
         }
         
         private void waitForPlaybackCompletion() {
+            long nextDownloadUpdate = 0;
             while (playing.get()) {
                 if (this.isInterrupted() || doBreak) {
                     break;
                 }
                 
                 try {
+                    if (System.nanoTime() >= nextDownloadUpdate) {
+                        setDownloading(player.isDownloading());
+                        setDownloadProgress(player.downloadProgress());
+                        setDownloadSpeed(DesktopCacheManager.formatSize((long) player.downloadBytesPerSecond()) + "/s");
+                        nextDownloadUpdate = System.nanoTime() + 500_000_000L;
+                    }
+                    IOException streamingFailure = player.streamingFailure();
+                    if (streamingFailure != null) {
+                        handlePlayerInitializationError(streamingFailure);
+                        api.printMessage(DesktopChatColor.RED + I18n.text("player.streamFailed"));
+                        playing.set(false);
+                        break;
+                    }
                     tickAutoMix();
                     if (transition == null && player.isFinished()) playing.set(false);
                 } catch (RuntimeException failure) {
@@ -1608,6 +1653,7 @@ public class CloudMusic implements SharedConstants {
             }
             
             player.close();
+            setDownloading(false);
         }
         
         private void stopPreviousPlayer() {
@@ -1633,7 +1679,7 @@ public class CloudMusic implements SharedConstants {
             System.out.printf("[NCM] Now playing: %s, id %d\n", song.getName(), song.getId());
         }
         
-        private void startPlayback(Music song, Tuple<String, String> playUrl, File musicFile) {
+        private void startPlayback() {
             AudioPlayer source = player;
             playing.set(true);
             source.setAfterPlayed(() -> {
@@ -1657,63 +1703,6 @@ public class CloudMusic implements SharedConstants {
         
         private void updateCurrentIndex() {
             updateCurIdx();
-        }
-
-        private File getMusicFile(Tuple<String, String> playUrl, Music song) {
-
-            String url = playUrl.getA();
-            String type = playUrl.getB().toLowerCase(Locale.ROOT);
-
-            if (SampleLoader.isSupportedFileType(type)) {
-                return getCachedOrTempFile(url, type, song);
-            }
-            throw new IllegalArgumentException("Unsupported music format, url: " + url + ", type: " + type);
-        }
-
-        private File getCachedOrTempFile(String playUrl, String type, Music song) {
-            File musicCacheDir = AppPaths.musicCacheDir().toFile();
-
-            if (!musicCacheDir.exists()) {
-                musicCacheDir.mkdirs();
-            }
-
-            String extension = "_" + quality.getQuality() + "." + type;
-
-            File music = new File(musicCacheDir, song.getId() + extension);
-
-            if (!music.exists()) {
-                // Only expose complete audio files to the foreground player and AutoMix worker.
-                File temporary;
-                try {
-                    temporary = Files.createTempFile(musicCacheDir.toPath(), "download-", ".part").toFile();
-                    try {
-                        downloadMusic(playUrl, temporary);
-                        if (!temporary.isFile() || temporary.length() == 0) throw new IOException("Empty audio download");
-                        Files.move(temporary.toPath(), music.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                    } finally { Files.deleteIfExists(temporary.toPath()); }
-                } catch (IOException failure) { throw new java.io.UncheckedIOException(failure); }
-
-                // delete all other qualities
-
-                MultiThreadingUtil.runAsync(() -> {
-
-                    File[] files = musicCacheDir.listFiles();
-                    if (files == null) {
-                        return;
-                    }
-
-                    for (File file : files) {
-
-                        if (file.getName().startsWith(song.getId() + "_") && !file.getName().startsWith(song.getId() + "_" + quality.getQuality())) {
-                            file.delete();
-                        }
-
-                    }
-
-                });
-            }
-
-            return music;
         }
 
         private File getPreloadedMusicFile(Tuple<String, String> url, Music song, Quality selectedQuality,
@@ -1742,19 +1731,6 @@ public class CloudMusic implements SharedConstants {
                 }
                 return destination.toFile();
             } finally { Files.deleteIfExists(temporary); }
-        }
-
-        private AudioPlayer initializePlayer(File musicFile) {
-            AudioPlayer player = CloudMusic.player;
-            if (player == null) {
-                player = new AudioPlayer(musicFile);
-//                player.volume = 0.25f;
-                player.setVolume(DesktopAppState.preferences().volume().getValue().floatValue());
-                CloudMusic.player = player;
-            } else {
-                player.setAudio(musicFile);
-            }
-            return player;
         }
 
         private void loadMusicCover(Music song) {
@@ -1959,89 +1935,6 @@ public class CloudMusic implements SharedConstants {
         converter.convert(Files.newInputStream(mp3In.toPath()), destFile.getAbsolutePath(), null, null);
 
         return destFile;
-    }
-
-    @SneakyThrows
-    private static void downloadMusic(String playUrl, File music) {
-
-        setDownloading(true);
-        setDownloadProgress(0);
-        setDownloadSpeed("0 b/s");
-
-        try {
-            InputStream stream = new WrappedInputStream(HttpUtils.get(playUrl, null), new WrappedInputStream.ProgressListener() {
-
-                tritium.utils.timing.Timer timer = new tritium.utils.timing.Timer();
-
-                @Override
-                public void onProgress(double progress) {
-                    if (progress >= 1) {
-                        setDownloading(false);
-                    }
-
-                    setDownloadProgress(progress);
-                }
-
-                final long kilo = 1024;
-                final long mega = kilo * kilo;
-                final long giga = mega * kilo;
-                final long tera = giga * kilo;
-
-                String getSize(long size) {
-                    String s;
-                    double kb = (double)size / kilo;
-                    double mb = kb / kilo;
-                    double gb = mb / kilo;
-                    double tb = gb / kilo;
-                    if(size < kilo) {
-                        s = size + " Bytes";
-                    } else if(size < mega) {
-                        s =  String.format("%.2f", kb) + " KB";
-                    } else if(size < giga) {
-                        s = String.format("%.2f", mb) + " MB";
-                    } else if(size < tera) {
-                        s = String.format("%.2f", gb) + " GB";
-                    } else {
-                        s = String.format("%.2f", tb) + " TB";
-                    }
-                    return s;
-                }
-
-                int lastBytesRead = 0;
-
-                @Override
-                public void bytesRead(int bytesRead) {
-
-                    int checkDelay = 500;
-
-                    if (timer.isDelayed(checkDelay)) {
-                        timer.reset();
-
-                        int diff = (bytesRead - lastBytesRead) * (1000 / checkDelay);
-
-                        setDownloadSpeed(this.getSize(diff) + "/s");
-
-                        lastBytesRead = bytesRead;
-                    }
-
-                }
-            });
-
-            OutputStream os = Files.newOutputStream(music.toPath(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-
-            writeTo(stream, os);
-
-            os.close();
-
-        } catch (Throwable t) {
-            t.printStackTrace();
-
-            setDownloading(false);
-
-            music.delete();
-        }
-
-//        NotificationManager.show("Cloud Music", "Decoded flac => wav", Notification.Type.INFO, 2000);
     }
 
     @SneakyThrows

@@ -92,7 +92,7 @@ public class VariableRateStereoReader extends VariableRateDataReader {
 
     private double advanceToNextFrame() {
         dataQueue.firePendingCallbacks();
-        if (dataQueue.hasMore()) {
+        if (dataQueue.hasAvailableFrame()) {
             starved = false;
 
             dataQueue.beginFrame(getFramePeriod());
@@ -104,7 +104,9 @@ public class VariableRateStereoReader extends VariableRateDataReader {
             return synthesisEngine.getFramePeriod() * dataQueue.getNormalizedRate();
         } else {
             starved = true;
-            ranout = true;
+            ranout = !dataQueue.hasMore();
+            source0 = target0 = current0 = 0;
+            source1 = target1 = current1 = 0;
             phase = 0.0;
             return 0.0;
         }

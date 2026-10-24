@@ -6,6 +6,7 @@ import tritium.ncm.music.automix.AutoMixAutomation.FilterSetting;
 import tritium.ncm.music.automix.AutoMixAutomation.FilterType;
 import tritium.ncm.music.automix.AutoMixPlan;
 import tritium.widget.impl.SpectrumVisualizer;
+import tritium.ncm.music.stream.StreamingAudioSample;
 
 import java.io.File;
 import java.util.List;
@@ -29,8 +30,21 @@ public class AudioPlayer implements AutoMixTransition.Deck {
     private final AudioEnergy.Analyzer energyAnalyzer = new AudioEnergy.Analyzer(JSynFFT.FFT_SIZE);
     @Getter private volatile AudioEnergy energy = AudioEnergy.SILENT;
     @Getter private FFT fft;
+    private StreamingAudioSample stream;
 
     public AudioPlayer(File file) { this(file, true); }
+
+    AudioPlayer(StreamingAudioSample stream) {
+        this.stream = stream;
+        player = new SoundFile(stream);
+        setListeners();
+        setAnalysisEnabled(true);
+    }
+
+    public java.io.IOException streamingFailure() { return stream == null ? null : stream.failure(); }
+    public boolean isDownloading() { return stream != null && stream.downloading(); }
+    public double downloadProgress() { return stream == null ? 1 : stream.downloadProgress(); }
+    public double downloadBytesPerSecond() { return stream == null ? 0 : stream.downloadBytesPerSecond(); }
 
     /** A preloaded voice stays silent and does not overwrite the current song's spectrum. */
     AudioPlayer(File file, boolean analyze) {
@@ -41,6 +55,7 @@ public class AudioPlayer implements AutoMixTransition.Deck {
 
     public synchronized void setAudio(File file) {
         close();
+        stream = null;
         player = new SoundFile(file.getAbsolutePath());
         closed = false;
         finished = false;

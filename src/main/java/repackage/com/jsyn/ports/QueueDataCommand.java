@@ -17,6 +17,7 @@
 package repackage.com.jsyn.ports;
 
 import repackage.com.jsyn.data.SequentialData;
+import repackage.com.jsyn.data.ProgressiveData;
 import repackage.com.softsynth.shared.time.ScheduledCommand;
 
 /**
@@ -70,6 +71,15 @@ public abstract class QueueDataCommand extends QueueDataEvent implements Schedul
 
     private static final long serialVersionUID = -1185274459972359536L;
     private UnitDataQueueCallback callback;
+
+    @Override public int getNumFrames() {
+        if (sequentialData instanceof ProgressiveData progressive) {
+            int end = progressive.isComplete() ? progressive.getNumFrames()
+                    : Integer.MAX_VALUE / progressive.getChannelsPerFrame();
+            return Math.max(0, end - startFrame);
+        }
+        return super.getNumFrames();
+    }
 
     public QueueDataCommand(UnitDataQueuePort port, SequentialData sequentialData, int startFrame,
             int numFrames) {
