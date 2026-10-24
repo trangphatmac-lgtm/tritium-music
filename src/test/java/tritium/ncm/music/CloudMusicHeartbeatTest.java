@@ -120,6 +120,51 @@ class CloudMusicHeartbeatTest {
     }
 
     @Test
+    void autoMixPeeksPendingRecommendationsUsingTheSameHistoryAsAdoption() {
+        CloudMusic.playList = new ArrayList<>(List.of(song(999), first, song(888)));
+        CloudMusic.curIdx = 1;
+        var thread = new CloudMusic.PlayThread(CloudMusic.playList, 1);
+        CloudMusic.playThread = thread;
+        var original = List.copyOf(CloudMusic.playList);
+        CloudMusic.toggleHeartbeat((id, pid, sid) -> response(200, 200, 999, 101, 202, 303),
+                Runnable::run, CloudMusic::startHeartbeatPlayback).join();
+
+        for (int i = 0; i < 3; i++) {
+            assertEquals(202, thread.autoMixNextSong().getId());
+            assertEquals(original, CloudMusic.playList);
+            assertEquals(1, CloudMusic.curIdx);
+            assertSame(first, CloudMusic.currentlyPlaying);
+        }
+        thread.advanceAfterTrack(1);
+        assertEquals(202, CloudMusic.playList.get(CloudMusic.curIdx).getId());
+        assertEquals(List.of(999L, 101L, 202L, 303L), ids(CloudMusic.playList));
+    }
+
+    @Test
+    void cancelledPendingHeartbeatDoesNotHideTheOriginalNextSong() {
+        CloudMusic.playMode = CloudMusic.PlayMode.Sequential;
+        CloudMusic.playList = new ArrayList<>(List.of(first, song(888)));
+        var thread = new CloudMusic.PlayThread(CloudMusic.playList, 0);
+        CloudMusic.playThread = thread;
+        CloudMusic.toggleHeartbeat((id, pid, sid) -> response(200, 200, 101, 202),
+                Runnable::run, CloudMusic::startHeartbeatPlayback).join();
+        CloudMusic.exitHeartbeat();
+        assertEquals(888, thread.autoMixNextSong().getId());
+        thread.advanceAfterTrack(0);
+        assertEquals(888, CloudMusic.playList.get(CloudMusic.curIdx).getId());
+    }
+
+    @Test
+    void pendingHeartbeatWithoutFreshSongsDoesNotMixIntoTheOldQueue() {
+        CloudMusic.playList = new ArrayList<>(List.of(first, song(888)));
+        var thread = new CloudMusic.PlayThread(CloudMusic.playList, 0);
+        CloudMusic.playThread = thread;
+        CloudMusic.toggleHeartbeat((id, pid, sid) -> response(200, 200, 101),
+                Runnable::run, CloudMusic::startHeartbeatPlayback).join();
+        assertNull(thread.autoMixNextSong());
+    }
+
+    @Test
     void playNextSurvivesHeartbeatAdoptionAndThenResumesRecommendations() {
         var thread = new CloudMusic.PlayThread(CloudMusic.playList, 0);
         CloudMusic.playThread = thread;
@@ -127,6 +172,8 @@ class CloudMusicHeartbeatTest {
         CloudMusic.toggleHeartbeat((id, pid, sid) -> response(200, 200, 202, 303),
                 Runnable::run, CloudMusic::startHeartbeatPlayback).join();
 
+        assertEquals(888, thread.autoMixNextSong().getId());
+        assertTrue(thread.hasQueuedNext());
         thread.advanceAfterTrack(0);
         assertEquals(List.of(101L, 888L, 202L, 303L), ids(CloudMusic.playList));
         assertEquals(888, CloudMusic.playList.get(CloudMusic.curIdx).getId());

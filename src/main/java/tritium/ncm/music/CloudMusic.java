@@ -1137,15 +1137,19 @@ public class CloudMusic implements SharedConstants {
 
         /** Peek without consuming an explicit next request or reshuffling the queue. */
         synchronized Music autoMixNextSong() {
-            if (pendingHeartbeat != null || playMode == PlayMode.LoopSingle || lastMode != playMode
+            if (playMode == PlayMode.LoopSingle || (playMode == PlayMode.Random && lastMode != playMode)
                     || songs != playList || curIdx < 0 || curIdx >= songs.size()) return null;
             Music next;
             if (!nextSongs.isEmpty()) next = nextSongs.getFirst();
+            else if (isCurrentHeartbeat(pendingHeartbeat)) {
+                List<Music> upcoming = upcomingHeartbeatSongs(pendingHeartbeat, curIdx);
+                next = upcoming.isEmpty() ? null : upcoming.getFirst();
+            }
             else if (curIdx + 1 < songs.size()) next = songs.get(curIdx + 1);
             else if ((playMode == PlayMode.LoopInList || playMode == PlayMode.Random) && songs.size() > 1)
                 next = songs.getFirst();
             else return null;
-            return activeSong != null && activeSong.getId() == next.getId() ? null : next;
+            return next == null || activeSong != null && activeSong.getId() == next.getId() ? null : next;
         }
 
         synchronized void tickAutoMix() {
@@ -1170,6 +1174,8 @@ public class CloudMusic implements SharedConstants {
                 }
                 return;
             }
+            // Resolve mode changes while A is still playing, so preparation need not wait for EOF.
+            if (songs == playList) synchronizePlayMode();
             boolean enabled = DesktopAppState.preferences().autoMix().getValue();
             Music next = enabled ? autoMixNextSong() : null;
             if (preparation != null && (next == null || !next.equals(preparation.song)
@@ -1180,7 +1186,7 @@ public class CloudMusic implements SharedConstants {
             if (player == null || player.isFinished()) { debugState(IDLE); return; }
             if (next == null) {
                 debugState(playMode == PlayMode.LoopSingle ? SINGLE_REPEAT
-                        : pendingHeartbeat != null || lastMode != playMode || songs != playList ? CONTEXT_CHANGED : NO_NEXT);
+                        : lastMode != playMode || songs != playList ? CONTEXT_CHANGED : NO_NEXT);
                 return;
             }
             if (preparation == null) {
@@ -1349,7 +1355,7 @@ public class CloudMusic implements SharedConstants {
             previousRequested = false;
         }
 
-        /** Only the playback thread mutates its list; UI requests wait here until a track boundary. */
+        /** Consume pending queue requests only at a natural or AutoMix track boundary. */
         synchronized void advanceAfterTrack(int completedIndex) {
             boolean previous = previousRequested;
             previousRequested = false;
@@ -1384,9 +1390,7 @@ public class CloudMusic implements SharedConstants {
 
             int historyStart = Math.max(0, completedIndex - 99);
             List<Music> history = new ArrayList<>(songs.subList(historyStart, completedIndex + 1));
-            Set<Long> heard = new HashSet<>();
-            history.forEach(song -> heard.add(song.getId()));
-            List<Music> upcoming = session.songs.stream().filter(song -> heard.add(song.getId())).toList();
+            List<Music> upcoming = upcomingHeartbeatSongs(session, completedIndex);
             session.songs.clear();
             session.songs.addAll(history);
             session.songs.addAll(upcoming);
@@ -1400,6 +1404,13 @@ public class CloudMusic implements SharedConstants {
             dontAdd = false;
             lastMode = PlayMode.Heartbeat;
             return true;
+        }
+
+        private List<Music> upcomingHeartbeatSongs(HeartbeatSession session, int completedIndex) {
+            Set<Long> heard = new HashSet<>();
+            songs.subList(Math.max(0, completedIndex - 99), completedIndex + 1)
+                    .forEach(song -> heard.add(song.getId()));
+            return session.songs.stream().filter(song -> heard.add(song.getId())).toList();
         }
 
         private void retire() {
@@ -1739,17 +1750,22 @@ public class CloudMusic implements SharedConstants {
 
         PlayMode lastMode = playMode;
 
-        private void updateCurIdx() {
-
+        private void synchronizePlayMode() {
             if (lastMode != playMode) {
-
+                invalidatePreparation(MODE_CHANGED);
                 if (playMode == PlayMode.Random) {
+                    // Keep A at its current index. Peeking and the eventual handoff must use
+                    // the same shuffled order without skipping or restarting the current audio.
+                    Music current = curIdx >= 0 && curIdx < songs.size() ? songs.get(curIdx) : null;
                     Collections.shuffle(songs);
-                    playList = songs;
+                    if (current != null) Collections.swap(songs, curIdx, songs.indexOf(current));
                 }
-
                 lastMode = playMode;
             }
+        }
+
+        private void updateCurIdx() {
+            synchronizePlayMode();
 
             if (playMode == PlayMode.LoopSingle) {
                 if (dontAdd) {

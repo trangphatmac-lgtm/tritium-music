@@ -92,6 +92,69 @@ class CloudMusicAutoMixTest {
         assertNull(thread.autoMixNextSong());
     }
 
+    @Test void switchingModesReconcilesNextSongBeforeCurrentTrackEndsEvenWhenPaused() throws Exception {
+        DesktopAppState.preferences().autoMixDebug().setValue(true);
+        a.paused = true;
+        a.position = 8_300;
+        for (var mode : List.of(CloudMusic.PlayMode.LoopInList, CloudMusic.PlayMode.LoopSingle,
+                CloudMusic.PlayMode.Random)) {
+            CloudMusic.cyclePlayMode(() -> { throw new AssertionError("Unexpected heartbeat request"); });
+            thread.tickAutoMix();
+            assertEquals(mode, CloudMusic.playMode);
+            assertEquals(mode == CloudMusic.PlayMode.LoopSingle ? SINGLE_REPEAT : PAUSED, snapshot().status());
+            if (mode == CloudMusic.PlayMode.LoopSingle) assertNull(snapshot().b());
+            else assertNotNull(snapshot().b());
+            assertSame(a, CloudMusic.player);
+            assertEquals(1, CloudMusic.playList.get(CloudMusic.curIdx).getId());
+            assertEquals(8_300, a.position);
+            assertTrue(a.paused);
+        }
+    }
+
+    @Test void randomCandidateStaysStableAndMatchesTheActualNextSong() {
+        CloudMusic.curIdx = 1;
+        CloudMusic.currentlyPlaying = CloudMusic.playList.get(1);
+        thread = new CloudMusic.PlayThread(CloudMusic.playList, 1);
+        CloudMusic.playThread = thread;
+        a.duration = 180_000; // No network preparation is needed to resolve the new order.
+        CloudMusic.playMode = CloudMusic.PlayMode.Random;
+        thread.tickAutoMix();
+        Music next = thread.autoMixNextSong();
+        assertNotNull(next);
+        assertNotEquals(2, next.getId());
+        var order = List.copyOf(CloudMusic.playList);
+        for (int i = 0; i < 10; i++) {
+            thread.tickAutoMix();
+            assertSame(next, thread.autoMixNextSong());
+            assertEquals(order, CloudMusic.playList);
+        }
+        assertEquals(1, CloudMusic.curIdx);
+        assertEquals(2, CloudMusic.playList.get(1).getId());
+        thread.advanceAfterTrack(1);
+        assertSame(next, CloudMusic.playList.get(CloudMusic.curIdx));
+        assertEquals(order, CloudMusic.playList);
+    }
+
+    @Test void changingModeDisposesOldPreparationAndAllowsANewTransition() throws Exception {
+        var old = prepare();
+        CloudMusic.cyclePlayMode(() -> { throw new AssertionError("Unexpected heartbeat request"); });
+        assertTrue(old.cancelled);
+        assertTrue(b.closed);
+        a.duration = 180_000;
+        thread.tickAutoMix();
+        assertEquals(2, thread.autoMixNextSong().getId());
+        Probe late = probe();
+        old.finish(late, plan());
+        assertTrue(late.closed);
+        b = probe();
+        prepare();
+        a.duration = 60_000;
+        a.position = 55_000;
+        thread.tickAutoMix();
+        assertEquals(1, b.starts);
+        assertNotNull(field("transition").get(thread));
+    }
+
     @Test void seekCancelsBothPreparedAndStartedOldVoices() throws Exception {
         CloudMusic.PlayThread.Preparation request = prepare();
         a.position = 55_000;
@@ -205,7 +268,7 @@ class CloudMusicAutoMixTest {
         assertEquals(9, CloudMusic.playList.get(CloudMusic.curIdx).getId());
     }
 
-    @Test void changingModeCancelsOverlapWithoutPrematurelyReshufflingTheQueue() throws Exception {
+    @Test void changingModeCancelsOverlapAndResolvesANewCandidate() throws Exception {
         prepare(); a.position = 55_000; thread.tickAutoMix();
         CloudMusic.cyclePlayMode(() -> { throw new AssertionError("Unexpected heartbeat request"); });
         assertEquals(CloudMusic.PlayMode.LoopInList, CloudMusic.playMode);
@@ -213,6 +276,9 @@ class CloudMusicAutoMixTest {
         assertSame(a, CloudMusic.player);
         assertEquals(0, CloudMusic.curIdx);
         assertEquals(List.of(1L, 2L, 3L), CloudMusic.playList.stream().map(Music::getId).toList());
+        a.duration = 180_000;
+        thread.tickAutoMix();
+        assertEquals(2, thread.autoMixNextSong().getId());
     }
 
     @Test void preparationReplacedDuringNetworkWorkCannotPublishItsDeck() throws Exception {
