@@ -33,6 +33,8 @@ public final class TopNavigateBar extends NCMPanel {
                 () -> screen.setCurrentPanel(new PlaylistLibraryPanel(screen, false)));
         addTab(NCMScreen.NavigationSection.SAVED_PLAYLISTS, "nav.subscribed",
                 () -> screen.setCurrentPanel(new PlaylistLibraryPanel(screen, true)));
+        if (tritium.desktop.DesktopAppState.minecraft().connected())
+            addTab(NCMScreen.NavigationSection.MINECRAFT, "minecraft.title", () -> screen.setCurrentPanel(new MinecraftPanel()));
         addTab(NCMScreen.NavigationSection.SETTINGS, "settings.title", () -> screen.setCurrentPanel(new SettingsPanel()));
         setBeforeRenderCallback(this::arrange);
     }

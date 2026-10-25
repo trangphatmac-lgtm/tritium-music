@@ -13,6 +13,59 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  windows-minecraft:
+    name: Windows JVM Attach and runtime package
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '8'
+      - name: Remember target Java 8
+        shell: pwsh
+        run: '"JAVA8_HOME=$env:JAVA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Append'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Remember Attach client Java 25
+        shell: pwsh
+        run: '"JAVA25_HOME=$env:JAVA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Append'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Test Attach and build embedded Agent
+        run: mvn --batch-mode --no-transfer-progress "-Dminecraft.testAttach=true" clean verify
+      - name: Verify Java 25 Attach client against Java 8
+        shell: pwsh
+        run: mvn --batch-mode --no-transfer-progress "-Dminecraft.testAttach=true" "-Djvm=$env:JAVA25_HOME/bin/java.exe" "-Dtest=AgentAttachFixtureTest,MinecraftConnectionErrorTest" test
+      - name: Verify packaged Windows runtime contains Attach
+        shell: pwsh
+        run: |
+          $inputDir = Join-Path $PWD 'target/windows-package-input'
+          New-Item -ItemType Directory -Force -Path $inputDir | Out-Null
+          $mainJar = Get-ChildItem target -Filter 'tritium-music-*.jar' | Select-Object -First 1
+          Copy-Item -LiteralPath $mainJar.FullName -Destination $inputDir
+          & "$env:JAVA_HOME/bin/jpackage.exe" --type app-image --name Tritium-Minecraft-Check --input $inputDir --main-jar $mainJar.Name --main-class tritium.desktop.TritiumMusicDesktopApp --dest target/windows-runtime-check --add-modules java.se,jdk.attach,jdk.unsupported,jdk.crypto.ec,jdk.charsets,jdk.localedata,jdk.zipfs
+          if ($LASTEXITCODE -ne 0) { throw 'jpackage failed' }
+          $runtime = 'target/windows-runtime-check/Tritium-Minecraft-Check/runtime'
+          if (!(Select-String -LiteralPath "$runtime/release" -Pattern 'jdk.attach' -Quiet)) { throw 'jdk.attach missing' }
+          if (!(Test-Path -LiteralPath "$runtime/bin/attach.dll")) { throw 'JDK Attach native dependency missing' }
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: windows-minecraft-reports-${{ github.sha }}
+          path: |
+            target/surefire-reports/
+            minecraft-agent/target/surefire-reports/
+            target/minecraft-fixture/*.log
+          if-no-files-found: ignore
   build:
     name: Test and package (Java 21)
     runs-on: ubuntu-latest

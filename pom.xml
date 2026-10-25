@@ -215,7 +215,27 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource><directory>src/main/resources</directory></resource>
+            <resource><directory>minecraft-agent/target</directory><includes><include>minecraft-hud-agent.jar</include></includes><targetPath>tritium/minecraft</targetPath></resource>
+        </resources>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId><artifactId>build-helper-maven-plugin</artifactId><version>3.5.0</version>
+                <executions><execution><id>minecraft-protocol</id><phase>generate-sources</phase><goals><goal>add-source</goal></goals>
+                    <configuration><sources><source>src/minecraft-shared/java</source></sources></configuration>
+                </execution></executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId><artifactId>maven-invoker-plugin</artifactId><version>3.8.0</version>
+                <executions><execution><id>build-minecraft-agent</id><phase>generate-resources</phase><goals><goal>run</goal></goals>
+                    <configuration>
+                        <projectsDirectory>${project.basedir}/minecraft-agent</projectsDirectory>
+                        <pomIncludes><pomInclude>pom.xml</pomInclude></pomIncludes>
+                        <goals><goal>clean</goal><goal>package</goal></goals><streamLogs>true</streamLogs>
+                    </configuration>
+                </execution></executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -375,6 +395,10 @@
                             <mainJar>tritium-music-${project.version}.jar</mainJar>
                             <mainClass>tritium.desktop.TritiumMusicDesktopApp</mainClass>
                             <type>EXE</type>
+                            <addModules>
+                                <module>java.se</module><module>jdk.attach</module><module>jdk.unsupported</module>
+                                <module>jdk.crypto.ec</module><module>jdk.charsets</module><module>jdk.localedata</module><module>jdk.zipfs</module>
+                            </addModules>
                         </configuration>
                     </plugin>
                 </plugins>

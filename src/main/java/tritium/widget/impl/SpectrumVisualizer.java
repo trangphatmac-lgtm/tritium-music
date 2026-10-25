@@ -4,6 +4,7 @@ import lombok.Getter;
 import tritium.desktop.DesktopAppState;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class SpectrumVisualizer {
@@ -101,9 +102,24 @@ public class SpectrumVisualizer {
         return Math.round(freq * fftSize / sampleRate);
     }
 
-    public float[] processFFT(float[] magnitudes) {
+    public synchronized float[] processFFT(float[] magnitudes) {
+        return processFFT(magnitudes, DesktopAppState.preferences().spectrumAbsoluteVolume().getValue(),
+                DesktopAppState.preferences().volume().getValue());
+    }
+
+    /** Both normalizations share the same FFT, so Minecraft settings never depend on system HUD settings. */
+    public synchronized Frame processFrame(float[] magnitudes, double volume) {
+        return new Frame(processFFT(magnitudes, true, volume), processFFT(magnitudes, false, volume));
+    }
+
+    public static final class Frame {
+        public final float[] absolute, relative;
+        private Frame(float[] absolute, float[] relative) { this.absolute = absolute; this.relative = relative; }
+    }
+
+    private float[] processFFT(float[] magnitudes, boolean absoluteVolume, double volume) {
         if (magnitudes.length < fftSize / 2) {
-            return bandMagnitudes;
+            return Arrays.copyOf(bandMagnitudes, bandMagnitudes.length);
         }
 
         for (int i = 0; i < bands.size(); i++) {
@@ -114,8 +130,7 @@ public class SpectrumVisualizer {
             for (int bin = band.lowBin; bin <= band.highBin && bin < magnitudes.length; bin++) {
                 float magnitude = magnitudes[bin] * magnitudes[bin];
 
-                if (DesktopAppState.preferences().spectrumAbsoluteVolume().getValue()) {
-                    double volume = DesktopAppState.preferences().volume().getValue();
+                if (absoluteVolume) {
                     magnitude *= (0.125f * 0.125f) / (float) Math.max(0.0001, volume * volume);
                 } else {
                     magnitude *= 0.25f * 0.25f;
@@ -141,17 +156,13 @@ public class SpectrumVisualizer {
 
             float sensitivity = 1.0f;
 
-            float normalized = (float) Math.pow((value - min) / (max - min), 1 / (1.8 * sensitivity));
-            bandMagnitudes[i] = normalized;
+            // Quiet bands can fall below the noise floor; a negative fractional power is NaN.
+            float normalized = (float) Math.pow(Math.max(0, (value - min) / (max - min)), 1 / (1.8 * sensitivity));
+            bandMagnitudes[i] = Float.isFinite(normalized) ? normalized : 0;
         }
 
-        for (int i = 0; i < bandMagnitudes.length; i++) {
-            if (!Float.isFinite(bandMagnitudes[i])) {
-                bandMagnitudes[i] = 0;
-            }
-        }
-
-        return bandMagnitudes;
+        // Render/IPC threads must never observe this working buffer during the next FFT pass.
+        return Arrays.copyOf(bandMagnitudes, bandMagnitudes.length);
     }
 
     private float dBToLinear(float input) {

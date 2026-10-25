@@ -64,12 +64,19 @@ public class AudioPlayer implements AutoMixTransition.Deck {
         setAnalysisEnabled(true);
     }
 
-    public static float[] bandValues = new float[1];
+    public static volatile float[] bandValues = new float[1];
+    public static volatile SpectrumVisualizer.Frame spectrumFrame;
     public static final SpectrumVisualizer visualizer = new SpectrumVisualizer(48000, JSynFFT.FFT_SIZE, 1024);
     static int skipCount;
     public static final JSynFFT.FFTCalcCallback callback = fft -> {
         if (skipCount < 4) skipCount++;
-        else { skipCount = 0; bandValues = visualizer.processFFT(fft); }
+        else {
+            skipCount = 0;
+            var preferences = tritium.desktop.DesktopAppState.preferences();
+            SpectrumVisualizer.Frame frame = visualizer.processFrame(fft, preferences.volume().getValue());
+            spectrumFrame = frame;
+            bandValues = preferences.spectrumAbsoluteVolume().getValue() ? frame.absolute : frame.relative;
+        }
     };
 
     public synchronized void setListeners() {

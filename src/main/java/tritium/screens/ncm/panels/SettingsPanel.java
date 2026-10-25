@@ -67,6 +67,7 @@ public class SettingsPanel extends NCMPanel {
         });
 
         SettingsSection section = scrollPanel.addSection("settings.general");
+        section.addChild(new MinecraftPanel.InjectButton());
         section.addChild(new ChoiceRow("settings.language", preferences.language(),
                 tag -> Language.fromTag(tag).nativeName()));
         section.addChild(new ChoiceRow("settings.settingsLayout", preferences.settingsLayout()));
@@ -458,7 +459,7 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
-    private abstract static class SettingsRow<SELF extends SettingsRow<SELF>> extends AbstractWidget<SELF> {
+    abstract static class SettingsRow<SELF extends SettingsRow<SELF>> extends AbstractWidget<SELF> {
         private final String label;
         private float hoverAnimation;
 
@@ -509,11 +510,11 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
-    private static final class ToggleRow extends SettingsRow<ToggleRow> {
+    static final class ToggleRow extends SettingsRow<ToggleRow> {
         private final PreferenceValue<Boolean> preference;
         private float toggleAnimation;
 
-        private ToggleRow(String label, PreferenceValue<Boolean> preference) {
+        ToggleRow(String label, PreferenceValue<Boolean> preference) {
             super(label, 52);
             this.preference = preference;
             this.toggleAnimation = preference.getValue() ? 1f : 0f;
@@ -544,11 +545,11 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
-    private static final class ChoiceRow extends SettingsRow<ChoiceRow> {
+    static final class ChoiceRow extends SettingsRow<ChoiceRow> {
         private final ModePreference preference;
         private final Function<String, String> formatter;
 
-        private ChoiceRow(String label, ModePreference preference) {
+        ChoiceRow(String label, ModePreference preference) {
             this(label, preference, mode -> I18n.text("mode." + mode));
         }
 
@@ -601,12 +602,12 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
-    private static final class SliderRow extends SettingsRow<SliderRow> {
+    static final class SliderRow extends SettingsRow<SliderRow> {
         private final NumberPreference preference;
         private final Function<Double, String> formatter;
         private boolean dragging;
 
-        private SliderRow(String label, NumberPreference preference, Function<Double, String> formatter) {
+        SliderRow(String label, NumberPreference preference, Function<Double, String> formatter) {
             super(label, 64);
             this.preference = preference;
             this.formatter = formatter;
@@ -670,11 +671,11 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
-    private static final class ActionRow extends SettingsRow<ActionRow> {
+    static final class ActionRow extends SettingsRow<ActionRow> {
         private final Runnable action;
         private float pressAnimation;
 
-        private ActionRow(String label, Runnable action) {
+        ActionRow(String label, Runnable action) {
             super(label, 52);
             this.action = action;
             this.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
@@ -812,7 +813,7 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
-    private static final class ColorRow extends SettingsRow<ColorRow> {
+    static final class ColorRow extends SettingsRow<ColorRow> {
         private record Preset(String name, int color) { }
 
         private static final List<Preset> THEME_PRESETS = List.of(
@@ -836,7 +837,7 @@ public class SettingsPanel extends NCMPanel {
         private final ColorPickerWidget picker;
         private boolean expanded;
 
-        private ColorRow(String label, PreferenceValue<Integer> preference, boolean alphaEnabled) {
+        ColorRow(String label, PreferenceValue<Integer> preference, boolean alphaEnabled) {
             this(label, () -> preference, alphaEnabled);
         }
 

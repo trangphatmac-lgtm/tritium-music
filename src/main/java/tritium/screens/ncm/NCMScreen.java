@@ -250,9 +250,14 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         return DesktopAppState.preferences().layout().getValue().equals("TopBar");
     }
 
-    public enum NavigationSection { EXPLORE, MY_PLAYLISTS, SAVED_PLAYLISTS, SETTINGS }
+    public enum NavigationSection { EXPLORE, MY_PLAYLISTS, SAVED_PLAYLISTS, MINECRAFT, SETTINGS }
+
+    public void refreshMinecraftNavigation() {
+        if (basePanel != null && searchBar != null) layoutNavigation();
+    }
 
     public NavigationSection getNavigationSection() {
+        if (currentPanel instanceof tritium.screens.ncm.panels.MinecraftPanel) return NavigationSection.MINECRAFT;
         if (currentPanel instanceof SettingsPanel) return NavigationSection.SETTINGS;
         if (currentPanel instanceof PlaylistLibraryPanel library)
             return library.isSubscribed() ? NavigationSection.SAVED_PLAYLISTS : NavigationSection.MY_PLAYLISTS;
@@ -617,6 +622,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
+        if (currentPanel instanceof tritium.screens.ncm.panels.MinecraftPanel minecraft && minecraft.captureKey(keyCode)) return;
         if (this.loginRenderer != null && this.loginRenderer.keyTyped(typedChar, keyCode)) {
             return;
         }

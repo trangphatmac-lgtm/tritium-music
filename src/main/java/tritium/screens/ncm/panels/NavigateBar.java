@@ -82,6 +82,11 @@ public class NavigateBar extends NCMPanel {
         }
 
         LabelWidget lblPlaylists = new LabelWidget(() -> I18n.text("nav.playlists"), FontManager.pf14bold);
+        if (tritium.desktop.DesktopAppState.minecraft().connected()) {
+            PlaylistItem minecraft = new PlaylistItem("D", AppTheme::accent, () -> "Minecraft", () -> screen.setCurrentPanel(new MinecraftPanel()));
+            minecraft.selectedWhen = () -> screen.getCurrentPanel() instanceof MinecraftPanel;
+            this.playlistPanel.addChild(minecraft);
+        }
         lblPlaylists.setBeforeRenderCallback(() -> {
             lblPlaylists.setColor(Color.GRAY);
             lblPlaylists.setPosition(6, lblPlaylists.getRelativeY());

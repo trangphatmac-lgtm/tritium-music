@@ -79,6 +79,7 @@ public class MusicPreferences {
             tritium.screens.ncm.lyrics.LyricStyle.ids());
     private final PreferenceValue<Boolean> spectrumAbsoluteVolume = new PreferenceValue<>("Absolute Volume", true);
     private final HudPreferences hud = new HudPreferences(spectrumAbsoluteVolume);
+    private final MinecraftPreferences minecraft = new MinecraftPreferences();
     private final NavigationPreferences navigation = new NavigationPreferences();
     private final BackgroundPreferences background = new BackgroundPreferences();
     private Runnable changeCallback = () -> {
@@ -134,6 +135,7 @@ public class MusicPreferences {
         lyricStyle.setValueCallback(value -> fireChanged());
         spectrumAbsoluteVolume.setValueCallback(value -> fireChanged());
         hud.setChangeCallback(this::fireChanged);
+        minecraft.setChangeCallback(this::fireChanged);
         background.setChangeCallback(this::fireChanged);
         navigation.setChangeCallback(this::fireChanged);
 
@@ -206,12 +208,15 @@ public class MusicPreferences {
         json.addProperty(LYRIC_STYLE_KEY, lyricStyle.getValue());
         json.addProperty(SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume.getValue());
         json.add(HudPreferences.HUD_KEY, hud.toJsonObject());
+        json.add("minecraft", minecraft.toJsonObject());
         json.add("background", background.toJsonObject());
         json.add("navigation", navigation.toJsonObject());
         return json;
     }
 
     void loadFromJsonObject(JsonObject json) {
+        if (json != null && json.has("minecraft") && json.get("minecraft").isJsonObject())
+            minecraft.loadFromJsonObject(json.getAsJsonObject("minecraft"));
         if (json == null) {
             return;
         }
@@ -431,4 +436,6 @@ public class MusicPreferences {
     public HudPreferences hud() {
         return hud;
     }
+
+    public MinecraftPreferences minecraft() { return minecraft; }
 }

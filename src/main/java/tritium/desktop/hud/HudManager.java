@@ -43,6 +43,8 @@ public final class HudManager {
     private final MusicToastHud toastHud = new MusicToastHud();
 
     public void pushMusicToast(String text) {
+        DesktopAppState.minecraft().pushToast(text);
+        if (minecraftSuppressed) return;
         if (text != null && !text.isBlank() && DesktopAppState.preferences().musicToast().getValue()) {
             pendingToast.set(text);
         }
@@ -58,6 +60,18 @@ public final class HudManager {
     private long startupRefreshAtNanos;
     private boolean startupWindowsHidden;
     private DragState dragState;
+    private volatile boolean minecraftSuppressed;
+
+    public void setMinecraftSuppressed(boolean suppressed) {
+        if (minecraftSuppressed == suppressed) return;
+        minecraftSuppressed = suppressed;
+        if (suppressed) {
+            boolean wasRequested = requested;
+            stop(); requested = wasRequested;
+        } else if (requested && shouldRunHud()) scheduleStart(0);
+    }
+
+    public boolean isMinecraftSuppressed() { return minecraftSuppressed; }
 
     public void start(boolean smokeMode) {
         this.smokeMode = smokeMode;
@@ -226,6 +240,7 @@ public final class HudManager {
     }
 
     private boolean shouldRunHud() {
+        if (minecraftSuppressed) return false;
         MusicPreferences preferences = DesktopAppState.preferences();
         return smokeMode || preferences.musicToast().getValue() || preferences.hud().editMode().getValue()
                 || renderers.stream().anyMatch(renderer -> renderer.layout(preferences).enabled().getValue());

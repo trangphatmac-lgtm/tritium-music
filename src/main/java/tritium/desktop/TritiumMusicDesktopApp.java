@@ -251,6 +251,7 @@ public final class TritiumMusicDesktopApp {
     }
 
     private static void shutdown() {
+        DesktopAppState.minecraft().close();
         if (systemMediaControls != null) systemMediaControls.close();
         DesktopTextInput.close();
         DesktopAppState.setRunning(false);
