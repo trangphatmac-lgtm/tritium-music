@@ -652,10 +652,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         }
 
         if (keyCode == Keyboard.KEY_SPACE && CloudMusic.currentlyPlaying != null && CloudMusic.player != null && !CloudMusic.player.isFinished()) {
-            if (CloudMusic.player.isPausing())
-                CloudMusic.player.unpause();
-            else
-                CloudMusic.player.pause();
+            CloudMusic.setPaused(!CloudMusic.player.isPausing());
         }
 
     }

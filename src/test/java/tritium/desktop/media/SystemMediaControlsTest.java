@@ -12,8 +12,8 @@ import tritium.ncm.music.dto.Music;
 import java.io.File;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static tritium.desktop.media.WindowsSmtc.Button.*;
-import static tritium.desktop.media.WindowsSmtc.Command.*;
+import static tritium.desktop.media.MediaCommand.Action.*;
+import static tritium.desktop.media.MediaCommand.*;
 
 class SystemMediaControlsTest {
     private final AudioPlayer oldPlayer = CloudMusic.player;
@@ -58,6 +58,29 @@ class SystemMediaControlsTest {
         CloudMusic.currentlyPlaying = null;
         SystemMediaControls.execute(button(PAUSE));
         assertFalse(player.paused);
+    }
+
+    @Test void togglesAtExecutionTimeAndRejectsStaleTrackSeeks() {
+        SystemMediaControls.execute(button(PLAY_PAUSE));
+        assertTrue(player.paused);
+        SystemMediaControls.execute(button(PLAY_PAUSE));
+        assertFalse(player.paused);
+        SystemMediaControls.execute(seek(20_000, 2));
+        assertEquals(0, player.position);
+        SystemMediaControls.execute(seek(20_000, 1));
+        assertEquals(20_000, player.position);
+        SystemMediaControls.execute(seek(60_001, 1));
+        assertEquals(20_000, player.position);
+    }
+
+    @Test void relativeSeekUsesCurrentPositionAndAvoidsOverflow() {
+        player.position = 20_000;
+        SystemMediaControls.execute(relativeSeek(-5_000));
+        assertEquals(15_000, player.position);
+        SystemMediaControls.execute(relativeSeek(Long.MIN_VALUE));
+        assertEquals(0, player.position);
+        SystemMediaControls.execute(relativeSeek(1_234));
+        assertEquals(1_234, player.position);
     }
 
     private static final class Probe extends AudioPlayer {

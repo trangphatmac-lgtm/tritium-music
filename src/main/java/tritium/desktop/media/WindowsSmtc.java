@@ -25,12 +25,6 @@ final class WindowsSmtc implements MediaSession.Backend {
     private long buttonToken, seekToken;
     private boolean buttonRegistered, seekRegistered, initialized;
 
-    enum Button { PLAY, PAUSE, PREVIOUS, NEXT }
-    record Command(Button button, Long positionMillis) {
-        static Command button(Button button) { return new Command(button, null); }
-        static Command seek(long millis) { return new Command(null, millis); }
-    }
-
     @Structure.FieldOrder("value")
     public static class Int64Value extends Structure implements Structure.ByValue {
         public long value;
@@ -38,7 +32,7 @@ final class WindowsSmtc implements MediaSession.Backend {
         Int64Value(long value) { this.value = value; }
     }
 
-    static WindowsSmtc open(long hwnd, Consumer<Command> commands) {
+    static WindowsSmtc open(long hwnd, Consumer<MediaCommand> commands) {
         WindowsSmtc result = new WindowsSmtc();
         try {
             check(WinRt.Runtime.API.RoInitialize(1)); // RO_INIT_MULTITHREADED
@@ -51,7 +45,7 @@ final class WindowsSmtc implements MediaSession.Backend {
         }
     }
 
-    private void initialize(long hwnd, Consumer<Command> commands) {
+    private void initialize(long hwnd, Consumer<MediaCommand> commands) {
         if (hwnd == 0) throw new IllegalArgumentException("SMTC needs the main window handle");
         try (ComObject interop = factory("Windows.Media.SystemMediaTransportControls",
                 "ddb0472d-c911-4a1f-86d9-dc3d71a95f5a")) {
@@ -66,14 +60,14 @@ final class WindowsSmtc implements MediaSession.Backend {
         buttons = new EventHandler("0557e996-7b23-5bae-aa81-ea0d671143a4", args -> {
             IntByReference value = new IntByReference();
             check(invoke(args, 6, value));
-            Button button = switch (value.getValue()) {
-                case 0 -> Button.PLAY;
-                case 1 -> Button.PAUSE;
-                case 6 -> Button.NEXT;
-                case 7 -> Button.PREVIOUS;
+            MediaCommand.Action button = switch (value.getValue()) {
+                case 0 -> MediaCommand.Action.PLAY;
+                case 1 -> MediaCommand.Action.PAUSE;
+                case 6 -> MediaCommand.Action.NEXT;
+                case 7 -> MediaCommand.Action.PREVIOUS;
                 default -> null;
             };
-            if (button != null) commands.accept(Command.button(button));
+            if (button != null) commands.accept(MediaCommand.button(button));
         });
         LongByReference token = new LongByReference();
         controls.call(32, buttons.pointer, token);
@@ -82,7 +76,7 @@ final class WindowsSmtc implements MediaSession.Backend {
         seeking = new EventHandler("44e34f15-bdc0-50a7-ace4-39e91fb753f1", args -> {
             LongByReference ticks = new LongByReference();
             check(invoke(args, 6, ticks));
-            commands.accept(Command.seek(ticks.getValue() / 10_000));
+            commands.accept(MediaCommand.seek(ticks.getValue() / 10_000));
         });
         controls2.call(13, seeking.pointer, token);
         seekToken = token.getValue();

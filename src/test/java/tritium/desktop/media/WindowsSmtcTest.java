@@ -67,7 +67,7 @@ class WindowsSmtcTest {
         WindowsAppIdentity.setProcessIdentity(appId);
         Frame window = new Frame("Tritium SMTC integration test");
         SwingUtilities.invokeAndWait(window::addNotify); // Real HWND without showing a test window.
-        LinkedBlockingQueue<WindowsSmtc.Command> commands = new LinkedBlockingQueue<>();
+        LinkedBlockingQueue<MediaCommand> commands = new LinkedBlockingQueue<>();
         byte[] cover = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=");
         HttpServer images = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         images.createContext("/cover.png", exchange -> {
@@ -117,19 +117,19 @@ class WindowsSmtcTest {
                     playback.call(7, status);
                     assertEquals(4, status.getValue()); // Global session enum: Playing=4 (SMTC enum: Playing=3)
                 }
-                requestButton(session, 11, WindowsSmtc.Button.PAUSE, commands);
+                requestButton(session, 11, MediaCommand.Action.PAUSE, commands);
                 smtc.playback(new PlaybackState(song, PlaybackState.Status.PAUSED, 12_345, 60_000,
                         true, true, true, true));
                 awaitPlaybackStatus(session, 5);
-                requestButton(session, 10, WindowsSmtc.Button.PLAY, commands);
+                requestButton(session, 10, MediaCommand.Action.PLAY, commands);
                 smtc.playback(new PlaybackState(song, PlaybackState.Status.PLAYING, 12_345, 60_000,
                         true, true, true, true));
                 awaitPlaybackStatus(session, 4);
-                requestButton(session, 16, WindowsSmtc.Button.NEXT, commands);
-                requestButton(session, 17, WindowsSmtc.Button.PREVIOUS, commands);
+                requestButton(session, 16, MediaCommand.Action.NEXT, commands);
+                requestButton(session, 17, MediaCommand.Action.PREVIOUS, commands);
                 try (ComObject seek = session.object(24, 300_000_000L)) {
                     assertTrue(asyncBoolean(seek));
-                    assertEquals(WindowsSmtc.Command.seek(30_000), commands.poll(5, TimeUnit.SECONDS));
+                    assertEquals(MediaCommand.seek(30_000), commands.poll(5, TimeUnit.SECONDS));
                 }
                 smtc.playback(new PlaybackState(song, PlaybackState.Status.PAUSED, 30_000, 60_000,
                         true, true, false, false));
@@ -200,11 +200,11 @@ class WindowsSmtcTest {
         fail("Closed media session is still registered with Windows");
     }
 
-    private static void requestButton(ComObject session, int slot, WindowsSmtc.Button button,
-                                      LinkedBlockingQueue<WindowsSmtc.Command> commands) throws Exception {
+    private static void requestButton(ComObject session, int slot, MediaCommand.Action button,
+                                      LinkedBlockingQueue<MediaCommand> commands) throws Exception {
         try (ComObject operation = session.object(slot)) {
             assertTrue(asyncBoolean(operation));
-            assertEquals(WindowsSmtc.Command.button(button), commands.poll(5, TimeUnit.SECONDS));
+            assertEquals(MediaCommand.button(button), commands.poll(5, TimeUnit.SECONDS));
         }
     }
 

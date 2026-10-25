@@ -20,11 +20,13 @@ final class MediaSession {
         }
     }
 
-    interface Backend extends AutoCloseable {
+    // dbus-java requires every directly implemented interface on an exported object to be public.
+    public interface Backend extends AutoCloseable {
         void metadata(Metadata metadata);
         void playback(PlaybackState state);
         void timeline(long positionMillis, long durationMillis);
         void clear();
+        default void volume(double value) { }
         @Override void close();
     }
 
@@ -48,6 +50,7 @@ final class MediaSession {
         Metadata nextMetadata = Metadata.from(state.song());
         boolean trackChanged = !nextMetadata.equals(metadata);
         boolean playbackChanged = previous == null || state.status() != previous.status()
+                || state.durationMillis() != previous.durationMillis()
                 || state.canPlay() != previous.canPlay() || state.canPause() != previous.canPause()
                 || state.canPrevious() != previous.canPrevious() || state.canNext() != previous.canNext();
         if (trackChanged) backend.metadata(nextMetadata);

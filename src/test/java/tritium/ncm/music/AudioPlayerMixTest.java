@@ -5,6 +5,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import repackage.com.jsyn.devices.AudioDeviceManager;
 import repackage.com.jsyn.engine.SynthesisEngine;
 import repackage.com.jsyn.unitgen.ChannelOut;
@@ -136,6 +138,49 @@ class AudioPlayerMixTest {
         render(2);
         assertTrue(deck.getCurrentTimeMillis() > 1_000);
         assertTrue(outputs[0].peak > 0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void autoMixPauseFreezesBothClocksAndSilencesOutputBeforeAndAfterHandoff(boolean fullMode) {
+        AudioPlayer a = deck(false), b = deck(false);
+        AutoMixTransition mix = new AutoMixTransition(a, b, entryPlan(fullMode));
+        a.startAt(0);
+        mix.start(.4f);
+        AtomicInteger switches = new AtomicInteger();
+        for (int phase = 0; phase < 2; phase++) {
+            if (phase == 1) {
+                for (int i = 0; i < 200 && !mix.hasSwitched(); i++) {
+                    render(1);
+                    mix.tick(switches::incrementAndGet);
+                }
+                assertTrue(mix.hasSwitched());
+            }
+            render(2);
+            mix.tick(switches::incrementAndGet);
+            assertTrue(outputs[0].peak > 0);
+            mix.pause();
+            render(2); // Drain the audio thread's queued stop commands.
+            float positionA = a.getCurrentTimeMillis(), positionB = b.getCurrentTimeMillis();
+            double gainA = a.getMixGain(), gainB = b.getMixGain();
+            for (int i = 0; i < 100; i++) {
+                render(1);
+                mix.tick(switches::incrementAndGet);
+                assertEquals(positionA, a.getCurrentTimeMillis());
+                assertEquals(positionB, b.getCurrentTimeMillis());
+                assertEquals(0, outputs[0].peak);
+                assertEquals(0, outputs[1].peak);
+            }
+            assertEquals(gainA, a.getMixGain());
+            assertEquals(gainB, b.getMixGain());
+            assertEquals(phase, switches.get());
+            assertFalse(mix.isComplete());
+            mix.resume();
+            render(2);
+            assertTrue(a.getCurrentTimeMillis() > positionA);
+            assertTrue(b.getCurrentTimeMillis() > positionB);
+            assertTrue(outputs[0].peak > 0);
+        }
     }
 
     @Test void streamingDeckPreservesVolumePauseSeekAndOtherVoices() throws Exception {

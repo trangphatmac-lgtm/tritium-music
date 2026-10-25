@@ -66,8 +66,9 @@ public class MusicPreferences {
     private final PreferenceValue<Boolean> autoMixDebug = new PreferenceValue<>("AutoMix debug", false);
     private final NumberPreference volume = new NumberPreference("Volume", 0.1, 0.0, 1.0, 0.01);
     private final PreferenceValue<Boolean> autoMix = new PreferenceValue<>("AutoMix", false);
-    private final PreferenceValue<Boolean> autoMixFullMode = new PreferenceValue<>("AutoMix Full Mode", false);
+    private final PreferenceValue<Boolean> autoMixFullMode = new PreferenceValue<>("AutoMix Full Mode", true);
     private final PreferenceValue<Boolean> autoUseBestLyric = new PreferenceValue<>("Automatically use best lyrics", true);
+    private final PreferenceValue<Boolean> minecrafthidden = new PreferenceValue<>("Enable Hidden", false);
     private final ModePreference preferredLyricSource = new ModePreference("Lyric matching priority", "netease",
             new String[]{"netease", "amll", "qq", "kugou"});
     private Runnable lyricSourceChangeCallback = () -> {};
@@ -399,6 +400,10 @@ public class MusicPreferences {
 
     public PreferenceValue<Boolean> autoMixDebug() {
         return autoMixDebug;
+    }
+
+    public PreferenceValue<Boolean> minecrafthidden() {
+        return minecrafthidden;
     }
 
     public NumberPreference volume() {

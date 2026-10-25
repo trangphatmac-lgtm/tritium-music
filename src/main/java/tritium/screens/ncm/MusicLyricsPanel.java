@@ -878,8 +878,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
 
             if (i == 0) {
                 if (CloudMusic.player != null && CloudMusic.currentlyPlaying != null) {
-                    if (CloudMusic.player.isPausing()) CloudMusic.player.unpause();
-                    else CloudMusic.player.pause();
+                    CloudMusic.setPaused(!CloudMusic.player.isPausing());
 
                 }
             }

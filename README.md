@@ -28,7 +28,7 @@
 | 功能 | 说明 |
 | --- | --- |
 | 桌面 HUD | 歌曲信息、桌面歌词、频谱和切歌通知；默认鼠标穿透，信息 / 歌词 / 频谱可在编辑模式中调整位置与大小 |
-| Windows 媒体控制 | Windows 10 / 11 自动启用 SMTC，向系统媒体面板提供歌曲、封面、进度与播放控制，并响应支持的媒体键 |
+| 系统媒体集成 | Windows SMTC、macOS「正在播放」和 Linux MPRIS：同步歌曲、歌手、专辑、封面、进度，响应播放/暂停、上一首/下一首及定位请求 |
 | Minecraft Injection | 面向 Windows x64、Linux x64 和 macOS ARM64，通过 JVM Attach 连接兼容的 Minecraft 1.8.9 客户端，显示游戏内 HUD 与世界空间 3D 歌词 |
 
 ### Minecraft Injection
@@ -134,6 +134,25 @@ java -XstartOnFirstThread -jar target/tritium-music-1.0.3.jar
 
 普通构建与运行不需要 Node.js。只有重新生成 Folia 歌词设计数据时，才需要 Node.js 24+ 和对应上游源码，详见 [导入工具说明](tools/folia/README.txt)。
 
+## 系统媒体集成
+
+启动后按当前系统自动启用，无需配置：
+
+- **macOS**：通过 MediaPlayer 接入「正在播放」和系统媒体键，适用于项目支持的 Apple Silicon 环境。封面异步加载，切歌或封面不可用时清除旧封面。
+- **Linux**：通过当前用户的 D-Bus session bus 提供 MPRIS 2 接口，供 GNOME、KDE Plasma 等桌面及 `playerctl` 使用；支持音量、相对跳转和按歌曲标识的绝对定位。总线名称为 `org.mpris.MediaPlayer2.tritium.instance<PID>`，多个播放器进程可分别发现。使用自定义裁剪 JRE 时需包含 `jdk.security.auth`。
+- **Windows**：继续使用 Windows 10 / 11 SMTC。
+
+媒体键由系统路由到当前选中的播放器，具体展示和按钮取决于桌面环境。Linux 无用户 session bus（例如部分 SSH、容器环境）时自动跳过集成；原生接口初始化失败不会中断音乐播放。MPRIS 不提供远程退出、打开外部 URI、停止播放或变速；暂停请使用 `Pause` / `PlayPause`。
+
+Linux 可选检查（`playerctl` 只用于调试，不是运行依赖）：
+
+```sh
+playerctl --list-all
+playerctl --player=tritium metadata
+playerctl --player=tritium play-pause
+playerctl --player=tritium position 10
+```
+
 ## 测试
 
 ```sh
@@ -145,6 +164,12 @@ mvn -Dtritium.testRendering=true test
 
 # Windows 系统媒体控制集成检查，需要交互式 Windows 桌面
 mvn -Dtritium.testSmtc=true -Dtest=WindowsSmtcTest test
+
+# macOS 原生 MediaPlayer 元数据、封面、目标回调与清理检查，需要桌面会话
+mvn -Dtritium.testNowPlaying=true -Dtest=MacNowPlayingTest test
+
+# Linux 实际 D-Bus 通信、发现、属性、命令、信号与退出清理检查
+dbus-run-session -- mvn -Dtritium.testMpris=true -Dtest=LinuxMprisIntegrationTest test
 
 # Windows / Linux / macOS 的真实 JVM Attach 检查；先将 JAVA8_HOME 指向 Java 8 安装目录
 mvn -Dminecraft.testAttach=true -Dtest=AgentAttachFixtureTest,MinecraftProcessDiscoveryTest,MinecraftConnectionErrorTest test

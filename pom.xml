@@ -28,6 +28,19 @@
 
     <dependencies>
 
+        <!-- MPRIS over the user's session bus; junixsocket supports both filesystem and abstract Unix sockets. -->
+        <dependency>
+            <groupId>com.github.hypfvieh</groupId>
+            <artifactId>dbus-java-core</artifactId>
+            <version>5.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.hypfvieh</groupId>
+            <artifactId>dbus-java-transport-junixsocket</artifactId>
+            <version>5.1.1</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Unicode normalization for matching lyric metadata across scripts. -->
         <dependency>
             <groupId>com.ibm.icu</groupId>
@@ -371,7 +384,7 @@
                             <type>DMG</type>
                             <addModules>
                                 <module>java.se</module><module>jdk.attach</module><module>jdk.unsupported</module>
-                                <module>jdk.crypto.ec</module><module>jdk.charsets</module><module>jdk.localedata</module><module>jdk.zipfs</module>
+                                <module>jdk.crypto.ec</module><module>jdk.security.auth</module><module>jdk.charsets</module><module>jdk.localedata</module><module>jdk.zipfs</module>
                             </addModules>
                             <javaOptions>
                                 <option>-XstartOnFirstThread</option>
@@ -409,7 +422,7 @@
                             <type>EXE</type>
                             <addModules>
                                 <module>java.se</module><module>jdk.attach</module><module>jdk.unsupported</module>
-                                <module>jdk.crypto.ec</module><module>jdk.charsets</module><module>jdk.localedata</module><module>jdk.zipfs</module>
+                                <module>jdk.crypto.ec</module><module>jdk.security.auth</module><module>jdk.charsets</module><module>jdk.localedata</module><module>jdk.zipfs</module>
                             </addModules>
                         </configuration>
                     </plugin>

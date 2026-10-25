@@ -47,6 +47,9 @@ jobs:
           cache: maven
       - name: Test Attach and build embedded Agent
         run: mvn --batch-mode --no-transfer-progress "-Dminecraft.testAttach=true" clean verify
+      - name: Verify macOS Now Playing integration
+        if: runner.os == 'macOS'
+        run: mvn --batch-mode --no-transfer-progress -Dinvoker.skip=true -Dtritium.testNowPlaying=true -Dtest=MacNowPlayingTest test
       - name: Verify Java 25 Attach client against Java 8
         shell: pwsh
         run: |
@@ -99,6 +102,9 @@ jobs:
 
       - name: Test and build packages
         run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Verify Linux MPRIS over a private session bus
+        run: dbus-run-session -- mvn --batch-mode --no-transfer-progress -Dinvoker.skip=true -Dtritium.testMpris=true -Dtest=LinuxMprisIntegrationTest test
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
