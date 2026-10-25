@@ -60,16 +60,28 @@ jobs:
           $mainJar = Get-ChildItem target -Filter 'tritium-music-*.jar' | Select-Object -First 1
           Copy-Item -LiteralPath $mainJar.FullName -Destination $inputDir
           [xml]$pom = Get-Content -Raw pom.xml
+          # Both profiles list the same platform-independent JDK modules. Linux
+          # reuses only addModules, not the Windows installer configuration.
           $profileId = if ($IsMacOS) { 'jpackage-macos-arm64' } else { 'jpackage-windows-x64' }
           $profile = $pom.project.profiles.profile | Where-Object { $_.id -eq $profileId }
           $modules = $profile.build.plugins.plugin.configuration.addModules.module -join ','
           $jpackage = if ($IsWindows) { 'jpackage.exe' } else { 'jpackage' }
           & "$env:JAVA_HOME/bin/$jpackage" --type app-image --name Tritium-Minecraft-Check --input $inputDir --main-jar $mainJar.Name --main-class tritium.desktop.TritiumMusicDesktopApp --dest target/runtime-check --add-modules $modules
           if ($LASTEXITCODE -ne 0) { throw 'jpackage failed' }
-          $runtime = if ($IsMacOS) { 'target/runtime-check/Tritium-Minecraft-Check.app/Contents/runtime/Contents/Home' } else { 'target/runtime-check/Tritium-Minecraft-Check/runtime' }
-          if (!(Select-String -LiteralPath "$runtime/release" -Pattern 'jdk.attach' -Quiet)) { throw 'jdk.attach missing' }
+          $runtime = if ($IsWindows) {
+            'target/runtime-check/Tritium-Minecraft-Check/runtime'
+          } elseif ($IsMacOS) {
+            'target/runtime-check/Tritium-Minecraft-Check.app/Contents/runtime/Contents/Home'
+          } elseif ($IsLinux) {
+            'target/runtime-check/Tritium-Minecraft-Check/lib/runtime'
+          } else {
+            throw 'Unsupported jpackage platform'
+          }
+          Write-Host "Checking packaged runtime: $runtime"
+          if (!(Test-Path -LiteralPath "$runtime/release" -PathType Leaf)) { throw "Packaged runtime release file not found: $runtime/release (check app-image layout)" }
+          if (!(Select-String -LiteralPath "$runtime/release" -Pattern '\bjdk\.attach\b' -Quiet)) { throw "jdk.attach module missing from $runtime/release" }
           $native = if ($IsWindows) { 'bin/attach.dll' } elseif ($IsMacOS) { 'lib/libattach.dylib' } else { 'lib/libattach.so' }
-          if (!(Test-Path -LiteralPath "$runtime/$native")) { throw 'JDK Attach native dependency missing' }
+          if (!(Test-Path -LiteralPath "$runtime/$native" -PathType Leaf)) { throw "JDK Attach native dependency missing: $runtime/$native" }
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
