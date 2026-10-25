@@ -14,7 +14,7 @@ import java.util.*;
 import javax.imageio.ImageIO;
 
 /** Game-side adaptation of the original MusicInfo/Lyrics/SpectrumWidget geometry and animation.
- * No desktop renderer or player dependencies enter the game. See Minecraft-HUD-NOTICE.txt. */
+ * No desktop renderer or player dependencies enter the game. See THIRD_PARTY_NOTICES.md. */
 public final class HudPainter {
     private final Font regular = font("sfregular.otf"), bold = font("sfbold.otf"), fallback = font("pf_normal.ttf");
     private final Font boldFallback = font("pf_middleblack.ttf");

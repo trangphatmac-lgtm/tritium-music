@@ -1,4 +1,4 @@
-// Folia Nomand defaults and overscan, AGPL-3.0; Paper shaders, Apache-2.0. See cover/NOTICE.txt.
+// Folia Nomand defaults and overscan, AGPL-3.0; Paper shaders, Apache-2.0. See THIRD_PARTY_NOTICES.md.
 package tritium.desktop.background.cover;
 
 import org.lwjgl.opengl.EXTFramebufferObject;

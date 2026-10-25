@@ -1,7 +1,0 @@
-Folia native lyric design resources
-
-Copyright (c) 2026 chthollyphile and contributors. AGPL-3.0-only.
-Reference: https://github.com/chthollyphile/folia-major
-Commit: 1f6d0f468f5bc81b23a8b40ad7ca96ccd4b1ecbe (0.7.22).
-See tritium/licenses/Folia-NOTICE.txt and Folia-AGPL-3.0.txt.
-Generated with tools/folia/import-profiles.mjs.

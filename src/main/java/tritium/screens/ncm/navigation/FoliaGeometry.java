@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Adapted from Folia; see tritium/licenses/Folia-NOTICE.txt.
+// Adapted from Folia; see THIRD_PARTY_NOTICES.md.
 package tritium.screens.ncm.navigation;
 
 import java.util.ArrayList;

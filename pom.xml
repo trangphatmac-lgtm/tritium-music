@@ -217,6 +217,14 @@
     <build>
         <resources>
             <resource><directory>src/main/resources</directory></resource>
+            <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    <include>LICENSE</include>
+                    <include>THIRD_PARTY_NOTICES.md</include>
+                </includes>
+                <targetPath>META-INF/tritium</targetPath>
+            </resource>
             <resource><directory>minecraft-agent/target</directory><includes><include>minecraft-hud-agent.jar</include></includes><targetPath>tritium/minecraft</targetPath></resource>
         </resources>
         <plugins>

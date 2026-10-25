@@ -1,5 +1,5 @@
 #version 120
-// Folia MonetBackgroundLayer composition (AGPL-3.0); see tritium/background/cover/NOTICE.txt.
+// Folia MonetBackgroundLayer composition (AGPL-3.0); see THIRD_PARTY_NOTICES.md.
 uniform vec2 r;
 uniform sampler2D image, previousImage;
 uniform vec2 imageSize, previousSize;

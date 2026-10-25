@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Adapted from Folia browsing behavior; see tritium/licenses/Folia-NOTICE.txt.
+// Adapted from Folia browsing behavior; see THIRD_PARTY_NOTICES.md.
 package tritium.desktop;
 
 import com.google.gson.JsonObject;

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Adapted from Folia's playback visualizer bridge; see tritium/background/latent/NOTICE.txt.
+// Adapted from Folia's playback visualizer bridge; see THIRD_PARTY_NOTICES.md.
 package tritium.ncm.music;
 
 /** Immutable music-analysis snapshot, independent of HUD gain and spectrum layout preferences. */

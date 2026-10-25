@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Port of Folia components/wall/blockReflows.ts; see Folia-NOTICE.txt.
+// Port of Folia components/wall/blockReflows.ts; see THIRD_PARTY_NOTICES.md.
 package tritium.screens.ncm.navigation;
 
 /** Exact block covers, indexed by template, expanded slot, then original slot. */

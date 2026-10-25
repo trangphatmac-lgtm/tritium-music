@@ -36,10 +36,14 @@
             <fileMode>0644</fileMode>
         </fileSet>
         <fileSet>
-            <directory>src/main/resources/tritium/natives</directory>
-            <outputDirectory>natives</outputDirectory>
+            <directory>${project.basedir}</directory>
+            <outputDirectory>/</outputDirectory>
             <includes>
-                <include>NATIVE-SOURCES.md</include>
+                <include>README.md</include>
+                <include>LICENSE</include>
+                <include>THIRD_PARTY_NOTICES.md</include>
+                <include>docs/*.md</include>
+                <include>tools/folia/README.txt</include>
             </includes>
             <fileMode>0644</fileMode>
         </fileSet>

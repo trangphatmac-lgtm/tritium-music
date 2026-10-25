@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Adapted from Folia Grid3DSlider, wall.css and bravaisTileKinds.css; see Folia-NOTICE.txt.
+// Adapted from Folia Grid3DSlider, wall.css and bravaisTileKinds.css; see THIRD_PARTY_NOTICES.md.
 package tritium.screens.ncm.navigation;
 
 import org.lwjgl.opengl.GL11;

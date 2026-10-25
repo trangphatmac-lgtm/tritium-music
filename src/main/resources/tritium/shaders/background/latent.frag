@@ -2,7 +2,7 @@
 // Paper Shaders 0.0.80, Copyright 2026 Paper (Apache-2.0).
 // Modified: GLSL 1.20 port of mesh-gradient and warp/4x4 dithering, combined with
 // Folia Latent's transforms, CSS filters, soft-light blend and background overlay.
-// See tritium/background/latent/ for licenses and provenance.
+// See THIRD_PARTY_NOTICES.md for licenses and provenance.
 uniform vec2 r;
 uniform float pixelRatio;
 uniform float meshTime;

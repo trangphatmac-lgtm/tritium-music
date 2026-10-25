@@ -1,5 +1,5 @@
 // Paper Shaders 0.0.80, Copyright 2026 Paper, Apache-2.0.
-// Ported to desktop GLSL 1.20; see tritium/background/cover/NOTICE.txt.
+// Ported to desktop GLSL 1.20; see THIRD_PARTY_NOTICES.md.
 #version 120
 
 

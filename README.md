@@ -1,199 +1,156 @@
 # Tritium Music
 
-A Java desktop NetEase Cloud Music (NCM) player featured with Beautiful Render, system-level HUDs, QR-code login, cookie login, lyric translation/romaji, and music cache management. 
+基于 Java 21 与 LWJGL 2 / OpenGL 的网易云音乐桌面播放器。把歌单、逐字歌词、动态背景和桌面 HUD 放在一起，也可以将当前播放内容同步到 Minecraft。
 
-> Current target platforms: Desktop Systems like Windows x64, linux and macOS Apple Silicon.  
-> Runtime target: Java 21.
+支持 **Windows x64、Linux x64 和 macOS Apple Silicon（ARM64）**，内置简体中文、繁体中文和英文界面，默认使用简体中文。
 
-## Feature List 
+## 功能一览
 
-### Main Player
+### 听歌与管理歌单
 
-- QR-code login for NetEase Cloud Music accounts
-- Cookie login and persistence
-- Home page, playlists, search, and liked songs
-- Switch between Sidebar list and Top navigation in Settings → Appearance → Layout; the choice is saved automatically. Top navigation includes Explore, My playlists, Saved playlists, Settings, and search, with dedicated scrollable playlist libraries.
-- Play, pause, previous track, and next track
-- Restore the last song, playback position, playing/paused state, queue (including play-next requests), and play mode on startup. State is saved on normal exit; a saved Heartbeat queue resumes in the preceding regular play mode. A song selected during startup takes priority over restoration.
-- Windows 10/11 system media controls (SMTC): song, artist, album, cover art, playback status and timeline, with play/pause, previous/next and seeking from Windows and supported media keys. Enabled automatically; see [Windows SMTC](docs/windows-smtc.md).
-- Stream uncached MP3, FLAC, WAV and M4A/MP4 songs after a short initial buffer while downloading and decoding in the background. Playback and lyrics wait when the buffer runs out; completed downloads remain reusable in the music cache. See [streaming playback](docs/streaming.md).
-- Volume adjustment and seek bar dragging
-- Optional smart transitions (AutoMix) in Settings → Playback, disabled by default and saved automatically. It follows the official client's feature-based transition approach for natural advancement to the next song, with a 5-second crossfade fallback when song features are unavailable. Manual track changes remain immediate. An optional Full AutoMix mode adds independent fade windows, 50 ms gain sampling and multi-stage EQ at the original playback speed. See [AutoMix details](docs/automix.md).
-- Lyric page, word-by-word lyrics, translations, and romaji
-- Automatically select the best lyrics from NetEase, AMLLDB, QQ Music and Kugou in Settings → Lyrics. Enabled by default with NetEase priority; source preference is saved and changes apply immediately. See [matching rules and verification](docs/best-lyrics.md).
-- Cover loading and blurred backgrounds
-- Navigation modes in Settings → Appearance: List (default), Coverflow (OldSchool, Mirror or Card), and Wall. Explore, My playlists, Saved playlists and playlist pages share the selected mode. Covers follow source order, with one entry per song instead of album grouping.
-- OldSchool restores the original full-window Coverflow; Mirror retains screen-space reflections and the shared mirror plane. Both support the saved cover-reflection toggle.
-- Folia Card offers artwork-only and Polaroid styles, full-bleed/square options, saved focus, and size/opacity falloff. Bravais Wall offers transparency, window count, stacked collection edges, backdrop lyrics and blur. Playlist cards form a compact single-row carousel with two neighbours on either side and flip into the song view; the wall repeats to fill the window. Both draw behind the original navigation and playback controls, including Blur/Liquid Glass materials, with hover, opening and reflow animations. All Coverflow styles have a back button and a darkened background in playlist details. The Bravais information strip stays hidden. See [navigation modes and controls](docs/navigation-modes.md).
-- Music download cache and cache size display
-- Simplified Chinese, Traditional Chinese, and English in Settings → General → Language; changes apply immediately and are saved automatically (default: Simplified Chinese)
-- Settings → Playlist Export: select created or subscribed playlists and export HTML, Markdown, plain text, JSON, or CSV with optional song title, artists, NetEase ID, song URL, and duration. Selected playlists are combined in one UTF-8 file; JSON uses `name`/`songs` groups and string fields (duration is `m:ss` or `h:mm:ss`), while CSV includes a playlist column and a UTF-8 BOM for Excel.
-- Light and dark modes in Settings → Appearance, with smooth transitions and a saved preference; lyrics and system HUDs keep their existing appearance
-- Live accent colors with eight presets and an HSV picker in Settings → Appearance
-- Custom main-window backgrounds in Settings → Main Background: static, picture, video, shader, and Latent. Enable “Apply background to lyrics page” to share any non-solid background with lyrics; the toggle is off by default and saved automatically. Lyrics retain their readability overlay, and system HUDs stay independent.
-- Saturation/brightness, hue, and spectrum opacity controls with saved custom colors
-- Optional FPS overlay in Settings → Debug → Show FPS
-- M4A/MP4 cloud music playback (AAC and 16/24-bit Apple Lossless)
-### System HUDs
+- **账号与曲库**：二维码登录、Cookie 登录与保存；浏览首页、创建和收藏的歌单、喜欢的歌曲及音乐网盘，支持在线搜索。
+- **播放控制**：播放 / 暂停、上一首 / 下一首、音量、进度拖动、播放模式和“下一首播放”队列。正常退出后保存播放会话，下次启动恢复歌曲、位置、队列与播放状态。
+- **流式播放**：MP3、FLAC、WAV、M4A / MP4 在短暂缓冲后开始播放，同时继续下载和解码；支持 AAC 与 16 / 24 位 Apple Lossless。完整下载可复用为本地缓存。
+- **智能过渡（AutoMix）**：自然切歌时根据歌曲特征安排衔接，缺少特征时使用交叉淡化；可选完全体模式提供更细的音量与 EQ 控制，保持原速播放。默认关闭。
+- **歌单导出**：将创建或收藏的歌单合并导出为 HTML、Markdown、纯文本、JSON 或 CSV，可选择歌名、歌手、歌曲 ID、链接与时长。
+- **缓存管理**：查看音乐缓存占用并清理缓存。
 
-- `musicInfo`: cover art, song title, artist/current lyric, playback progress, and download status
-- `musicLyrics`: desktop lyrics, scrolling effect, alignment, shadow, single-line mode, translation/romaji
-- `musicSpectrum`: desktop spectrum visualizer, rectangle/line styles, indicator line, color, and scale
-- `musicToast`: independent, always-on-top playback notification at the top-left of the screen, with the artist and song title, pixel border, animated music notes, and slide animations; stays visible for about five seconds and refreshes on track changes
-- Toggle playback notifications in Settings → System HUDs → Enable Playback Toast HUD; the setting is saved automatically
-- HUDs are click-through by default. The playback toast does not take focus; the info, lyrics, and spectrum HUDs can be dragged, resized, and saved in edit mode
+### 歌词与视觉效果
 
-## Quick Start
+- **逐字歌词、翻译与罗马音**：支持自动匹配网易云、AMLLDB、QQ 音乐和酷狗歌词；默认开启自动匹配并优先使用网易云。
+- **多种歌词场景**：Normal、花火、绘光、凝彩、镜台、商籁、时计、浮名、莫奈、回环、云阶和流光；可选底部控制栏或迷你控制器。
+- **封面浏览**：列表、Coverflow（OldSchool / Mirror / Card）与 Wall 封面墙，支持侧边栏或顶部导航。
+- **外观设置**：深色 / 浅色主题、预设与自定义强调色，以及 Static、Blur、Liquid Glass 界面材质。
+- **主界面背景**：纯色、图片、静音循环视频、Shader、Latent 动态背景及 Cover 封面背景；Cover 提供 Solid、Blur、Nomand 和 Monet 效果。可选择将背景应用到歌词页。
 
-### Requirements
+### 桌面与游戏联动
 
-- JDK 21+
-- Maven 3.9+
-- Windows x64, linux or macOS Apple Silicon.
+| 功能 | 说明 |
+| --- | --- |
+| 桌面 HUD | 歌曲信息、桌面歌词、频谱和切歌通知；默认鼠标穿透，信息 / 歌词 / 频谱可在编辑模式中调整位置与大小 |
+| Windows 媒体控制 | Windows 10 / 11 自动启用 SMTC，向系统媒体面板提供歌曲、封面、进度与播放控制，并响应支持的媒体键 |
+| Minecraft HUD | Windows x64 下连接兼容的 Minecraft 1.8.9 客户端，在游戏中显示歌曲信息、歌词、频谱、通知及世界空间 3D 歌词 |
 
-### Clone and Build
+Minecraft 联动需要目标 JVM 允许 Attach 和动态加载 Agent，使用 LWJGL 2 及兼容的 MCP / SRG 类名。
 
-```bash
-mvn package
+## 快速开始
+
+### 环境要求
+
+- **JDK 21 或更高版本**，架构须与操作系统及随包本机库匹配。
+- **Maven 3.9+**，从源码构建时需要。
+- 可用的桌面图形环境和支持 OpenGL 的显卡驱动。
+
+当前随包本机库覆盖 Windows x64、Linux x64 与 macOS ARM64；其他平台和架构尚未覆盖。音乐服务、账号权限与网络状态会影响歌曲和歌词的可用性。
+
+### 从源码构建
+
+```sh
+git clone https://github.com/trangphatmac-lgtm/tritium-music.git
+cd tritium-music
+mvn clean verify
 ```
-The tests will be automatically run.
 
-
-After the build finishes, the fat jar is located at:
+构建会运行默认测试，先构建 Minecraft Agent，再生成包含依赖的主程序 JAR 和便携包。以下文件名以当前 `pom.xml` 中的 **1.0.3** 为例，版本变化后请使用实际输出文件名：
 
 ```text
-target/tritium-music-1.x.x.jar
+target/
+├── tritium-music-1.0.3.jar
+├── tritium-music-1.0.3-portable.zip
+└── tritium-music-1.0.3-portable.tar.gz
 ```
 
-Portable packages are located at:
+### 运行 JAR
 
-```text
-target/tritium-music-1.x.x-portable.zip
-target/tritium-music-1.x.x-portable.tar.gz
+Windows / Linux：
+
+```sh
+java -jar target/tritium-music-1.0.3.jar
 ```
 
-## Running 
+macOS Apple Silicon：
 
-### Interface styles
-
-- Blur
-- Liquid Glass
-- Static
-
-### Custom backgrounds
-
-- Picture
-- Video
-- Shader
-- Latent
-- Cover: Solid, Blur, Nomand (five effects), Monet (two layouts)
-- Static
-
-### Windows
-
-```bash
-java -jar target/tritium-music-1.x.x.jar
+```sh
+java -XstartOnFirstThread -jar target/tritium-music-1.0.3.jar
 ```
 
-### macOS Apple Silicon
+### 使用便携包
 
-```bash
-java -jar target/tritium-music-1.x.x.jar
+解压后在便携包目录运行：
+
+```powershell
+# Windows PowerShell
+.\bin\tritium-music.bat
 ```
 
-### Linux
-
-```bash
-java -jar target/tritium-music-1.x.x.jar
-```
-
-### Other Launch Arguments
-
-```bash
-# Exit automatically after 3 seconds for smoke tests
-java -jar target/tritium-music-1.x.x.jar --smoke-exit-after=3
-
-# Force a synthetic preview of the info, lyrics, and spectrum HUDs
-java -jar target/tritium-music-1.x.x.jar --hud-smoke --smoke-exit-after=3
-
-# Adjust UI size in window units (independent of Retina pixel density)
-java -jar target/tritium-music-1.x.x.jar --ui-scale=1.25
+```sh
+# macOS / Linux；脚本会自动处理 macOS 启动参数
+./bin/tritium-music
 ```
 
 
-## Packaging 
+### 常用操作
 
-### Portable Packages
+| 操作 | 按键或手势 |
+| --- | --- |
+| 播放 / 暂停 | 未在输入框编辑时按空格 |
+| 聚焦搜索 | `Ctrl / Cmd + F` 或 `Ctrl / Cmd + G` |
+| 封面视图选中 / 打开 | 方向键选择，`Enter` 打开歌单或播放歌曲 |
+| 封面视图返回 | `Esc` 优先清除聚焦的筛选、收起展开项或返回上一级 |
+| 封面墙移动 / 缩放 | 拖动平移，滚轮纵向移动，`Ctrl + 滚轮` 缩放 |
 
-```bash
-mvn package
+### 启动参数
+
+参数放在 JAR 文件名之后，也可以传给便携包启动脚本：
+
+| 参数 | 用途 |
+| --- | --- |
+| `--ui-scale=1.25` | 调整界面缩放比例，与 Retina 像素密度独立 |
+| `--smoke-exit-after=3` | 启动约 3 秒后自动退出，用于冒烟检查 |
+| `--hud-smoke` | 使用合成内容预览歌曲信息、歌词与频谱 HUD |
+
+## 数据与缓存
+
+配置和缓存存放在用户目录中：
+
+| 平台 | 配置目录 | 缓存目录 |
+| --- | --- | --- |
+| Windows | `%APPDATA%\Tritium Music` | `%APPDATA%\Tritium Music\cache` |
+| macOS | `~/Library/Application Support/Tritium Music` | `~/Library/Caches/Tritium Music` |
+| Linux | `$XDG_DATA_HOME/tritium-music`；未设置时为 `~/.local/share/tritium-music` | 配置目录下的 `cache/` |
+
+配置目录中的 `NCMCookie.txt` 保存登录信息，`preferences.json` 保存界面和 HUD 设置，`playback.json` 保存正常退出时的播放会话。缓存目录中的 `MusicCache/` 存储音频，`AutoMixFeatures/` 存储歌曲特征，`natives/` 存储启动时解压的本机库。分享日志或配置时请去除登录 Cookie。
+
+
+普通构建与运行不需要 Node.js。只有重新生成 Folia 歌词设计数据时，才需要 Node.js 24+ 和对应上游源码，详见 [导入工具说明](tools/folia/README.txt)。
+
+## 测试
+
+```sh
+# 默认测试
+mvn test
+
+# 实际 OpenGL 渲染检查，需要桌面显示环境
+mvn -Dtritium.testRendering=true test
+
+# Windows 系统媒体控制集成检查，需要交互式 Windows 桌面
+mvn -Dtritium.testSmtc=true -Dtest=WindowsSmtcTest test
 ```
 
-The output includes:
+## 平台安装包
 
-- `lib/tritium-music.jar`
-- `bin/tritium-music`
-- `bin/tritium-music.bat`
-- Native runtime source notes
+在对应平台上使用 JDK 的 `jpackage` 构建；还需要该平台打包工具所需的环境：
 
-### package
-
-macOS Apple Silicon:
-
-```bash
+```sh
+# macOS Apple Silicon：DMG
 mvn -Pjpackage-macos-arm64 package
-```
 
-Windows x64:
-
-```bash
+# Windows x64：EXE
 mvn -Pjpackage-windows-x64 package
 ```
 
-Package output directory:
+产物分别位于 `target/jpackage/macos-arm64/` 和 `target/jpackage/windows-x64/`。Linux 当前可使用 JAR 或便携包，仓库未配置 Linux 安装包 profile。
 
-```text
-target/jpackage/
-```
+## 许可证与第三方声明
 
-Note: package usually needs to run on the corresponding platform. For example, build Windows installers on Windows and macOS `.dmg` packages on macOS.
-
-## Data Directories 
-
-The app no longer writes cookies or caches to the current working directory.
-
-### Windows
-
-```text
-%APPDATA%/Tritium Music
-%APPDATA%/Tritium Music/cache/MusicCache
-```
-
-### macOS
-
-```text
-~/Library/Application Support/Tritium Music
-~/Library/Caches/Tritium Music/MusicCache
-```
-
-Main files:
-
-- `NCMCookie.txt`: NetEase Cloud Music login cookie
-- `preferences.json`: player and HUD settings
-- `playback.json`: last playback session (saved atomically on exit)
-- `MusicCache/`: music cache
-- `natives/`: native runtime extracted at startup
-
-## Testing 
-
-```bash
-mvn test
-```
-
-On a desktop with a display, also validate actual framebuffer pixels, clipping, and resizing:
-
-```bash
-mvn -Dtritium.testRendering=true test
-```
-
----
+项目许可证见 [LICENSE](LICENSE)。第三方组件、移植代码、资源来源和相应许可证集中收录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)，其中 Folia 移植部分保留 AGPL-3.0 条款，其他组件按各自声明适用。

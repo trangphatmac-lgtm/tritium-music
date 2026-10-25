@@ -1,4 +1,4 @@
-// Adapted from Folia's monetBackgroundPaint.ts (AGPL-3.0); see tritium/background/cover/NOTICE.txt.
+// Adapted from Folia's monetBackgroundPaint.ts (AGPL-3.0); see THIRD_PARTY_NOTICES.md.
 package tritium.desktop.background.cover;
 
 import java.awt.*;

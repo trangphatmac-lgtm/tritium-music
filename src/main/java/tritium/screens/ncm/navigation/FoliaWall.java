@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Port of Folia wall/startTile, blockTemplates and bravaisItemSlots; see Folia-NOTICE.txt.
+// Port of Folia wall/startTile, blockTemplates and bravaisItemSlots; see THIRD_PARTY_NOTICES.md.
 package tritium.screens.ncm.navigation;
 
 import java.util.ArrayList;

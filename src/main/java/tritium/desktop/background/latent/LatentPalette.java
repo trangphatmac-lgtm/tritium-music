@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Adapted from Folia's colorPalette.ts and LatentBackground.tsx; see tritium/background/latent/NOTICE.txt.
+// Adapted from Folia's colorPalette.ts and LatentBackground.tsx; see THIRD_PARTY_NOTICES.md.
 package tritium.desktop.background.latent;
 
 import java.awt.Graphics2D;

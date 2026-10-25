@@ -8,6 +8,7 @@ Regenerate design data (development only, Node 24+):
   node tools/folia/import-profiles.mjs /path/to/folia-major
 
 Reference checkout: 0.7.22, 1f6d0f468f5bc81b23a8b40ad7ca96ccd4b1ecbe.
+Attribution and license: ../../THIRD_PARTY_NOTICES.md (Folia sections).
 The importer evaluates only pure upstream builders using a vector command
 recorder. UI framework imports used by unrelated icon rendering are stripped;
 optional smart-beat services are inactive during static geometry recording.

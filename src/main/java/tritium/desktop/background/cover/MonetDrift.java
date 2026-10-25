@@ -1,4 +1,4 @@
-// Adapted from Folia's monetBackgroundDrift.ts (AGPL-3.0); see tritium/background/cover/NOTICE.txt.
+// Adapted from Folia's monetBackgroundDrift.ts (AGPL-3.0); see THIRD_PARTY_NOTICES.md.
 package tritium.desktop.background.cover;
 
 /** Folia's normalized, seamless 240-second drift track at its default strength of 0.5. */

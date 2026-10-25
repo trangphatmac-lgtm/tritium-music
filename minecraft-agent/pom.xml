@@ -15,8 +15,7 @@
     <finalName>minecraft-hud-agent</finalName>
     <resources>
       <resource><directory>src/main/resources</directory></resource>
-      <resource><directory>../src/main/resources</directory><includes><include>tritium/licenses/Minecraft-HUD-NOTICE.txt</include></includes></resource>
-      <resource><directory>..</directory><includes><include>LICENSE</include></includes><targetPath>META-INF</targetPath></resource>
+      <resource><directory>..</directory><includes><include>LICENSE</include><include>THIRD_PARTY_NOTICES.md</include></includes><targetPath>META-INF/tritium</targetPath></resource>
       <resource><directory>../src/main/resources</directory><includes><include>tritium/fonts/sf*.otf</include><include>tritium/fonts/pf_*.ttf</include><include>tritium/textures/hud/*</include></includes></resource>
     </resources>
     <plugins>

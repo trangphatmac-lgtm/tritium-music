@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Folia Grid3DSlider, hexViewport, Bravais camera/hover/reflow/flip and morph transitions.
-// See tritium/licenses/Folia-NOTICE.txt for the corresponding source files.
+// See THIRD_PARTY_NOTICES.md for the corresponding source files.
 package tritium.screens.ncm.navigation;
 
 import org.lwjgl.input.Keyboard;

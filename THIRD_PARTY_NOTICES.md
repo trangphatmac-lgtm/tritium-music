@@ -1,3 +1,206 @@
+```text
+Folia ports
+
+Upstream: Folia by chthollyphile and contributors
+https://github.com/chthollyphile/folia-major
+Reference version: 0.7.21
+License: GNU Affero General Public License version 3 (see the GNU Affero General Public License v3.0 appendix below).
+
+The matching rules, provider protocols, QRC cipher and KRC decoding in
+tritium.ncm.music.lyrics are adapted from Folia's:
+  src/utils/lyrics/autoMatchBestLyric.ts
+  src/utils/lyrics/matchScore.ts
+  src/utils/lyrics/searchQuery.ts
+  src/utils/lyrics/sourcePriority.ts
+  src/utils/lyrics/providers/amllApi.ts
+  src/services/onlineMusic/qq/qqLyricProvider.ts
+  src/services/onlineMusic/qq/qrcDecrypt.ts
+  src/services/onlineMusic/kugou/kugouLyricProvider.ts
+  src/services/onlineMusic/kugou/krcDecrypt.ts
+
+Adapted to Java and Tritium's millisecond lyric model. The default preferred
+source is NetEase per the Tritium user's request. The port includes asynchronous
+loading, expiring immutable caches, cancellation and render-thread publication.
+The ported source files remain under AGPL-3.0. This notice and the license are
+included in the application resources.
+
+Cover navigation port (reference commit 851af347, 2026-10-22)
+
+FoliaGeometry adapts the ordered hex spiral, distance falloff, 12x8 block
+layouts, coordinate-hashed reflections and seeded reserved-window masks from:
+  src/library/suites/grid/shared/hexViewport.ts
+  src/utils/hexCardFalloff.ts
+  src/components/wall/blockTemplates.ts
+  src/components/wall/blockReservedSlots.ts
+  src/components/wall/wallSlots.ts
+
+The Card and Wall settings and rendering behavior follow:
+  src/stores/useHomeLayoutSettingsStore.ts
+  src/stores/useGridViewSettingsStore.ts
+  src/stores/useLibraryWallLookStore.ts
+  src/library/suites/bravais/bravaisLook.ts
+
+Adapted to Java/OpenGL and Tritium's page bounds, artwork cache, input and
+playback queue. The Bravais seam is permanently closed; collection tiles open
+Tritium playlist pages. Source item order is retained across every mode.
+
+The full-window field, carousel and motion port additionally adapts:
+  src/library/suites/grid/home/Grid3DSlider.tsx
+  src/library/suites/grid/transitions/morphGeometry.ts
+  src/library/suites/grid/transitions/morphFlight.ts
+  src/library/suites/grid/transitions/morphFlyIn.ts
+  src/components/wall/startTile.ts
+  src/components/wall/layout.ts
+  src/components/wall/blockReflows.ts
+  src/components/wall/wallReflowMotion.ts
+  src/components/wall/wall.css
+  src/library/suites/bravais/bravaisItemSlots.ts
+  src/library/suites/bravais/bravaisConstants.ts
+  src/library/suites/bravais/bravaisWallWave.ts
+  src/library/suites/bravais/BravaisTile.tsx
+  src/library/suites/bravais/bravais.css
+  src/library/suites/bravais/bravaisTileKinds.css
+
+FoliaWallReflows preserves the generated exact covers, indexed by original slot.
+FoliaMotion evaluates the original spring parameters analytically. Renderer
+adaptations use Tritium's existing shell and its backdrop material capture.
+
+Native lyric scenes (reference version 0.7.22, commit
+1f6d0f468f5bc81b23a8b40ad7ca96ccd4b1ecbe, 2026-10-24)
+
+The Java implementations in tritium.screens.ncm.lyrics and design resources in
+tritium/lyrics/folia adapt Folia's src/components/visualizer/{hanabi,lumiere,
+tempera,diorama,sonnet,pendolo,fume,monet,claddagh,partita,classic} and shared lyric
+timing, layout and motion helpers. Copyright (c) 2026 chthollyphile and
+contributors. Licensed under AGPL-3.0-only; the complete license is distributed
+as THIRD_PARTY_NOTICES.md (GNU Affero General Public License v3.0 appendix).
+
+The native port uses Tritium's Java, LWJGL 2, font atlas, artwork cache and audio
+analysis. No React, Pixi, Three.js, browser or JavaScript engine is shipped.
+Lumiere's light field and Diorama's particle shaders are adapted to GLSL 1.20.
+The JSON design resources contain the upstream Hanabi and Lumiere catalogs,
+analytic firework plans, Tempera vector compositions, Sonnet vector designs,
+and Diorama welded surfaces and formations. The development-only recorder
+tools/folia/import-profiles.mjs regenerates these resources from an upstream
+source checkout. Normal continues to use Tritium's original lyrics page.
+
+Classic (Luminous / 流光) additionally adapts:
+  src/components/visualizer/GlowWord.tsx
+  src/components/visualizer/glowWordVariants.ts
+  src/components/visualizer/glowWordTiming.ts
+  src/components/visualizer/wordGlow.ts
+  src/utils/lyrics/renderHints.ts
+  src/utils/chorusDetector.ts
+The default normal-intensity choreography is evaluated from playback time.
+The native Gaussian glyph compositor uses two reusable GL atlases, and the
+shared Latent background uses the existing native renderer. Word wrapping
+reserves animated ink bounds for narrow windows and long English lines.
+
+Folia native lyric design resources
+
+Copyright (c) 2026 chthollyphile and contributors. AGPL-3.0-only.
+Reference: https://github.com/chthollyphile/folia-major
+Commit: 1f6d0f468f5bc81b23a8b40ad7ca96ccd4b1ecbe (0.7.22).
+See the Folia section and GNU Affero General Public License v3.0 appendix in THIRD_PARTY_NOTICES.md.
+Generated with tools/folia/import-profiles.mjs.
+
+Latent background port
+
+Paper Shaders 0.0.80, Copyright 2026 Paper, Apache License 2.0.
+Source: https://github.com/paper-design/shaders
+Exact package: https://registry.npmjs.org/@paper-design/shaders/-/shaders-0.0.80.tgz
+mesh-gradient and warp/4x4 dithering were ported to GLSL 1.20 and combined
+with the soft-light compositor in tritium/shaders/background/latent.frag.
+See the Apache License 2.0 appendix and Paper Shaders notice below.
+
+Folia (folia-major), GNU Affero General Public License version 3.
+Reference revision: 851af3478bfa98b68dbd21fbc89120cc11b7ea96
+Reference modules: LatentBackground.tsx, baseThemes.ts, colorPalette.ts,
+usePlaybackVisualizerBridge.ts, and DEFAULT_LATENT_BACKGROUND_TUNING.
+The Java LatentMotion, LatentPalette and AudioEnergy implementations adapt
+the reference's audio response and palette algorithms. Latent defaults,
+layer transforms, filters and compositing follow the same reference.
+These adapted portions are provided under AGPL-3.0; see the GNU Affero General Public License v3.0 appendix below.
+The optional Beat This! model / intelligent effects and AI theme generator
+are not included; beats use the reference's real-time spectral-onset path.
+
+Cover background port
+
+Folia (folia-major), GNU Affero General Public License version 3.
+Reference revision: 851af3478bfa98b68dbd21fbc89120cc11b7ea96.
+Reference modules: NomandBackgroundLayer.tsx, nomandShaderAdjustments.ts,
+MonetBackgroundLayer.tsx, monetBackgroundPaint.ts, monetBackgroundDrift.ts,
+DEFAULT_NOMAND_BACKGROUND_TUNING and DEFAULT_MONET_BACKGROUND_TUNING.
+MonetPaint, MonetDrift, NomandRenderer and composite.frag adapt these algorithms
+and default parameters to Java/OpenGL. See the GNU Affero General Public License v3.0 appendix below.
+Only Nomand's effect and Monet's layout are exposed. Image source is the visible
+playlist cover or playing song. Folia theme roles use Tritium's palette. Lyrics
+retain Tritium's dark canvas and white text. Browser-specific upload controls,
+workers and reduced-motion hooks are replaced with the desktop render lifecycle.
+
+Paper Shaders 0.0.80, Copyright 2026 Paper, Apache License 2.0.
+Source: https://github.com/paper-design/shaders
+Exact package: https://registry.npmjs.org/@paper-design/shaders/-/shaders-0.0.80.tgz
+The five image shaders, shared vertex shader and noise texture are ported from
+this package. Changes: GLSL 300 ES to desktop GLSL 1.20; fixed-function vertex
+position; varying and texture2D syntax; Bayer arrays expanded to lookup functions;
+switch expanded to if/else. All image treatment equations are preserved.
+See the Apache License 2.0 appendix and Paper Shaders notice below.
+
+Paper Shaders
+Copyright 2026 Paper
+
+Powered by Paper Shaders:
+https://shaders.paper.design
+
+Background video runtime
+
+JavaCV 1.5.11 and JavaCPP 1.5.11
+Project and source: https://github.com/bytedeco/javacv/tree/1.5.11
+JavaCPP source: https://github.com/bytedeco/javacpp/tree/1.5.11
+License: Apache License 2.0 (with an alternative GPLv2 + Classpath exception option).
+
+JavaCPP FFmpeg presets 7.1-1.5.11
+Build configuration and dependency sources:
+https://github.com/bytedeco/javacpp-presets/tree/1.5.11/ffmpeg
+FFmpeg source: https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz
+FFmpeg licensing and build-dependent components: https://ffmpeg.org/legal.html
+
+The packaged runtime includes the standard FFmpeg preset binaries for macosx-arm64,
+windows-x86_64 and linux-x86_64, not the separately distributed GPL preset variant.
+Upstream license notices are included in the native dependency resources.
+
+Minecraft HUD integration
+
+The MCP/SRG method names and descriptors, and the approach of retransformation
+with a class-loader-visible callback, were consulted from the user-supplied
+InjectMyau project (OpenMyau-Inject/src/main/java/myau/inject/Agent.java,
+HookTransformer.java, Hooks.java, Callbacks.java and myau_mappings.json).
+InjectMyau / OpenMyau contributors retain their original copyrights. That
+project is distributed under GNU GPL version 3; see its LICENSE and README.
+No native injector, bypass, EXE, or DLL from that project is included.
+
+Visual behavior also references the original Tritium Music Opai widgets:
+MusicInfoWidget, MusicLyricsWidget, MusicSpectrumWidget, SpectrumVisualizer,
+ScrollText, CFontRenderer/GlyphGenerator, Interpolations, GaussianKernel,
+CloudMusic.gaussianBlur, and the current Tritium desktop HUD renderers. The
+isolated WidgetText/WidgetLyrics/WidgetSpectrum/WidgetMarquee and HudArtwork
+implementations adapt their geometry, glyph metrics and animation behavior.
+Original authors include
+IzumiiKonata and Tritium Music contributors. This repository remains GPLv3.
+
+World-space lyric behavior references the user-supplied GaleMod 2.0 JAR:
+gale.lyrics.LyricsModule, LyricSplit, Lyrics, and gale.render.CjkFont/DeepGlow.
+The scene timing, camera geometry, system-font atlas and seven-scale glow were
+adapted to Tritium's lyric stream, Java 8 Agent and isolated GL state handling.
+GaleMod contributors retain their rights in their original implementation.
+No GaleMod JAR, authentication/player implementation, or bundled media is included.
+
+The Agent bundles ASM (BSD 3-Clause) and Gson (Apache 2.0), relocated into
+tritium.minecraft.internal. Their published JAR license notices are preserved.
+LWJGL is supplied by Minecraft and is not bundled in the Agent. Bundled fonts
+and HUD artwork are existing Tritium Music resources, with their existing terms.
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
@@ -659,3 +862,206 @@ specific requirements.
 if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <https://www.gnu.org/licenses/>.
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
