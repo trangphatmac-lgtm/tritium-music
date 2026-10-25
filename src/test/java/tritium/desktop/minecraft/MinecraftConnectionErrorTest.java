@@ -38,6 +38,9 @@ class MinecraftConnectionErrorTest {
 
     @Test void attachFailuresStillProvideRelevantRuntimeHelp() {
         assertTrue(MinecraftConnectionManager.explain(new ClassNotFoundException("com.sun.tools.attach.VirtualMachine")).contains("jdk.attach"));
-        assertTrue(MinecraftConnectionManager.explainAttach(new AttachNotSupportedException("Attach disabled")).contains("-XX:+DisableAttachMechanism"));
+        String error = MinecraftConnectionManager.explainAttach(new AttachNotSupportedException("Attach disabled"));
+        assertTrue(error.contains("-XX:+DisableAttachMechanism"));
+        assertTrue(error.contains("同一系统用户"));
+        assertFalse(error.contains("同一 Windows 用户"));
     }
 }

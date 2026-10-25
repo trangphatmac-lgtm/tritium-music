@@ -2,6 +2,7 @@ package tritium.desktop.minecraft;
 
 import com.google.gson.Gson;
 import com.sun.tools.attach.VirtualMachine;
+import com.sun.tools.attach.spi.AttachProvider;
 import tritium.desktop.*;
 import tritium.desktop.hud.HudArtworkCache;
 import tritium.minecraft.protocol.*;
@@ -50,10 +51,9 @@ public final class MinecraftConnectionManager implements AutoCloseable {
         update(s, Stage.FINDING, .04, "");
         workers.execute(() -> {
             try {
-                if (!System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("windows")
-                        || !System.getProperty("os.arch", "").matches("(?i)(amd64|x86_64)"))
-                    throw new IOException("首版仅支持 Windows x64。");
                 Class.forName("com.sun.tools.attach.VirtualMachine");
+                if (AttachProvider.providers().isEmpty())
+                    throw new IOException("当前 Java 运行时没有可用的 Attach Provider。请使用包含 jdk.attach 及其本机库的完整 JDK 21+ 或官方运行时包。");
                 List<Candidate> candidates = discover();
                 if (session != s) return;
                 if (candidates.isEmpty()) throw new IOException("未找到 Minecraft。请启动 Forge / Lunar 1.8.9 并进入主菜单后重试。");
@@ -76,11 +76,11 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                 String name = clientName(descriptor.displayName());
                 if (name != null) result.put(descriptor.id(), new Candidate(descriptor.id(), name));
             }
-        } catch (RuntimeException unavailable) { /* WMI can still discover JVMs without perf data. */ }
+        } catch (RuntimeException unavailable) { /* ProcessHandle/WMI can still discover JVMs without perf data. */ }
         ProcessHandle.allProcesses().filter(p -> p.pid() != ProcessHandle.current().pid()).forEach(p -> {
-            String executable = p.info().command().orElse("").toLowerCase(Locale.ROOT);
-            if (!executable.endsWith("java.exe") && !executable.endsWith("javaw.exe")) return;
-            String name = clientName(String.join(" ", p.info().arguments().orElse(new String[0])));
+            ProcessHandle.Info info = p.info();
+            if (!isJavaExecutable(info.command().orElse(""))) return;
+            String name = clientName(String.join(" ", info.arguments().orElse(new String[0])));
             if (name != null) result.put(Long.toString(p.pid()), new Candidate(Long.toString(p.pid()), name));
         });
         if (com.sun.jna.Platform.isWindows()) {
@@ -95,6 +95,12 @@ public final class MinecraftConnectionManager implements AutoCloseable {
             }
         }
         return List.copyOf(result.values());
+    }
+    static boolean isJavaExecutable(String command) {
+        // ProcessHandle returns bin/java on Linux/macOS and java[w].exe on Windows.
+        String path = command.replace('\\', '/');
+        String name = path.substring(path.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
+        return name.equals("java") || name.equals("java.exe") || name.equals("javaw.exe");
     }
     static String clientName(String command) {
         String c = command.toLowerCase(Locale.ROOT);
@@ -315,7 +321,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                 || e instanceof com.sun.tools.attach.AgentLoadException && String.valueOf(e.getMessage()).matches(".*(?:library: |reason: |^)(102)$"))
             return "Agent 已进入目标 JVM，但初始化失败（102）。\n" + explain(e)
                     + "\n请查看 Minecraft 启动器中的 Agent 异常；这不是 Attach 权限提示。";
-        return explain(e) + "\n请使用同一 Windows 用户及权限级别启动两个程序。目标需允许 Attach：移除 -XX:+DisableAttachMechanism。JDK 9+ 若禁用动态 Agent，使用 -XX:+EnableDynamicAgentLoading 后重启游戏（Java 8 不添加此参数）。启动器不允许这些设置时不兼容。";
+        return explain(e) + "\n请使用同一系统用户及权限级别启动两个程序，并确保目标 JVM 能读取 Tritium 缓存中的 Agent JAR。Linux/macOS 下沙盒或容器可能隔离进程、临时目录和文件访问。目标需允许 Attach：移除 -XX:+DisableAttachMechanism。JDK 9+ 若禁用动态 Agent，使用 -XX:+EnableDynamicAgentLoading 后重启游戏（Java 8 不添加此参数）。启动器不允许这些设置时不兼容。";
     }
     static boolean flagEnabled(String[] arguments, String name, boolean fallback) {
         boolean enabled = fallback;

@@ -13,11 +13,10 @@ import java.util.concurrent.*;
 import java.util.jar.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Real Windows Attach across JDKs; the target is a fixture, never a substitute for Forge/Lunar acceptance. */
-@EnabledOnOs(OS.WINDOWS)
+/** Real Attach across platforms/JDKs; the fixture never substitutes for Forge/Lunar acceptance. */
 @EnabledIfSystemProperty(named = "minecraft.testAttach", matches = "true")
 class AgentAttachFixtureTest {
-    @Test void attachesJava21AndJava8RepeatsAndPreservesOtherTransformer() throws Exception {
+    @Test void attachesCurrentJavaAndJava8RepeatsAndPreservesOtherTransformer() throws Exception {
         Path agent = Path.of("minecraft-agent/target/minecraft-hud-agent.jar").toAbsolutePath();
         Path fixture = compileFixture(agent);
         String java8 = System.getenv("JAVA8_HOME"); assertNotNull(java8, "Set JAVA8_HOME to a Java 8 installation");
@@ -43,7 +42,9 @@ class AgentAttachFixtureTest {
     }
     private static void runTarget(Path home, Path agent, Path fixture, List<String> flags, boolean rejected) throws Exception {
         Path lwjgl = Path.of(System.getProperty("user.home"), ".m2/repository/org/lwjgl/lwjgl/2.9.4-nightly/lwjgl-2.9.4-nightly.jar");
-        List<String> command = new ArrayList<>(); command.add(home.resolve("bin/java.exe").toString()); command.addAll(flags);
+        Path java = home.resolve("bin").resolve(com.sun.jna.Platform.isWindows() ? "java.exe" : "java");
+        assertTrue(Files.isRegularFile(java), "Missing target JVM: " + java);
+        List<String> command = new ArrayList<>(); command.add(java.toString()); command.addAll(flags);
         command.add("-XX:-UsePerfData");
         command.addAll(List.of("-cp", fixture + File.pathSeparator + agent + File.pathSeparator + lwjgl, "net.minecraft.launchwrapper.Launch"));
         Path errorLog = Path.of("target/minecraft-fixture/" + home.getFileName() + "-" + Math.abs(flags.hashCode()) + ".log");

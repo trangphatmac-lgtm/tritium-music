@@ -369,6 +369,10 @@
                             <mainJar>tritium-music-${project.version}.jar</mainJar>
                             <mainClass>tritium.desktop.TritiumMusicDesktopApp</mainClass>
                             <type>DMG</type>
+                            <addModules>
+                                <module>java.se</module><module>jdk.attach</module><module>jdk.unsupported</module>
+                                <module>jdk.crypto.ec</module><module>jdk.charsets</module><module>jdk.localedata</module><module>jdk.zipfs</module>
+                            </addModules>
                             <javaOptions>
                                 <option>-XstartOnFirstThread</option>
                             </javaOptions>

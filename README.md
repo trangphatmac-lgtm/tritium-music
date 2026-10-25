@@ -1,6 +1,6 @@
 # Tritium Music
 
-基于 Java 21 与 LWJGL 2 / OpenGL 的网易云音乐桌面播放器。把歌单、逐字歌词、动态背景和桌面 HUD 放在一起，也可以将当前播放内容同步到 Minecraft。
+基于 Java 21 与 LWJGL 2 / OpenGL 的跨平台网易云音乐桌面播放器，集成歌单管理、逐字歌词、动态背景和桌面 HUD。通过 Minecraft Injection，还可以将歌曲信息、歌词、频谱与通知同步到兼容的 Minecraft 1.8.9 客户端，并在游戏世界中显示 3D 歌词。
 
 支持 **Windows x64、Linux x64 和 macOS Apple Silicon（ARM64）**，内置简体中文、繁体中文和英文界面，默认使用简体中文。
 
@@ -29,9 +29,19 @@
 | --- | --- |
 | 桌面 HUD | 歌曲信息、桌面歌词、频谱和切歌通知；默认鼠标穿透，信息 / 歌词 / 频谱可在编辑模式中调整位置与大小 |
 | Windows 媒体控制 | Windows 10 / 11 自动启用 SMTC，向系统媒体面板提供歌曲、封面、进度与播放控制，并响应支持的媒体键 |
-| Minecraft HUD | Windows x64 下连接兼容的 Minecraft 1.8.9 客户端，在游戏中显示歌曲信息、歌词、频谱、通知及世界空间 3D 歌词 |
+| Minecraft Injection | 面向 Windows x64、Linux x64 和 macOS ARM64，通过 JVM Attach 连接兼容的 Minecraft 1.8.9 客户端，显示游戏内 HUD 与世界空间 3D 歌词 |
 
-Minecraft 联动需要目标 JVM 允许 Attach 和动态加载 Agent，使用 LWJGL 2 及兼容的 MCP / SRG 类名。
+### Minecraft Injection
+
+使用 JDK Attach API 将 Java Agent 加载到正在运行的游戏中，复用游戏自身的 LWJGL 渲染环境。
+
+使用条件：
+
+- 播放器运行时包含 `jdk.attach` 及对应平台的 JDK 本机库；完整 JDK 21+ 和本项目的 Windows/macOS 安装包配置均包含该模块。
+- 游戏使用 LWJGL 2 及兼容的 MCP / SRG 类名；不同 Forge / Lunar 构建的兼容性取决于其类名和渲染实现。
+- 游戏已经进入主菜单，两个程序以同一系统用户和权限级别运行，游戏 JVM 能读取播放器缓存中的 Agent JAR。Linux/macOS 的沙盒或容器可能隔离进程、临时目录或文件访问。
+- 游戏未启用 `-XX:+DisableAttachMechanism`；JDK 9+ 若禁用动态 Agent，需加 `-XX:+EnableDynamicAgentLoading` 并重启游戏（Java 8 不添加此参数）。
+
 
 ## 快速开始
 
@@ -135,6 +145,9 @@ mvn -Dtritium.testRendering=true test
 
 # Windows 系统媒体控制集成检查，需要交互式 Windows 桌面
 mvn -Dtritium.testSmtc=true -Dtest=WindowsSmtcTest test
+
+# Windows / Linux / macOS 的真实 JVM Attach 检查；先将 JAVA8_HOME 指向 Java 8 安装目录
+mvn -Dminecraft.testAttach=true -Dtest=AgentAttachFixtureTest,MinecraftProcessDiscoveryTest,MinecraftConnectionErrorTest test
 ```
 
 ## 平台安装包
