@@ -2,6 +2,7 @@ package tritium.minecraft.runtime;
 
 import com.google.gson.Gson;
 import tritium.minecraft.protocol.*;
+import tritium.minecraft.bridge.HookBridge;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.Display;
@@ -36,6 +37,7 @@ public final class RuntimeSession implements IntPredicate {
     private HudInput input;
     private HudPainter painter;
     private GlHud gl;
+    private WorldLyricsRenderer worldLyrics;
     private long lastPaint;
     private long toastPreviewUntil;
     private long lastHeartbeat;
@@ -106,7 +108,7 @@ public final class RuntimeSession implements IntPredicate {
         } finally {
             stop = true;
             try {
-                synchronized (this) { if (gl == null) cleaned.countDown(); }
+                synchronized (this) { if (gl == null && worldLyrics == null) cleaned.countDown(); }
                 if (!cleaned.await(5, TimeUnit.SECONDS)) {
                     send(Wire.ERROR, "HUD stopped; waiting for the game render thread to release textures");
                     while (!cleaned.await(1, TimeUnit.SECONDS)) if (!Display.isCreated()) { cleaned.countDown(); break; }
@@ -121,7 +123,7 @@ public final class RuntimeSession implements IntPredicate {
                 catch (IOException ignored) { }
             } finally {
                 disconnect(); io.shutdownNow();
-                painter = null; gl = null; input = null; game = null; config = null;
+                painter = null; gl = null; worldLyrics = null; input = null; game = null; config = null;
                 track = null; state = null; pendingArt.set(null); outgoing.clear();
             }
         }
@@ -130,11 +132,8 @@ public final class RuntimeSession implements IntPredicate {
     @Override public synchronized boolean test(int kind) {
         try {
             if (stop) {
-                if (kind == 0 && cleaned.getCount() != 0) {
-                    if (input != null && config != null) input.finish(config);
-                    if (gl != null) gl.close();
-                    if (painter != null) painter.close();
-                    cleaned.countDown();
+                if ((kind == 0 || kind == 3) && cleaned.getCount() != 0) {
+                    cleanupRenderResources();
                 }
                 return false;
             }
@@ -142,6 +141,9 @@ public final class RuntimeSession implements IntPredicate {
             if (kind == 0 && !insideFrame) {
                 insideFrame = true;
                 try { frame(); } finally { insideFrame = false; }
+            } else if (kind == 3 && !insideFrame) {
+                insideFrame = true;
+                try { worldFrame(HookBridge.partialTicks); } finally { insideFrame = false; }
             } else if (kind == 1 && config != null) {
                 boolean[] down = new boolean[256];
                 if (Keyboard.isCreated()) for (int i = 1; i < 256; i++) down[i] = Keyboard.isKeyDown(i);
@@ -158,6 +160,8 @@ public final class RuntimeSession implements IntPredicate {
     private void frame() throws Exception {
         HudConfig next = pendingConfig.getAndSet(null); if (next != null) config = next;
         if (config == null) return;
+        HudConfig.Module worldModule = config.find("worldLyrics");
+        if (worldLyrics != null && (!game.inWorld() || worldModule == null || !worldModule.enabled)) worldLyrics.reset();
         if (painter == null) { painter = new HudPainter(); gl = new GlHud(); }
         Boolean edit = pendingEdit.getAndSet(null); if (edit != null) { input.finish(config); input.edit(edit); }
         HudArtwork artwork = pendingArt.getAndSet(null); if (artwork != null) painter.artwork(artwork);
@@ -181,6 +185,7 @@ public final class RuntimeSession implements IntPredicate {
             double position = s.positionMillis + (s.playing && !s.paused ? (System.nanoTime() - receivedAt) / 1_000_000.0 : 0);
             position = Math.max(0, Math.min(s.durationMillis > 0 ? s.durationMillis : Double.MAX_VALUE, position));
             for (HudConfig.Module m : config.modules) {
+                if ("worldLyrics".equals(m.id)) continue;
                 if (!m.enabled && !preview && !(m.id.equals("musicToast") && now < toastPreviewUntil)) continue;
                 if (m.id.equals("musicToast") && !preview && !painter.toastVisible(now, m.holdSeconds)) continue;
                 double[] bounds = painter.bounds(m, s, width, height, now, preview);
@@ -189,6 +194,42 @@ public final class RuntimeSession implements IntPredicate {
             }
             if (repaint) lastPaint = System.nanoTime();
         } finally { gl.end(); }
+    }
+
+    private void worldFrame(float partialTicks) throws Exception {
+        HudConfig next = pendingConfig.getAndSet(null);
+        if (next != null) config = next;
+        if (config == null) return;
+        HudConfig.Module module = config.find("worldLyrics");
+        if (module == null || !module.enabled || !game.inWorld()) {
+            if (worldLyrics != null) worldLyrics.reset();
+            return;
+        }
+        PlaybackState s = state;
+        PlaybackState.Track t = track;
+        if (t == null || s == null || t.id < 0 || t.id != s.trackId) {
+            if (worldLyrics != null) worldLyrics.reset();
+            return;
+        }
+        if (worldLyrics == null) worldLyrics = new WorldLyricsRenderer(game);
+        double position = s.positionMillis + (s.playing && !s.paused ? (System.nanoTime() - receivedAt) / 1_000_000.0 : 0);
+        position = Math.max(0, Math.min(s.durationMillis > 0 ? s.durationMillis : Double.MAX_VALUE, position));
+        worldLyrics.render(t, position, s.playing && !s.paused, module, partialTicks);
+    }
+
+    private void cleanupRenderResources() {
+        Throwable failure = null;
+        try {
+            for (Runnable cleanup : new Runnable[]{
+                    () -> { if (input != null && config != null) input.finish(config); },
+                    () -> { if (worldLyrics != null) worldLyrics.close(); },
+                    () -> { if (gl != null) gl.close(); },
+                    () -> { if (painter != null) painter.close(); }}) {
+                try { cleanup.run(); }
+                catch (Throwable problem) { if (failure == null) failure = problem; else failure.addSuppressed(problem); }
+            }
+        } finally { cleaned.countDown(); }
+        if (failure != null) throw new IllegalStateException("Renderer cleanup failed", failure);
     }
     private void send(int type, String value) {
         if (!outgoing.offer(new Wire.Frame(type, value.getBytes(java.nio.charset.StandardCharsets.UTF_8)))) disconnect();

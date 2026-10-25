@@ -33,7 +33,8 @@ public final class MinecraftPanel extends NCMPanel {
         cards.add(new ModuleCard("musicLyrics", "settings.lyricsHud", 1));
         cards.add(new ModuleCard("musicSpectrum", "settings.spectrumHud", 0));
         cards.add(new ModuleCard("musicToast", "minecraft.toast", 1));
-        cards.add(new ModuleCard("uninject", "minecraft.uninject", 0));
+        cards.add(new ModuleCard("worldLyrics", "minecraft.worldLyrics", 0));
+        cards.add(new ModuleCard("uninject", "minecraft.uninject", 1));
         cards.add(new ModuleCard("editHud", "minecraft.editHud", 1));
         for (ModuleCard card : cards) grid.addChild(card);
         setBeforeRenderCallback(() -> {
@@ -193,6 +194,7 @@ public final class MinecraftPanel extends NCMPanel {
         private final String id, title;
         private final int column;
         private boolean expanded;
+        private final Map<AbstractWidget<?>, BooleanSupplier> conditions = new IdentityHashMap<>();
         private double keyX, keyWidth;
         ModuleCard(String id, String title, int column) {
             this.id = id; this.title = title; this.column = column;
@@ -214,8 +216,9 @@ public final class MinecraftPanel extends NCMPanel {
         void measure(double width) {
             double y = 64;
             for (AbstractWidget<?> row : getChildren()) {
-                row.setHidden(!expanded); row.setBounds(Math.max(0, width - 20), row.getHeight()); row.setPosition(10, y);
-                if (expanded) y += row.getHeight() + 6;
+                boolean visible = expanded && (!conditions.containsKey(row) || conditions.get(row).getAsBoolean());
+                row.setHidden(!visible); row.setBounds(Math.max(0, width - 20), row.getHeight()); row.setPosition(10, y);
+                if (visible) y += row.getHeight() + 6;
             }
             setBounds(width, expanded ? y + 4 : 64);
         }
@@ -264,6 +267,7 @@ public final class MinecraftPanel extends NCMPanel {
         private void buildRows() {
             if (id.equals("editHud")) return;
             if (id.equals("uninject")) { addChild(new SettingsPanel.ActionRow("minecraft.disconnect", connection::uninject)); return; }
+            if (id.equals("worldLyrics")) { buildWorldRows(); return; }
             slider("minecraft.scale", m -> m.scale, (m,v) -> m.scale=v, .5, 2, .05);
             slider("settings.opacity", m -> m.opacity, (m,v) -> m.opacity=v, .05, 1, .05);
             if (id.equals("musicInfo")) toggle("settings.artistLyric", m -> m.artistLyric, (m,v) -> m.artistLyric=v);
@@ -293,6 +297,36 @@ public final class MinecraftPanel extends NCMPanel {
                 slider("minecraft.hold", m -> m.holdSeconds, (m,v) -> m.holdSeconds=v, 1, 15, .5);
                 addChild(new SettingsPanel.ActionRow("minecraft.preview", connection::previewToast));
             }
+        }
+
+        private void buildWorldRows() {
+            slider("minecraft.world.offset", m -> m.world.offset, (m,v) -> m.world.offset=v, -2000, 2000, 50);
+            slider("minecraft.scale", m -> m.scale, (m,v) -> m.scale=v, .5, 3, .05);
+            slider("minecraft.world.distance", m -> m.world.distance, (m,v) -> m.world.distance=v, 3, 40, .5);
+            toggle("minecraft.world.glow", m -> m.world.glow, (m,v) -> m.world.glow=v);
+            choice("minecraft.world.glowColor", m -> m.world.glowColor, (m,v) -> m.world.glowColor=v, "Text", "Pink", "Blue", "Gold");
+            when(() -> module().world.glow);
+            slider("minecraft.world.glowStrength", m -> m.world.glowStrength, (m,v) -> m.world.glowStrength=v, 0, 3, .05);
+            when(() -> module().world.glow);
+            slider("minecraft.world.glowRadius", m -> m.world.glowRadius, (m,v) -> m.world.glowRadius=v, 0, 1, .05);
+            when(() -> module().world.glow);
+            toggle("minecraft.world.smoothFont", m -> m.world.smoothFont, (m,v) -> m.world.smoothFont=v);
+            addChild(new SettingsPanel.ColorRow("minecraft.world.color", preference(m -> m.color, (m,v) -> m.color=v), false));
+            toggle("minecraft.world.wiggle", m -> m.world.wiggle, (m,v) -> m.world.wiggle=v);
+            slider("minecraft.world.wiggleFps", m -> m.world.wiggleFps, (m,v) -> m.world.wiggleFps=v, 4, 24, 1);
+            when(() -> module().world.wiggle);
+            slider("minecraft.world.wiggleAmount", m -> m.world.wiggleAmount, (m,v) -> m.world.wiggleAmount=v, 0, 2, .05);
+            when(() -> module().world.wiggle);
+            toggle("minecraft.world.wordPop", m -> m.world.wordPop, (m,v) -> m.world.wordPop=v);
+            toggle("minecraft.world.facePlayer", m -> m.world.facePlayer, (m,v) -> m.world.facePlayer=v);
+            toggle("minecraft.world.keepAway", m -> m.world.keepAway, (m,v) -> m.world.keepAway=v);
+            toggle("minecraft.world.stayOnScreen", m -> m.world.stayOnScreen, (m,v) -> m.world.stayOnScreen=v);
+            slider("minecraft.world.spread", m -> m.world.spread, (m,v) -> m.world.spread=v, 0, 60, 1);
+            toggle("minecraft.world.splitLines", m -> m.world.splitLines, (m,v) -> m.world.splitLines=v);
+        }
+
+        private void when(BooleanSupplier condition) {
+            conditions.put(getChildren().get(getChildren().size() - 1), condition);
         }
         private <T> PreferenceValue<T> preference(Function<HudConfig.Module,T> get, BiConsumer<HudConfig.Module,T> set) {
             return new PreferenceValue<T>("Minecraft", get.apply(module())) {

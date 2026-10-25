@@ -46,6 +46,7 @@ public final class MinecraftPreferences {
     }
     public void resetLayout() {
         update(c -> { for (var defaults : HudConfig.defaults()) {
+            if (defaults.isWorld()) continue;
             var m = c.find(defaults.id); m.x = defaults.x; m.y = defaults.y;
             m.width = defaults.width; m.height = defaults.height; m.scale = 1;
         }});
@@ -55,7 +56,7 @@ public final class MinecraftPreferences {
         update(c -> {
             var m = c.find(event.id); if (m == null) return;
             if ("toggle".equals(event.action)) m.enabled = event.enabled;
-            if ("layout".equals(event.action)) {
+            if ("layout".equals(event.action) && !m.isWorld()) {
                 m.x = event.x; m.y = event.y; m.width = event.width; m.height = event.height; m.scale = event.scale;
             }
         });

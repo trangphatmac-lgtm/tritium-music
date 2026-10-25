@@ -56,6 +56,7 @@ public final class HudInput {
         }
         for (int i = config.modules.length - 1; i >= 0; i--) {
             HudConfig.Module module = config.modules[i];
+            if ("worldLyrics".equals(module.id)) continue;
             double[] b = module.bounds(width, height);
             if (mx < b[0] || my < b[1] || mx > b[0] + b[2] || my > b[1] + b[3]) continue;
             if (wheel != 0) {

@@ -51,6 +51,7 @@ public final class HudTransformer implements ClassFileTransformer {
                 } else method.instructions.insert(callback(kind, kind == 2));
             }
             if (matches != 1) throw new IllegalStateException("Expected one " + mcp + desc + ", found " + matches);
+            if (kind == 0) hookWorld(node);
             ClassWriter writer = new ClassWriter(reader, ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
                 @Override protected String getCommonSuperClass(String a, String b) {
                     try {
@@ -72,6 +73,41 @@ public final class HudTransformer implements ClassFileTransformer {
             error = name + ": " + failure.getMessage();
             return null;
         }
+    }
+
+    private static void hookWorld(ClassNode node) {
+        int methods = 0;
+        for (MethodNode method : node.methods) {
+            if (!(method.name.equals("renderWorldPass") || method.name.equals("func_175068_a"))
+                    || !method.desc.equals("(IFJ)V")) continue;
+            methods++;
+            if ((method.access & (Opcodes.ACC_ABSTRACT | Opcodes.ACC_NATIVE | Opcodes.ACC_STATIC)) != 0)
+                throw new IllegalStateException("Unexpected world render method modifiers");
+            AbstractInsnNode anchor = null;
+            int anchors = 0;
+            for (AbstractInsnNode insn : method.instructions.toArray()) {
+                if (insn instanceof MethodInsnNode && BRIDGE.equals(((MethodInsnNode) insn).owner))
+                    throw new IllegalStateException("Existing Tritium world hook; restart Minecraft before replacing the agent");
+                if (!(insn instanceof LdcInsnNode) || !"hand".equals(((LdcInsnNode) insn).cst)) continue;
+                AbstractInsnNode next = insn.getNext();
+                while (next != null && next.getOpcode() < 0) next = next.getNext();
+                if (!(next instanceof MethodInsnNode)) continue;
+                MethodInsnNode call = (MethodInsnNode) next;
+                if ((call.name.equals("endStartSection") || call.name.equals("func_76318_c"))
+                        && call.desc.equals("(Ljava/lang/String;)V")) {
+                    anchor = insn; anchors++;
+                }
+            }
+            if (anchors != 1) throw new IllegalStateException("Expected one world-to-hand profiler boundary, found " + anchors);
+            // The profiler's receiver is already on the operand stack. The callback consumes
+            // only its own float and leaves that receiver untouched. This boundary is outside
+            // renderHand's conditional, so F1/third person/hand suppression cannot skip lyrics.
+            InsnList code = new InsnList();
+            code.add(new VarInsnNode(Opcodes.FLOAD, 2));
+            code.add(new MethodInsnNode(Opcodes.INVOKESTATIC, BRIDGE, "world", "(F)V", false));
+            method.instructions.insertBefore(anchor, code);
+        }
+        if (methods != 1) throw new IllegalStateException("Expected one renderWorldPass(IFJ)V, found " + methods);
     }
 
     private static InsnList callback(int kind, boolean cancel) {

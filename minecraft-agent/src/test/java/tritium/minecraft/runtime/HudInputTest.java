@@ -6,6 +6,20 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class HudInputTest {
+    @Test void worldLyricsCanToggleButNeverCapturesHudLayoutInput() {
+        List<PlaybackState.Event> events = new ArrayList<PlaybackState.Event>();
+        HudInput input = new HudInput(events::add); HudConfig c = new HudConfig();
+        HudConfig.Module world = new HudConfig.Module("worldLyrics", .5, .5, 250, 100);
+        world.key = 24; c.modules = new HudConfig.Module[]{world};
+        boolean[] keys = new boolean[256]; keys[24] = true;
+        input.keys(c, true, keys); assertTrue(world.enabled); assertEquals(1, events.size());
+        assertEquals("toggle", events.get(0).action);
+        input.edit(true);
+        double[] bounds = world.bounds(1000, 700);
+        assertFalse(input.mouse(c, true, bounds[0] + 5, bounds[1] + 5, 0, true, 0, 1000, 700));
+        assertFalse(input.mouse(c, true, bounds[0] + 5, bounds[1] + 5, -1, false, 120, 1000, 700));
+        assertEquals(1, world.scale); assertFalse(input.dragging()); assertEquals(1, events.size());
+    }
     @Test void sharedKeysAreEdgesAndUninjectWins() {
         List<PlaybackState.Event> events = new ArrayList<PlaybackState.Event>();
         HudInput input = new HudInput(events::add); HudConfig c = new HudConfig();

@@ -105,7 +105,14 @@ public final class HudAgent {
             out.closeEntry();
         }
         instrumentation.appendToBootstrapClassLoaderSearch(new JarFile(jar.toFile()));
-        bridge = Class.forName("tritium.minecraft.bridge.HookBridge", true, null).getField("callback");
+        Class<?> bridgeClass = Class.forName("tritium.minecraft.bridge.HookBridge", true, null);
+        try {
+            bridgeClass.getMethod("world", float.class);
+            bridgeClass.getField("partialTicks");
+        } catch (ReflectiveOperationException oldBridge) {
+            throw new IllegalStateException("Restart Minecraft before using this agent version; its previous callback bridge has no world renderer", oldBridge);
+        }
+        bridge = bridgeClass.getField("callback");
     }
     private HudAgent() { }
 }

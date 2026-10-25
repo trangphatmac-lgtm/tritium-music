@@ -2,7 +2,7 @@
 
 Settings → **Minecraft / 一键注入** opens the Minecraft page immediately. A single
 candidate is selected automatically; multiple clients are listed by name and PID.
-The four HUD controls, Edit HUD toggle and UnInject action appear after an actual rendering
+The four HUD controls, 3D lyrics, Edit HUD toggle and UnInject action appear after an actual rendering
 callback acknowledges configuration. System HUD windows are temporarily suppressed;
 their saved settings and layout are unchanged.
 
@@ -21,6 +21,69 @@ editor after chat closes. UnInject takes priority when sharing its key; the edit
 key takes priority over HUD toggles. Its switch reflects the current session and is not
 saved as a HUD preference. Disabled HUDs and the toast are previewed during editing.
 No custom Minecraft screen, menu or configuration GUI is created.
+
+## World-space 3D lyrics
+
+Expand **3D 歌词 / 3D lyrics** on the Minecraft page and enable its switch. This
+module starts disabled and has its own game key binding. Its lyrics follow the
+song playing in Tritium and Tritium's existing lyric-source selection; the Agent
+does not log into a music service or fetch a second lyric stream. YRC and other
+word-timed sources retain their absolute word timestamps. Line-only lyrics use
+Gale's estimated word/character reveal timing. The separate screen-centered
+Gale Text flash mode and Gale's independent Spotify/NetEase player selectors are
+outside this world-space module.
+
+Each phrase appears at a world position in front of the view, with randomized
+horizontal spread and a slight upward bias. It faces the player by default.
+Characters pop in over 160 ms, with optional low-frame-rate hand-drawn wiggle;
+old phrases fade and drift upward over 400 ms. Pause fades the phrase and resume
+reintroduces it. Lyrics render through blocks, matching Gale's disabled depth
+test. They do not create entities, collide with blocks, or illuminate the world.
+The glow uses a separate text mask, seven downsample levels and additive
+upsampling before crisp text is drawn. Smooth font uses cached system-font
+glyphs; disabling it uses the game's font renderer.
+
+| Setting | Default | Range / behavior |
+| --- | --- | --- |
+| Lyric offset | 0 ms | −2000…2000 ms; positive values show lyrics earlier |
+| Scale | 1 | 0.5…3 |
+| Distance | 10 blocks | 3…40; world text size also scales with this value |
+| Glow | On | Additional settings appear while enabled |
+| Glow color | Text color | Text, pink, blue or gold tint |
+| Glow strength / radius | 0.3 / 0.5 | 0…3 / 0…1 |
+| Smooth font | On | System font glyphs, or Minecraft's font when off |
+| Text color | `#F7E1D7` | RGB picker |
+| Hand-drawn wiggle | On | Additional settings appear while enabled |
+| Wiggle frame rate / amount | 8 / 0.8 | 4…24 FPS / 0…2 |
+| Word pop | On | Uses word timing when available; otherwise estimated |
+| Face player | On | Rotates the text plane toward the view |
+| Keep away | On | Pushes text out to at least 60% of the configured distance |
+| Stay on screen | Off | Smoothly moves out-of-view text back inside the view |
+| Horizontal spread | 30° | 0…60° to either side |
+| Split lyric phrases | On | Splits eligible CJK spacing into separate timed phrases |
+
+The world module is excluded from chat HUD drag/resize/scroll and Reset layout;
+its scale and spatial options are configured on the desktop. Preferences persist
+independently of the 2D lyric HUD. Old preference files acquire the module with
+its default disabled state. Synthesized "No lyrics" UI messages remain available
+to the 2D HUD but carry an explicit placeholder flag so they are not sung in the
+world. Instrumental placeholders and lyric credits are also filtered there;
+timed blank/break rows clear the current world phrase.
+
+The behavior reference is the supplied `GaleMod-2.0.jar`, SHA-256
+`330bda34f8600d400fcefca73e62e8374aceacf6eb334861719cf1157d535b80`.
+REA inventory evidence `ev_151d2694be959ca9f0ae300bd3112f4fdc62f44e9701bd66d3b64a2a510f8eba`
+identifies the package; it is static inventory, not a runtime observation.
+The implementation was checked against the extracted `gale.lyrics.LyricsModule`,
+`LyricSplit`, `Lyrics` and `gale.render.CjkFont`/`DeepGlow` bytecode and CFR output.
+`WorldLyricTimelineTest` and `WorldLyricSceneTest` verify the timing and geometry;
+`WorldLyricsRenderingTest` executes the font and glow pipeline in a real OpenGL
+context, including depth-test bypass, framebuffer resizing and restoration of
+game GL state. Its generated images are synthetic world-space previews, not
+screenshots of Minecraft. Native-font cache restoration has an independent test.
+Live Forge/Lunar, shader-pack and third-person acceptance remains a separate
+in-game check. If an older Tritium Agent was already loaded into the JVM, restart
+Minecraft once before using the updated world callback bridge.
 
 ## Runtime requirements
 
@@ -45,7 +108,8 @@ the authenticated session and actual renderer READY.
 `mvn clean verify` builds the independent `minecraft-agent/pom.xml` first and embeds
 its shaded JAR at `tritium/minecraft/minecraft-hud-agent.jar` in the desktop artifact.
 Shared Java 8 DTOs/framing are in `src/minecraft-shared/java`. The Agent compiles to
-Java 8; ASM/Gson are shaded. The bridge contains only a JDK `IntPredicate` reference
+Java 8; ASM/Gson are shaded. The bridge contains a JDK `IntPredicate` reference
+and the world callback's primitive partial-tick value
 and is appended to the bootstrap search path. Runtime classes live in an isolated
 loader whose parent is the game loader; no desktop/audio dependencies enter it.
 
@@ -79,6 +143,13 @@ are uploaded/drawn/deleted only on its render thread. The frame hook is on
 `EntityRenderer.updateCameraAndRender(FJ)V`, outside Lunar's cached HUD path.
 Input hooks use `Minecraft.runTick()V` and `GuiChat.handleMouseInput()V` (the latter
 must cancel before the chat override calls its superclass).
+The 3D callback is inserted in `EntityRenderer.renderWorldPass(IFJ)V`, immediately
+before the profiler switches to the hand section, while the world matrices are
+still active. The equivalent SRG method is `func_175068_a`. This boundary remains
+outside conditional hand drawing. Missing or ambiguous hook anchors fail
+installation rather than guessing an injection point. New track/lyric JSON
+replaces the Agent's immutable timeline input, including same-song lyric-source
+and word-timing changes; metadata is sampled approximately every 300 ms.
 
 On Windows, discovery merges the Attach list with a read-only WMI query through
 the player's existing JNA dependency. `ProcessHandle.Info.arguments()` can be
@@ -103,7 +174,7 @@ See [Instrumentation retransformation semantics](https://docs.oracle.com/en/java
 ```
 mvn test
 mvn -Dminecraft.testAttach=true -Dtest=AgentAttachFixtureTest test
-mvn -Dtritium.testRendering=true -Dtest=MinecraftPanelRenderingTest,GameGlStateRenderingTest test
+mvn -Dtritium.testRendering=true -Dtest=MinecraftPanelRenderingTest,GameGlStateRenderingTest,WorldLyricsRenderingTest test
 ```
 
 Set `JAVA8_HOME` for the Attach fixture test and run it with Java 21 on Windows.

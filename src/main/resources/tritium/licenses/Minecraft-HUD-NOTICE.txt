@@ -17,6 +17,13 @@ implementations adapt their geometry, glyph metrics and animation behavior.
 Original authors include
 IzumiiKonata and Tritium Music contributors. This repository remains GPLv3.
 
+World-space lyric behavior references the user-supplied GaleMod 2.0 JAR:
+gale.lyrics.LyricsModule, LyricSplit, Lyrics, and gale.render.CjkFont/DeepGlow.
+The scene timing, camera geometry, system-font atlas and seven-scale glow were
+adapted to Tritium's lyric stream, Java 8 Agent and isolated GL state handling.
+GaleMod contributors retain their rights in their original implementation.
+No GaleMod JAR, authentication/player implementation, or bundled media is included.
+
 The Agent bundles ASM (BSD 3-Clause) and Gson (Apache 2.0), relocated into
 tritium.minecraft.internal. Their published JAR license notices are preserved.
 LWJGL is supplied by Minecraft and is not bundled in the Agent. Bundled fonts

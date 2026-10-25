@@ -41,6 +41,8 @@ public final class PlaybackState {
         public long timestamp, duration;
         public String text = "", translation = "", romanization = "";
         public boolean breakLine;
+        /** UI-only "No lyrics" message; retain its text for 2D HUDs, omit it from world lyrics. */
+        public boolean placeholder;
         public List<Word> words = new ArrayList<Word>();
     }
 

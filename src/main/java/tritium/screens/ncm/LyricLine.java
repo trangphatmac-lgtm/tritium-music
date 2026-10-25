@@ -38,6 +38,8 @@ public class LyricLine {
         return placeholder ? tritium.i18n.I18n.text("lyrics.empty") : lyric;
     }
 
+    public boolean isPlaceholder() { return placeholder; }
+
     public LyricLine(long timestamp, @NonNull String lyric) {
         this.timestamp = timestamp;
         this.lyric = lyric;

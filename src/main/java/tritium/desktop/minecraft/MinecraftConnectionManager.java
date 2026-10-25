@@ -242,6 +242,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                 PlaybackState.Line line = new PlaybackState.Line(); line.timestamp = source.timestamp; line.duration = source.duration;
                 line.text = source.getLyric(); line.translation = source.translationText; line.romanization = source.romanizationText;
                 line.breakLine = source.isBreakLine;
+                line.placeholder = source.isPlaceholder();
                 for (var word : source.words) { PlaybackState.Word w = new PlaybackState.Word(); w.text = word.word; w.timestamp = word.timestamp; w.duration = word.duration; line.words.add(w); }
                 t.lyrics.add(line);
             }
