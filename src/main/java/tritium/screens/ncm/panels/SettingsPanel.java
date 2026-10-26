@@ -67,8 +67,9 @@ public class SettingsPanel extends NCMPanel {
         });
 
         SettingsSection section = scrollPanel.addSection("settings.general");
-        section.addChild(new MinecraftPanel.InjectButton());
-        section.addChild(new ToggleRow("settings.minecrafthidden", preferences.minecrafthidden()));
+        BooleanSupplier minecraftControlsVisible = () -> !DesktopAppState.minecraft().settingsControlsHidden();
+        backgroundRow(section, new MinecraftPanel.InjectButton(), minecraftControlsVisible);
+        backgroundRow(section, new ToggleRow("settings.minecrafthidden", preferences.minecrafthidden()), minecraftControlsVisible);
         section.addChild(new ChoiceRow("settings.language", preferences.language(),
                 tag -> Language.fromTag(tag).nativeName()));
         section.addChild(new ChoiceRow("settings.settingsLayout", preferences.settingsLayout()));

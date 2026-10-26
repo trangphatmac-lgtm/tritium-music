@@ -32,11 +32,14 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     private volatile Status status = new Status(Stage.IDLE, 0, "", List.of());
     private volatile Session session;
     private volatile boolean connected, editing;
+    // Session-only UI state: restarting the application restores the settings controls.
+    private volatile boolean settingsControlsHidden;
 
     public MinecraftConnectionManager() { monitor.scheduleAtFixedRate(this::watchdog, 1, 1, TimeUnit.SECONDS); }
     public Status status() { return status; }
     public boolean connected() { return connected; }
     public boolean editing() { return editing; }
+    public boolean settingsControlsHidden() { return settingsControlsHidden; }
     public void openAndInject() {
         NCMScreen.getInstance().setCurrentPanel(new MinecraftPanel());
         if (!connected && !busy()) begin();
@@ -184,6 +187,8 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                 case Wire.ERROR -> { s.error = f.text(); s.stopping = true; s.stopAt = System.nanoTime(); update(s, Stage.STOPPING, status.progress, s.error); }
                 case Wire.STOPPED -> {
                     boolean clean = f.text().equals("clean");
+                    // Also covers Uninject triggered by the in-game key binding.
+                    if (clean && s.error.isEmpty()) settingsControlsHidden = true;
                     finish(s, clean && s.error.isEmpty() ? "" : clean ? s.error : "显示已停止，Hook 撤销未完成。" + f.text()); return;
                 }
                 case Wire.HEARTBEAT -> { }
@@ -272,6 +277,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     public void pushToast(String text) { if (text != null && connected) command(Wire.TOAST, text); }
     public void uninject() {
         Session s = session; if (s == null) return;
+        settingsControlsHidden = true;
         s.stopping = true; s.stopAt = System.nanoTime(); editing = false;
         update(s, Stage.STOPPING, 1, ""); command(Wire.UNINJECT, "");
     }
