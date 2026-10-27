@@ -19,6 +19,7 @@ import java.security.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
 
 /** Owns one authenticated, loopback-only session. Every asynchronous result is checked against its session. */
 public final class MinecraftConnectionManager implements AutoCloseable {
@@ -26,7 +27,8 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     public record Candidate(String pid, String name) { }
     public record Status(Stage stage, double progress, String detail, List<Candidate> candidates) { }
     private static final Gson JSON = new Gson();
-    private final ExecutorService workers = Executors.newCachedThreadPool(r -> daemon(r, "Minecraft connection"));
+    private final ExecutorService workers;
+    private final LongSupplier nanoTime;
     private final ScheduledExecutorService monitor = Executors.newSingleThreadScheduledExecutor(r -> daemon(r, "Minecraft heartbeat"));
     private final AtomicLong generation = new AtomicLong();
     private volatile Status status = new Status(Stage.IDLE, 0, "", List.of());
@@ -35,7 +37,14 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     // Session-only UI state: restarting the application restores the settings controls.
     private volatile boolean settingsControlsHidden;
 
-    public MinecraftConnectionManager() { monitor.scheduleAtFixedRate(this::watchdog, 1, 1, TimeUnit.SECONDS); }
+    public MinecraftConnectionManager() {
+        this(System::nanoTime, Executors.newCachedThreadPool(r -> daemon(r, "Minecraft connection")));
+        monitor.scheduleAtFixedRate(this::watchdog, 1, 1, TimeUnit.SECONDS);
+    }
+    // Tests control time and queued Attach work, and invoke the watchdog explicitly.
+    MinecraftConnectionManager(LongSupplier nanoTime, ExecutorService workers) {
+        this.nanoTime = nanoTime; this.workers = workers;
+    }
     public Status status() { return status; }
     public boolean connected() { return connected; }
     public boolean editing() { return editing; }
@@ -68,6 +77,9 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     public synchronized void select(Candidate candidate) {
         Session s = session;
         if (s == null || s.target != null) return;
+        // Publish the connection start before the volatile target makes it visible to the watchdog.
+        // Discovery and time spent choosing a process do not consume the Attach/READY budget.
+        s.connectionStartedAt = nanoTime.getAsLong();
         s.target = candidate; update(s, Stage.ATTACHING, .2, candidate.name + " · PID " + candidate.pid);
         workers.execute(() -> attach(s));
     }
@@ -147,7 +159,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                     if (hello == null || hello.version != Wire.VERSION || !s.token.equals(hello.token)) { client.close(); continue; }
                 } catch (Exception badHello) { client.close(); continue; }
                 if (session != s) { client.close(); return; }
-                s.socket = client; s.wire = candidate; client.setSoTimeout(0); s.lastReceive = System.nanoTime();
+                s.socket = client; client.setSoTimeout(0); s.lastReceive = nanoTime.getAsLong(); s.wire = candidate;
                 s.server.close(); workers.execute(() -> publish(s));
                 receive(s); return;
             }
@@ -155,7 +167,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     }
     private void receive(Session s) throws IOException {
         while (session == s) {
-            Wire.Frame f = s.wire.read(); s.lastReceive = System.nanoTime();
+            Wire.Frame f = s.wire.read(); s.lastReceive = nanoTime.getAsLong();
             switch (f.type) {
                 case Wire.PROGRESS -> {
                     if (f.text().equals("install")) update(s, Stage.INSTALLING, .52, "");
@@ -184,7 +196,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                         else DesktopAppState.preferences().minecraft().apply(event);
                     });
                 }
-                case Wire.ERROR -> { s.error = f.text(); s.stopping = true; s.stopAt = System.nanoTime(); update(s, Stage.STOPPING, status.progress, s.error); }
+                case Wire.ERROR -> { s.error = f.text(); s.stopping = true; s.stopAt = nanoTime.getAsLong(); update(s, Stage.STOPPING, status.progress, s.error); }
                 case Wire.STOPPED -> {
                     boolean clean = f.text().equals("clean");
                     // Also covers Uninject triggered by the in-game key binding.
@@ -278,7 +290,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     public void uninject() {
         Session s = session; if (s == null) return;
         settingsControlsHidden = true;
-        s.stopping = true; s.stopAt = System.nanoTime(); editing = false;
+        s.stopping = true; s.stopAt = nanoTime.getAsLong(); editing = false;
         update(s, Stage.STOPPING, 1, ""); command(Wire.UNINJECT, "");
     }
     private void command(int type, String value) {
@@ -287,9 +299,9 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     }
     private void watchdog() {
         Session s = session; if (s == null || s.target == null) return;
-        long now = System.nanoTime();
+        long now = nanoTime.getAsLong();
         if (s.wire != null && now - s.lastReceive > TimeUnit.SECONDS.toNanos(5)) fail(s, "Minecraft 连接超时；游戏端将在失去心跳后清理 HUD。");
-        else if (!s.ready && !s.stopping && now - s.created > TimeUnit.SECONDS.toNanos(45)) fail(s, "未收到游戏渲染 READY。请恢复游戏窗口并重试。");
+        else if (!s.ready && !s.stopping && now - s.connectionStartedAt > TimeUnit.SECONDS.toNanos(45)) fail(s, "未收到游戏渲染 READY。请恢复游戏窗口并重试。");
         else if (s.stopping && s.stopAt != 0 && now - s.stopAt > TimeUnit.SECONDS.toNanos(10)) fail(s, "显示已停止，Hook 撤销未完成；请恢复游戏窗口以释放资源，必要时重启 Minecraft。");
     }
     private synchronized void update(Session s, Stage stage, double progress, String detail) {
@@ -355,10 +367,10 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     }
     private static Thread daemon(Runnable r, String name) { Thread t = new Thread(r, name); t.setDaemon(true); return t; }
     private static final class Session {
-        final long id, created = System.nanoTime(); final String token;
+        final long id; final String token;
         final ArrayBlockingQueue<Wire.Frame> commands = new ArrayBlockingQueue<>(64);
         volatile Candidate target; volatile ServerSocket server; volatile Socket socket; volatile Wire wire;
-        volatile long lastReceive = System.nanoTime(), stopAt; long sequence;
+        volatile long connectionStartedAt, lastReceive, stopAt; long sequence;
         volatile boolean stopping, ready; volatile String error = "";
         Session(long id) { this.id = id; byte[] bytes = new byte[32]; new SecureRandom().nextBytes(bytes); token = HexFormat.of().formatHex(bytes); }
     }
