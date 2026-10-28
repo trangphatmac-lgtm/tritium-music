@@ -1,0 +1,38 @@
+{
+  "source": "NetEase Cloud Music Android 9.5.40 configuration references, statically decoded NCAE v1; these are DSP presets, not model weights.",
+  "resources": [
+    {
+      "name": "preload_smartSoundEffect",
+      "config_key": "preload#smartSoundEffect",
+      "url": "https://d2.music.126.net/dmusic/obj/w5zCg8OAw6HDjzjDgMK_/62216307145/3eff/0421/151f/54952e98082a1f745f7771414e98cb95.ncae",
+      "retrieved_at_utc": "2026-10-28T11:05:31.966951+00:00",
+      "actual_bytes": 1389,
+      "actual_md5": "54952e98082a1f745f7771414e98cb95",
+      "sha256": "74c925dff2a2a9b1a86fbd86aea80460922e88178b744a60253c5918868c9611",
+      "decoded_bytes": 9353,
+      "resource": "smart-presets.json"
+    },
+    {
+      "name": "membership_baseAiAudioEffect",
+      "config_key": "membership#baseAiAudioEffect",
+      "url": "https://d2.music.126.net/dmusic/obj/w5zCg8OAw6HDjzjDgMK_/62585077490/d304/ad18/501b/a94beb00c4a298aafb55d76cce1f491b.data?download=effect_master_ncae_20250915",
+      "retrieved_at_utc": "2026-10-28T11:05:31.967313+00:00",
+      "actual_bytes": 1613,
+      "actual_md5": "a94beb00c4a298aafb55d76cce1f491b",
+      "sha256": "79bac0a4d553705d90cf2a250795b93436f6836f305bbb44c9e87f4176509c0f",
+      "decoded_bytes": 7932,
+      "resource": "master-base.json"
+    },
+    {
+      "name": "membership_diyAiAudioEffect",
+      "source": "AudioEffectConstantKt.AI_DIY_EFFECT_CONFIG_DEFAULT_VALUE",
+      "url": "https://d2.music.126.net/dmusic/obj/w5zCg8OAw6HDjzjDgMK_/62316193532/981d/97b6/8e40/d79417b1e6a0c01144b874dfd87359fa.data?download=effect_diy_ncae",
+      "retrieved_at_utc": "2026-10-28T11:06:12.721626+00:00",
+      "actual_bytes": 596,
+      "actual_md5": "d79417b1e6a0c01144b874dfd87359fa",
+      "sha256": "53d856fd4630d4d34a7dec0500e966ab6fa53a75d25f94662bda2e5e04b80b91",
+      "decoded_bytes": 1502,
+      "resource": "master-diy.json"
+    }
+  ]
+}

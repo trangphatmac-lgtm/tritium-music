@@ -35,6 +35,8 @@ import tritium.ncm.music.automix.AutoMixPlanner;
 import tritium.ncm.music.automix.SongFeatureService;
 import tritium.ncm.music.dto.PlayList;
 import tritium.ncm.music.dto.User;
+import tritium.ncm.music.effects.AudioEffectController;
+import tritium.ncm.music.effects.AudioEffectService;
 import tritium.rendering.GaussianKernel;
 import tritium.rendering.MusicToast;
 import tritium.rendering.TextureManager;
@@ -94,6 +96,52 @@ public class CloudMusic implements SharedConstants {
     public static volatile int curIdx = 0;
     public static volatile Music currentlyPlaying;
     public static volatile Thread playThread;
+
+    private static final Object audioEffectLock = new Object();
+    private static volatile AudioEffectController audioEffects;
+
+    private static AudioEffectService.Selection audioEffectSelection() {
+        var preferences = DesktopAppState.preferences().audioEffects();
+        return AudioEffectService.Selection.automatic(preferences.mode().getValue(),
+                preferences.masterTone().getValue());
+    }
+
+    private static void registerAudioEffects(AudioPlayer deck, long songId) {
+        synchronized (audioEffectLock) {
+            if (audioEffects == null) audioEffects = new AudioEffectController();
+            audioEffects.register(deck, songId, audioEffectSelection(), OptionsUtil.getCookie());
+        }
+    }
+
+    /** Preferences and session changes affect both decks during a transition. No network on the UI thread. */
+    public static void audioEffectSettingChanged() {
+        synchronized (audioEffectLock) {
+            if (audioEffects != null) audioEffects.refresh(audioEffectSelection(), OptionsUtil.getCookie());
+        }
+    }
+
+    public static String audioEffectStatus() {
+        var selected = audioEffectSelection();
+        if ("Off".equals(selected.mode())) return I18n.text("audioEffect.status.off");
+        var controller = audioEffects;
+        var status = controller == null ? null : controller.status(player);
+        if (status == null) return I18n.text("audioEffect.status.ready");
+        String tone = I18n.text("audioEffect.tone." + status.tone());
+        String text = I18n.text("audioEffect.status." + status.status(), tone);
+        if ("Master".equals(selected.mode()) && !selected.diy().isEmpty() && !"loading".equals(status.status())) {
+            String enhancements = status.usedDiy().stream().map(key -> I18n.text(switch (key) {
+                case "en_bass" -> "settings.audioEffectBass";
+                case "en_treble" -> "settings.audioEffectTreble";
+                case "en_vocal" -> "settings.audioEffectVocal";
+                case "en_vibe" -> "settings.audioEffectVibe";
+                case "en_live" -> "settings.audioEffectLive";
+                default -> key;
+            })).collect(java.util.stream.Collectors.joining(" / "));
+            if (enhancements.isEmpty()) enhancements = I18n.text("audioEffect.status.noEnhancements");
+            text += I18n.text("audioEffect.status.enhancements", enhancements);
+        }
+        return text;
+    }
 
     public static volatile User profile;
     public static List<PlayList> playLists;
@@ -642,6 +690,7 @@ public class CloudMusic implements SharedConstants {
         sessionStatusText = I18n.text("login.loadingUser");
         // 获取用户信息
         profile = getUserProfile();
+        audioEffectSettingChanged();
 
         if (profile == null) {
             sessionStatusText = I18n.text("login.expired");
@@ -1338,6 +1387,7 @@ public class CloudMusic implements SharedConstants {
                 if (request.cancelled) return;
                 request.stage = DECODING;
                 incoming = new AudioPlayer(file, false);
+                registerAudioEffects(incoming, request.song.getId());
                 request.stage = PLANNING;
                 request.featuresB = features.b().withDuration(incoming.getTotalTimeMillis()).summary();
                 // The actual decoder duration takes precedence over metadata (e.g. previews).
@@ -1682,6 +1732,7 @@ public class CloudMusic implements SharedConstants {
                         return false;
                     }
                     prepared.setVolume(DesktopAppState.preferences().volume().getValue().floatValue());
+                    registerAudioEffects(prepared, song.getId());
                     player = prepared;
                     notifySongStart(song);
                     startPlayback();

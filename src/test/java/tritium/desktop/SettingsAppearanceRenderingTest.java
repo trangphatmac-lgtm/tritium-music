@@ -266,6 +266,7 @@ class SettingsAppearanceRenderingTest {
                 Thread.sleep(10);
             }
             savePreview("autoMix-debug-narrow");
+            verifyAudioEffects();
             verifyPlaylistExport(settings, scroll);
             verifySettingsLayout();
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
@@ -295,6 +296,59 @@ class SettingsAppearanceRenderingTest {
                 return key.equals(label.get(row));
             } catch (ReflectiveOperationException ignored) { return false; }
         }).findFirst().orElseThrow();
+    }
+
+    private static void verifyAudioEffects() throws Exception {
+        var preferences = DesktopAppState.preferences();
+        var saved = preferences.audioEffects().toJsonObject();
+        String language = preferences.language().getValue();
+        String layout = preferences.settingsLayout().getValue();
+        try {
+            preferences.language().setValue("zh-CN");
+            preferences.settingsLayout().setValue("SingleColumn");
+            var effects = preferences.audioEffects();
+            effects.mode().setValue("Off");
+            SettingsPanel settings = new SettingsPanel();
+            settings.setBounds(0, 0, 720, RenderSystem.getHeight());
+            settings.onInit(); renderStable(settings);
+            ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
+            var mode = settingRow(scroll, "settings.audioEffectMode");
+            var tone = settingRow(scroll, "settings.audioEffectTone");
+            assertTrue(tone.isHidden());
+            scroll.actualScrollOffset = scroll.targetScrollOffset = mode.getY() - scroll.getY() - 50;
+            renderStable(settings);
+            click(settings, mode.getX() + 30, mode.getY() + 26);
+            assertEquals("Smart", effects.mode().getValue()); assertTrue(tone.isHidden());
+            renderStable(settings); savePreview("settings-audio-effects-smart");
+            click(settings, mode.getX() + 30, mode.getY() + 26);
+            assertEquals("Master", effects.mode().getValue()); assertFalse(tone.isHidden());
+            renderStable(settings);
+            click(settings, tone.getX() + 30, tone.getY() + 26);
+            assertEquals("key_bright", effects.masterTone().getValue());
+            for (String key : java.util.List.of("Bass", "Treble", "Vocal", "Vibe", "Live")) {
+                assertThrows(java.util.NoSuchElementException.class,
+                        () -> settingRow(scroll, "settings.audioEffect" + key));
+            }
+            for (String locale : java.util.List.of("zh-CN", "zh-TW", "en")) {
+                preferences.language().setValue(locale);
+                settings.setWidth(locale.equals("en") ? 440 : 720);
+                renderStable(settings);
+                scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + mode.getY() - scroll.getY() - 50;
+                renderStable(settings); assertSettingsDoNotOverlap(scroll);
+                for (var section : scroll.getChildren()) for (var row : section.getChildren()) {
+                    if (row.isHidden() || !row.getClass().getSimpleName().equals("HintRow")) continue;
+                    var wrapped = row.getClass().getDeclaredField("lines"); wrapped.setAccessible(true);
+                    for (String line : (String[]) wrapped.get(row))
+                        assertTrue(FontManager.pf12bold.getStringWidthD(line) <= row.getWidth() - 4,
+                                "Hint must fit after a locale/width change: " + line);
+                }
+                savePreview("settings-audio-effects-master-" + locale);
+            }
+        } finally {
+            preferences.audioEffects().loadFromJsonObject(saved);
+            preferences.language().setValue(language);
+            preferences.settingsLayout().setValue(layout);
+        }
     }
 
     private static void verifySettingsLayout() throws Exception {

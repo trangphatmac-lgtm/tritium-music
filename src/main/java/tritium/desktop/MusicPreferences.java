@@ -82,6 +82,7 @@ public class MusicPreferences {
     private final HudPreferences hud = new HudPreferences(spectrumAbsoluteVolume);
     private final MinecraftPreferences minecraft = new MinecraftPreferences();
     private final NavigationPreferences navigation = new NavigationPreferences();
+    private final AudioEffectPreferences audioEffects = new AudioEffectPreferences();
     private final BackgroundPreferences background = new BackgroundPreferences();
     private Runnable changeCallback = () -> {
     };
@@ -139,6 +140,12 @@ public class MusicPreferences {
         minecraft.setChangeCallback(this::fireChanged);
         background.setChangeCallback(this::fireChanged);
         navigation.setChangeCallback(this::fireChanged);
+        audioEffects.setChangeCallback(() -> {
+            if (!loading) {
+                CloudMusic.audioEffectSettingChanged();
+                fireChanged();
+            }
+        });
 
         applyQuality(quality.getValue());
         ClientSettings.SHOW_WIDGET_BOUNDARY = showWidgetBoundary.getValue();
@@ -212,6 +219,7 @@ public class MusicPreferences {
         json.add("minecraft", minecraft.toJsonObject());
         json.add("background", background.toJsonObject());
         json.add("navigation", navigation.toJsonObject());
+        json.add(AudioEffectPreferences.JSON_KEY, audioEffects.toJsonObject());
         return json;
     }
 
@@ -224,6 +232,10 @@ public class MusicPreferences {
 
         loading = true;
         try {
+            JsonElement audioEffectElement = json.get(AudioEffectPreferences.JSON_KEY);
+            if (audioEffectElement != null && audioEffectElement.isJsonObject()) {
+                audioEffects.loadFromJsonObject(audioEffectElement.getAsJsonObject());
+            }
             if (json.has("navigation") && json.get("navigation").isJsonObject())
                 navigation.loadFromJsonObject(json.getAsJsonObject("navigation"));
             applyMode(json, QUALITY_KEY, quality);
@@ -321,6 +333,8 @@ public class MusicPreferences {
     }
 
     public NavigationPreferences navigation() { return navigation; }
+
+    public AudioEffectPreferences audioEffects() { return audioEffects; }
 
     public ModePreference quality() {
         return quality;

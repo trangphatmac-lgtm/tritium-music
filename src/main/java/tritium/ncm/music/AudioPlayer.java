@@ -1,19 +1,22 @@
 package tritium.ncm.music;
 
 import lombok.Getter;
+import com.google.gson.JsonObject;
 import repackage.processing.sound.*;
 import tritium.ncm.music.automix.AutoMixAutomation.FilterSetting;
 import tritium.ncm.music.automix.AutoMixAutomation.FilterType;
 import tritium.ncm.music.automix.AutoMixPlan;
 import tritium.widget.impl.SpectrumVisualizer;
 import tritium.ncm.music.stream.StreamingAudioSample;
+import tritium.ncm.music.effects.AudioEffectDsp;
+import tritium.ncm.music.effects.AudioEffectTarget;
 
 import java.io.File;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
 /** One independently controlled voice on the shared JSyn output. */
-public class AudioPlayer implements AutoMixTransition.Deck {
+public class AudioPlayer implements AutoMixTransition.Deck, AudioEffectTarget {
     public volatile SoundFile player;
     public volatile Runnable afterPlayed;
     @Getter public volatile float volume = 0.25f;
@@ -31,12 +34,15 @@ public class AudioPlayer implements AutoMixTransition.Deck {
     @Getter private volatile AudioEnergy energy = AudioEnergy.SILENT;
     @Getter private FFT fft;
     private StreamingAudioSample stream;
+    private final Object audioEffectLock = new Object();
+    private volatile AudioEffectDsp audioEffect;
 
     public AudioPlayer(File file) { this(file, true); }
 
     AudioPlayer(StreamingAudioSample stream) {
         this.stream = stream;
         player = new SoundFile(stream);
+        installAudioEffect();
         setListeners();
         setAnalysisEnabled(true);
     }
@@ -49,6 +55,7 @@ public class AudioPlayer implements AutoMixTransition.Deck {
     /** A preloaded voice stays silent and does not overwrite the current song's spectrum. */
     AudioPlayer(File file, boolean analyze) {
         player = new SoundFile(file.getAbsolutePath());
+        installAudioEffect();
         setListeners();
         setAnalysisEnabled(analyze);
     }
@@ -57,6 +64,7 @@ public class AudioPlayer implements AutoMixTransition.Deck {
         close();
         stream = null;
         player = new SoundFile(file.getAbsolutePath());
+        installAudioEffect();
         closed = false;
         finished = false;
         mixGain = 1;
@@ -127,9 +135,9 @@ public class AudioPlayer implements AutoMixTransition.Deck {
         if (closed || player.isPlaying()) return;
         preparedCue = Float.NaN;
         finished = false;
-        // AudioSample.play() otherwise resets its amplitude to 1 before the first audio block.
-        player.play(1, (float) (volume * mixGain));
+        // Keep dynamics independent of listening volume; fade the complete effect output.
         applyGain();
+        player.play(1, 1);
         if (filter != null && !filter.isProcessing()) filter.process(player);
         if (advancedFilter != null && !advancedFilter.isProcessing()) advancedFilter.process(player);
     }
@@ -147,6 +155,7 @@ public class AudioPlayer implements AutoMixTransition.Deck {
         // the wrappers first so play() can reconnect the configured entry filters afterward.
         if (filter != null) filter.stop();
         if (advancedFilter != null) advancedFilter.stop();
+        audioEffect.reset();
         player.cue(cue / 1000F);
         play();
     }
@@ -156,6 +165,7 @@ public class AudioPlayer implements AutoMixTransition.Deck {
         preparedCue = Float.NaN;
         boolean paused = isPausing();
         clearFilter();
+        audioEffect.reset();
         player.cue(clampPosition(millis) / 1000F);
         finished = false;
         if (!paused) play();
@@ -172,7 +182,11 @@ public class AudioPlayer implements AutoMixTransition.Deck {
         preparedCue = Float.NaN;
         setAnalysisEnabled(false);
         clearFilter();
-        closed = true;
+        synchronized (audioEffectLock) {
+            closed = true;
+            audioEffect.setConfiguration(null);
+        }
+        sourceOutputGain(0);
         afterPlayed = null;
         SoundFile source = player;
         source.setOnFinished(null);
@@ -208,8 +222,28 @@ public class AudioPlayer implements AutoMixTransition.Deck {
     }
 
     private void applyGain() {
-        if (!closed) player.amp((float) (volume * mixGain));
+        if (!closed) sourceOutputGain(volume * mixGain);
     }
+
+    private void sourceOutputGain(double gain) { player.getUnitGenerator().setOutputGain(gain); }
+
+    private void installAudioEffect() {
+        audioEffect = new AudioEffectDsp(Sound.sampleRate());
+        player.getUnitGenerator().installStereoStage(audioEffect.input, audioEffect.output);
+        sourceOutputGain(volume * mixGain);
+    }
+
+    /** Atomically replaces the effect plan. Null/empty configurations smoothly bypass DSP.
+     * Parsing and delay allocation run on this caller, never on the audio render thread. */
+    @Override public void setAudioEffect(JsonObject config) {
+        // The player monitor can be held by AutoMix's blocking PCM warm-up. Settings
+        // only need the small effect lock, so changing mode never waits for audio I/O.
+        synchronized (audioEffectLock) {
+            if (!closed) audioEffect.setConfiguration(config);
+        }
+    }
+
+    @Override public boolean isAudioEffectClosed() { return closed; }
 
     @Override public synchronized void setMixFilter(double lowPassHz, double highPassHz) {
         if (closed) return;
@@ -263,6 +297,7 @@ public class AudioPlayer implements AutoMixTransition.Deck {
         if (closed || !player.isPlaying()) return;
         // SoundObject.stop removes effects itself; dispose the wrapper before pausing.
         clearFilter();
+        audioEffect.reset();
         player.pause();
     }
     public void unpause() { play(); }

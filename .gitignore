@@ -29,3 +29,6 @@ replay_pid*
 ._*
 Thumbs.db
 Desktop.ini
+
+# Local analysis artifacts
+/analysis/netease-9.5.40/

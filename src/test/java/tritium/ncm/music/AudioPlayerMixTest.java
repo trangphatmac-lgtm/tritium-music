@@ -110,6 +110,47 @@ class AudioPlayerMixTest {
         assertEquals(.05, outputs[1].peak, 1e-5);
     }
 
+    @Test void persistentEffectSurvivesPauseSeekAndAutoMixRemovalAndRunsBeforeVolume() {
+        AudioPlayer deck = deck(false);
+        deck.setAudioEffect(new com.google.gson.JsonParser().parse(
+                "{cmp:{on:true,ratio:4,threshold:-18,attack:0.001,release:0.1}}" ).getAsJsonObject());
+        deck.setVolume(.8f);
+        deck.startAt(0); render(100);
+        double loud = outputs[0].peak;
+        assertTrue(loud < .2, "The compressor must process unity-gain source PCM");
+        deck.setVolume(.2f); render(20);
+        assertEquals(loud / 4, outputs[0].peak, 1e-5,
+                "Volume belongs after dynamics, preserving the compressor's operating point");
+        deck.setMixFilter(0, 1000); render(100);
+        assertTrue(outputs[0].peak < 1e-5);
+        deck.setMixFilter(0, 0); render(10);
+        assertEquals(loud / 4, outputs[0].peak, 1e-5, "Removing AutoMix must leave persistent effect intact");
+        deck.pause(); render(2);
+        assertEquals(0, outputs[0].peak, 0);
+        deck.setPlaybackTime(500); deck.unpause(); render(100);
+        assertEquals(loud / 4, outputs[0].peak, 1e-5);
+        deck.setAudioEffect(null); render(100);
+        assertEquals(.1, outputs[0].peak, 1e-5);
+        assertEquals(.05, outputs[1].peak, 1e-5);
+    }
+
+    @Test void reverbAndPersistentEffectCannotLeakThroughMutedPreloadedDeck() {
+        AudioPlayer deck = deck(false);
+        deck.setAudioEffect(new com.google.gson.JsonParser().parse(
+                "{rvb:{on:true,rvb:{on:true,pdelay:20,dtime:2},ol:{dry:0,rvb:-6}}}" ).getAsJsonObject());
+        deck.prepareAutoMix(entryPlan(false), () -> false);
+        deck.startAt(500); render(100);
+        assertEquals(0, outputs[0].peak, 0);
+        assertEquals(0, outputs[1].peak, 0);
+        deck.setMixFilter(0, 0);
+        deck.setMixGain(1); render(20);
+        assertTrue(outputs[0].peak > 0);
+        deck.setMixGain(0); render(1);
+        assertEquals(0, outputs[0].peak, 0, "Final gain must silence accumulated reverb tails immediately");
+        deck.close(); render(2);
+        assertEquals(0, outputs[1].peak, 0);
+    }
+
     @Test void pausingAndSeekingPreserveSilenceAndResumeFromTheSelectedPosition() {
         AudioPlayer deck = deck(false);
         deck.startAt(0);
@@ -202,6 +243,10 @@ class AudioPlayerMixTest {
             a.play(); render(2);
             assertEquals(.1, outputs[0].peak, 1e-5);
             assertEquals(.05, outputs[1].peak, 1e-5);
+            a.setAudioEffect(new com.google.gson.JsonParser().parse(
+                    "{cmp:{on:true,ratio:1,pregain:-6}}" ).getAsJsonObject());
+            render(100);
+            assertEquals(.1 * Math.pow(10, -.3), outputs[0].peak, 1e-5);
             a.pause(); render(2);
             float paused = a.getCurrentTimeMillis();
             render(10);
@@ -213,7 +258,7 @@ class AudioPlayerMixTest {
             a.unpause();
             for (int i = 0; i < 100 && a.getCurrentTimeMillis() <= 1_000; i++) { render(1); Thread.sleep(10); }
             assertTrue(a.getCurrentTimeMillis() > 1_000);
-            assertEquals(.1, outputs[0].peak, 1e-5);
+            assertEquals(.1 * Math.pow(10, -.3), outputs[0].peak, 1e-5);
             AudioPlayer b = deck(false);
             b.play(); render(2);
             a.close(); render(3);

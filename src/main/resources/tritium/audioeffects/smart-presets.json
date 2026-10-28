@@ -1,0 +1,1578 @@
+{
+  "0": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        2.5,
+        1.2,
+        0,
+        0.6,
+        0,
+        0,
+        0,
+        0.5,
+        1.2,
+        0
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 1,
+      "treble": 1
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "treble": 1,
+        "trebleFreq": 0,
+        "on": true,
+        "trebleQ": 0,
+        "bass": 1,
+        "bassQ": 0,
+        "bassFreq": 0
+      },
+      "eq": {
+        "eqs": [
+          2.5,
+          1.2,
+          0,
+          0.6,
+          0,
+          0,
+          0,
+          0.5,
+          1.2,
+          0
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "1": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        -1.5,
+        -1,
+        0,
+        1.79,
+        4,
+        3.79,
+        1.79,
+        0.5,
+        -1,
+        1
+      ]
+    },
+    "bt": {
+      "on": false
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          -1,
+          -0.6,
+          0,
+          0,
+          0,
+          1,
+          1.8,
+          2.8,
+          1.8,
+          -1
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "2": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        4.5,
+        4,
+        3,
+        2.29,
+        -1,
+        -1.2,
+        0,
+        1.79,
+        3,
+        4.5
+      ]
+    },
+    "bt": {
+      "on": false
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          -2,
+          -1,
+          1.2,
+          -2,
+          1.2,
+          2.2,
+          2,
+          1.4,
+          2,
+          1
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "3": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        0,
+        3,
+        0,
+        -0.8,
+        1.5,
+        4.8,
+        5.8,
+        3.2,
+        -0.5,
+        2
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 0,
+      "treble": 1
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "rvb": {
+          "pdelay": 40,
+          "hfdamping": 2,
+          "rshape": 50,
+          "density": 40,
+          "swidth": 150,
+          "q": 6,
+          "diffusion": 30,
+          "on": true,
+          "dtime": 1
+        },
+        "on": true,
+        "er": {
+          "on": false
+        },
+        "tc": {
+          "on": false
+        },
+        "il": {
+          "center": 0,
+          "lfe": 0
+        },
+        "ol": {
+          "dry": 0,
+          "er": -30,
+          "rvb": -25
+        },
+        "rl": {
+          "lfe": 0,
+          "front": 0,
+          "rear": 0,
+          "center": 0
+        }
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          0,
+          -1.2,
+          -0.6,
+          -0.4,
+          2,
+          2.6,
+          3.2,
+          2,
+          -0.5,
+          2
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "4": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        0.5,
+        0.3,
+        0,
+        0,
+        0,
+        0,
+        -0.5,
+        -2.08,
+        -2.79,
+        0
+      ]
+    },
+    "bt": {
+      "on": false
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          -0.8,
+          -0.2,
+          0,
+          0,
+          0,
+          0,
+          -0.2,
+          -0.8,
+          -1.2,
+          -2
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "6": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        4.5,
+        3.09,
+        2.4,
+        1.2,
+        0,
+        -1,
+        0,
+        1.5,
+        2.79,
+        4.5
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 0,
+      "treble": 2
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "eq": {
+        "on": true,
+        "eqs": [
+          3.5,
+          2.09,
+          1.4,
+          0.2,
+          -1,
+          -2,
+          -1,
+          0.5,
+          1.79,
+          3.5
+        ]
+      },
+      "bt": {
+        "on": true,
+        "bass": 0,
+        "treble": 2
+      },
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      }
+    }
+  },
+  "7": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        3.2,
+        3,
+        1.5,
+        2.4,
+        -1.5,
+        -1,
+        0,
+        1.6,
+        2,
+        4.5
+      ]
+    },
+    "bt": {
+      "on": false
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          -0.6,
+          -0.4,
+          1,
+          2.4,
+          2.6,
+          3,
+          1,
+          1.6,
+          2,
+          3
+        ],
+        "on": true
+      },
+      "cmp": {
+        "attack": 0.01,
+        "on": true,
+        "pregain": 0,
+        "release": 0.5,
+        "range": 0,
+        "ratio": 2,
+        "postgain": 0,
+        "threshold": -1.5
+      }
+    }
+  },
+  "9": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        5,
+        6.09,
+        2.2,
+        0,
+        -1.6,
+        1.5,
+        0,
+        1,
+        2.57,
+        3.77
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 3,
+      "treble": 2
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "rvb": {
+          "pdelay": 10,
+          "hfdamping": 3,
+          "rshape": 100,
+          "density": 40,
+          "swidth": 120,
+          "q": 6,
+          "diffusion": 50,
+          "on": true,
+          "dtime": 1.2
+        },
+        "on": true,
+        "er": {
+          "on": false
+        },
+        "tc": {
+          "on": false
+        },
+        "il": {
+          "center": 0,
+          "lfe": 0
+        },
+        "ol": {
+          "dry": 0,
+          "er": -30,
+          "rvb": -25
+        },
+        "rl": {
+          "lfe": 0,
+          "front": 0,
+          "rear": 0,
+          "center": 0
+        }
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          3,
+          3.2,
+          2.2,
+          0,
+          -1.6,
+          1.5,
+          0,
+          1,
+          2.37,
+          1
+        ],
+        "on": true
+      },
+      "cmp": {
+        "attack": 0,
+        "on": true,
+        "pregain": -2,
+        "release": 0,
+        "range": 0,
+        "ratio": 1,
+        "postgain": 0,
+        "threshold": 0
+      }
+    }
+  },
+  "10": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        5.6,
+        5.09,
+        2,
+        0.5,
+        -2,
+        1.2,
+        3.79,
+        0.5,
+        1.5,
+        4
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 2,
+      "treble": 2
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "presence": 5,
+        "sshaper": false,
+        "ambience": 1,
+        "on": true,
+        "stereoizer": 3.8
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          1.2,
+          2,
+          1.2,
+          -1.2,
+          -1,
+          1.2,
+          1.6,
+          0.6,
+          0,
+          0
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "11": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        4.5,
+        4,
+        3,
+        2.29,
+        -1,
+        -1.2,
+        0,
+        1.79,
+        3,
+        4.5
+      ]
+    },
+    "bt": {
+      "on": false
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          -1,
+          -1,
+          -1,
+          -2
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "12": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        2,
+        6,
+        4.5,
+        0,
+        -2.2,
+        -1.5,
+        2,
+        2.5,
+        1.79,
+        3
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 2,
+      "treble": 2
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "rvb": {
+          "pdelay": 10,
+          "hfdamping": 2,
+          "rshape": 100,
+          "density": 40,
+          "swidth": 80,
+          "q": 6,
+          "diffusion": 30,
+          "on": true,
+          "dtime": 1.2
+        },
+        "on": true,
+        "er": {
+          "on": false
+        },
+        "tc": {
+          "on": false
+        },
+        "il": {
+          "center": 0,
+          "lfe": 0
+        },
+        "ol": {
+          "dry": 0,
+          "er": -30,
+          "rvb": -25
+        },
+        "rl": {
+          "lfe": 0,
+          "front": 0,
+          "rear": 0,
+          "center": 0
+        }
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "f": [
+          {
+            "on": true,
+            "freq": 300,
+            "band": 0,
+            "q": 0.6,
+            "type": 7,
+            "gain": 3
+          },
+          {
+            "on": true,
+            "freq": 4000,
+            "band": 1,
+            "q": 0.6,
+            "type": 8,
+            "gain": 2
+          },
+          {
+            "band": 2,
+            "on": false
+          },
+          {
+            "band": 3,
+            "on": false
+          },
+          {
+            "band": 4,
+            "on": false
+          },
+          {
+            "band": 5,
+            "on": false
+          },
+          {
+            "band": 6,
+            "on": false
+          },
+          {
+            "band": 7,
+            "on": false
+          },
+          {
+            "band": 8,
+            "on": false
+          }
+        ],
+        "gain": 0,
+        "on": true
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "on": false
+      },
+      "cmp": {
+        "attack": 0,
+        "on": true,
+        "pregain": -2,
+        "release": 0,
+        "range": 0,
+        "ratio": 1,
+        "postgain": 0,
+        "threshold": 0
+      }
+    }
+  },
+  "13": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        2,
+        6,
+        4.5,
+        0,
+        -2.2,
+        -1.5,
+        2,
+        2.5,
+        1.79,
+        3
+      ]
+    },
+    "bt": {
+      "on": false
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "rvb": {
+          "pdelay": 30,
+          "hfdamping": 5,
+          "rshape": 30,
+          "density": 40,
+          "swidth": 60,
+          "q": 8,
+          "diffusion": 60,
+          "on": true,
+          "dtime": 1
+        },
+        "on": true,
+        "er": {
+          "pattern": 4,
+          "sdelay": 20,
+          "on": true,
+          "rsize": 30
+        },
+        "tc": {
+          "on": false
+        },
+        "il": {
+          "center": 0,
+          "lfe": 0
+        },
+        "ol": {
+          "dry": 0,
+          "er": -20,
+          "rvb": -25
+        },
+        "rl": {
+          "lfe": 0,
+          "front": 0,
+          "rear": 0,
+          "center": 0
+        }
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "f": [
+          {
+            "q": 4,
+            "freq": 250,
+            "band": 0,
+            "type": 6,
+            "on": true,
+            "gain": -2
+          },
+          {
+            "q": 1.2,
+            "freq": 500,
+            "band": 1,
+            "type": 6,
+            "on": true,
+            "gain": 1.5
+          },
+          {
+            "q": 1,
+            "freq": 2000,
+            "band": 2,
+            "type": 6,
+            "on": true,
+            "gain": 2.5
+          },
+          {
+            "band": 3,
+            "on": false
+          },
+          {
+            "band": 4,
+            "on": false
+          },
+          {
+            "band": 5,
+            "on": false
+          },
+          {
+            "band": 6,
+            "on": false
+          },
+          {
+            "band": 7,
+            "on": false
+          },
+          {
+            "band": 8,
+            "on": false
+          }
+        ],
+        "gain": 0,
+        "on": true
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          2.5,
+          2,
+          0.5,
+          -1,
+          1.5,
+          2,
+          3,
+          1,
+          1.5,
+          0.5
+        ],
+        "on": true
+      },
+      "cmp": {
+        "attack": 0.015,
+        "on": true,
+        "pregain": 0,
+        "release": 0.12,
+        "range": -6,
+        "ratio": 2,
+        "postgain": 1,
+        "threshold": -14
+      }
+    }
+  },
+  "14": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        -2.5,
+        5.29,
+        2.49,
+        -2,
+        -2.09,
+        -1.6,
+        2.09,
+        3,
+        -0.89,
+        4
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 2,
+      "treble": 2
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "treble": 2,
+        "trebleFreq": 0,
+        "on": true,
+        "trebleQ": 0,
+        "bass": 2,
+        "bassQ": 0,
+        "bassFreq": 0
+      },
+      "eq": {
+        "eqs": [
+          1,
+          4,
+          3,
+          -2,
+          -1,
+          1.6,
+          2,
+          3,
+          1,
+          4
+        ],
+        "on": true
+      },
+      "cmp": {
+        "attack": 0.01,
+        "on": true,
+        "pregain": 0,
+        "release": 0.1,
+        "range": 0,
+        "ratio": 4,
+        "postgain": 0,
+        "threshold": -2
+      }
+    }
+  },
+  "17": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        0,
+        2.2,
+        3,
+        0.6,
+        0,
+        2.29,
+        3.09,
+        1,
+        -0.19,
+        -0.3
+      ]
+    },
+    "bt": {
+      "on": false
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "rvb": {
+          "pdelay": 10,
+          "hfdamping": 2,
+          "rshape": 100,
+          "density": 30,
+          "swidth": 80,
+          "q": 6,
+          "diffusion": 20,
+          "on": true,
+          "dtime": 1.2
+        },
+        "on": true,
+        "er": {
+          "on": false
+        },
+        "tc": {
+          "on": false
+        },
+        "il": {
+          "center": 0,
+          "lfe": 0
+        },
+        "ol": {
+          "dry": 0,
+          "er": -30,
+          "rvb": -25
+        },
+        "rl": {
+          "lfe": 0,
+          "front": 0,
+          "rear": 0,
+          "center": 0
+        }
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": true,
+        "f": [
+          {
+            "gain": 2,
+            "freq": 60,
+            "band": 0,
+            "q": 2,
+            "type": 6,
+            "on": true
+          },
+          {
+            "on": true,
+            "freq": 2000,
+            "band": 1,
+            "q": 0.1,
+            "type": 8,
+            "gain": 2
+          },
+          {
+            "band": 2,
+            "on": false
+          },
+          {
+            "band": 3,
+            "on": false
+          },
+          {
+            "band": 4,
+            "on": false
+          },
+          {
+            "band": 5,
+            "on": false
+          },
+          {
+            "band": 6,
+            "on": false
+          },
+          {
+            "band": 7,
+            "on": false
+          },
+          {
+            "band": 8,
+            "on": false
+          }
+        ],
+        "gain": 0
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          0,
+          0,
+          1.2,
+          2,
+          1.6,
+          0,
+          0,
+          0,
+          0,
+          -1
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "18": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        4,
+        2,
+        0,
+        -0.5,
+        -1,
+        3.5,
+        4.5,
+        1,
+        -1,
+        3
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 2,
+      "treble": 2
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "f": [
+          {
+            "gain": 1.8,
+            "freq": 3500,
+            "band": 0,
+            "q": 1.5,
+            "type": 6,
+            "on": true
+          },
+          {
+            "band": 1,
+            "on": false
+          },
+          {
+            "band": 2,
+            "on": false
+          },
+          {
+            "band": 3,
+            "on": false
+          },
+          {
+            "band": 4,
+            "on": false
+          },
+          {
+            "band": 5,
+            "on": false
+          },
+          {
+            "band": 6,
+            "on": false
+          },
+          {
+            "band": 7,
+            "on": false
+          },
+          {
+            "band": 8,
+            "on": false
+          }
+        ],
+        "gain": 0,
+        "on": true
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          3,
+          2,
+          1.5,
+          0,
+          -1,
+          1,
+          1.6,
+          2,
+          1,
+          0
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  },
+  "19": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        4,
+        5.8,
+        5,
+        0,
+        1.5,
+        3,
+        4.59,
+        4,
+        3.2,
+        0
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 2,
+      "treble": 0
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "treble": 0,
+        "trebleFreq": 0,
+        "on": true,
+        "trebleQ": 0,
+        "bass": 2,
+        "bassQ": 0,
+        "bassFreq": 0
+      },
+      "eq": {
+        "eqs": [
+          4,
+          5,
+          5,
+          0,
+          1,
+          1,
+          1,
+          0.4,
+          3,
+          2
+        ],
+        "on": true
+      },
+      "cmp": {
+        "attack": 0.05,
+        "on": true,
+        "pregain": 0,
+        "release": 0.1,
+        "range": 0,
+        "ratio": 4,
+        "postgain": 0,
+        "threshold": -4
+      }
+    }
+  },
+  "20": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        4.5,
+        3.09,
+        2.4,
+        1.2,
+        0,
+        -1,
+        0,
+        1.5,
+        2.79,
+        4.5
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 1,
+      "treble": 1
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "on": false
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "treble": 1,
+        "trebleFreq": 0,
+        "on": true,
+        "trebleQ": 0,
+        "bass": 1,
+        "bassQ": 0,
+        "bassFreq": 0
+      },
+      "eq": {
+        "eqs": [
+          4.5,
+          3.9,
+          1.6,
+          -0.6,
+          -1.6,
+          -1,
+          0,
+          1.5,
+          1.99,
+          1.9
+        ],
+        "on": true
+      },
+      "cmp": {
+        "attack": 0,
+        "on": true,
+        "pregain": -2,
+        "release": 0,
+        "range": 0,
+        "ratio": 1,
+        "postgain": 0,
+        "threshold": 0
+      }
+    }
+  },
+  "21": {
+    "eq": {
+      "on": true,
+      "eqs": [
+        4,
+        6.19,
+        1.5,
+        -0.5,
+        -0.8,
+        2,
+        5.19,
+        1,
+        -1.5,
+        4
+      ]
+    },
+    "bt": {
+      "on": true,
+      "bass": 2,
+      "treble": 3
+    },
+    "rvb": {
+      "on": false
+    },
+    "se": {
+      "on": false
+    },
+    "aev2": {
+      "rvb": {
+        "on": false
+      },
+      "se": {
+        "on": false
+      },
+      "peq": {
+        "f": [
+          {
+            "type": 6,
+            "freq": 1200,
+            "band": 0,
+            "q": 1,
+            "on": true,
+            "gain": 1.6
+          },
+          {
+            "type": 6,
+            "freq": 2500,
+            "band": 1,
+            "q": 1,
+            "on": true,
+            "gain": 1.8
+          },
+          {
+            "band": 2,
+            "on": false
+          },
+          {
+            "band": 3,
+            "on": false
+          },
+          {
+            "band": 4,
+            "on": false
+          },
+          {
+            "band": 5,
+            "on": false
+          },
+          {
+            "band": 6,
+            "on": false
+          },
+          {
+            "band": 7,
+            "on": false
+          },
+          {
+            "band": 8,
+            "on": false
+          }
+        ],
+        "gain": 0,
+        "on": true
+      },
+      "limiter": {
+        "on": false
+      },
+      "bt": {
+        "on": false
+      },
+      "eq": {
+        "eqs": [
+          0,
+          0,
+          0,
+          -1.5,
+          -1,
+          1.6,
+          1.8,
+          2,
+          -0.4,
+          0.2
+        ],
+        "on": true
+      },
+      "cmp": {
+        "on": false
+      }
+    }
+  }
+}

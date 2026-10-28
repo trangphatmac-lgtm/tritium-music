@@ -9,12 +9,14 @@ import tritium.desktop.AppTheme;
 import tritium.desktop.DesktopAppState;
 import tritium.desktop.ModePreference;
 import tritium.desktop.MusicPreferences;
+import tritium.desktop.AudioEffectPreferences;
 import tritium.desktop.NumberPreference;
 import tritium.desktop.PreferenceValue;
 import tritium.desktop.BackgroundPreferences;
 import tritium.desktop.background.BackgroundFilePicker;
 import tritium.desktop.background.latent.LatentPreferences;
 import tritium.management.FontManager;
+import tritium.ncm.music.CloudMusic;
 import tritium.rendering.animation.Interpolations;
 import tritium.rendering.rendersystem.RenderSystem;
 import tritium.rendering.ui.AbstractWidget;
@@ -99,6 +101,8 @@ public class SettingsPanel extends NCMPanel {
         section.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixHint")));
         section.addChild(new ToggleRow("settings.autoMixFullMode", preferences.autoMixFullMode()));
         section.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixFullModeHint")));
+
+        addAudioEffectSettings(scrollPanel);
 
         section = scrollPanel.addSection("settings.cache");
         section.addChild(new CacheRow());
@@ -230,6 +234,20 @@ public class SettingsPanel extends NCMPanel {
         backgroundRow(scroll, new ActionRow("settings.reloadBackground", DesktopAppState.background()::reload), custom);
     }
 
+    private void addAudioEffectSettings(SettingsScrollPanel scrollPanel) {
+        AudioEffectPreferences effects = preferences.audioEffects();
+        SettingsSection section = scrollPanel.addSection("settings.audioEffects");
+        section.addChild(new ChoiceRow("settings.audioEffectMode", effects.mode(),
+                value -> I18n.text("audioEffect.mode." + value)));
+        section.addChild(new HintRow(CloudMusic::audioEffectStatus));
+        backgroundRow(section, new HintRow("settings.audioEffectSmartHint"),
+                () -> "Smart".equals(effects.mode().getValue()));
+        backgroundRow(section, new ChoiceRow("settings.audioEffectTone", effects.masterTone(),
+                value -> I18n.text("audioEffect.tone." + value)), effects::isMaster);
+        backgroundRow(section, new HintRow("settings.audioEffectToneHint"), effects::isMaster);
+        backgroundRow(section, new HintRow("settings.audioEffectMasterHint"), effects::isMaster);
+    }
+
     private void addNavigationSettings(SettingsSection scroll) {
         var nav = preferences.navigation();
         scroll.addChild(new ChoiceRow("settings.navigationMode", nav.mode()));
@@ -348,19 +366,25 @@ public class SettingsPanel extends NCMPanel {
     }
 
     private static final class HintRow extends AbstractWidget<HintRow> {
-        private final String key;
+        private final Supplier<String> textSupplier;
         private String[] lines = new String[0];
         private String measuredText;
         private double measuredWidth = -1;
 
         private HintRow(String key) {
-            this.key = key;
+            this(() -> I18n.text(key));
+        }
+
+        private HintRow(Supplier<String> textSupplier) {
+            this.textSupplier = textSupplier;
             setClickable(false);
         }
 
         private void measure(double width) {
-            String text = I18n.text(key);
+            String text = textSupplier.get();
             if (width != measuredWidth || !text.equals(measuredText)) {
+                // First-use/locale-switched glyphs need advances before caching wrapped lines.
+                FontManager.pf12bold.prepareGlyphs(text);
                 lines = FontManager.pf12bold.fitWidth(text, Math.max(40, width - 8));
                 measuredWidth = width;
                 measuredText = text;

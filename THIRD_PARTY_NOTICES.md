@@ -1,3 +1,11 @@
+## NetEase audio effect configuration data
+
+The Smart and AI Master preset values in `tritium/audioeffects/` originate from
+NetEase Cloud Music Android 9.5.40 configuration resources. Source URLs, retrieval
+dates and content hashes are included in `source-manifest.json` beside the presets.
+The Java implementation reconstructs the parameter protocol and composition rules;
+it does not include NetEase's native DSP binaries or neural-network weights.
+
 ```text
 Folia ports
 
