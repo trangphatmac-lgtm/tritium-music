@@ -1064,15 +1064,11 @@ For more information on this, and how to apply and follow the GNU AGPL, see
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-```
-
-
 ## Linux system media integration
 
 dbus-java-core and dbus-java-transport-junixsocket 5.1.1
 https://github.com/hypfvieh/dbus-java
 
-```text
 MIT License
 
 Copyright (c) 2005-2006 Matthew Johnson
@@ -1095,12 +1091,12 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
+
 
 SLF4J API 2.0.16 (dbus-java dependency)
 https://www.slf4j.org/
 
-```text
+
 Copyright (c) 2004-2022 QOS.ch Sarl (Switzerland)
 All rights reserved.
 
@@ -1122,7 +1118,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-```
+
 
 junixsocket-common and junixsocket-native-common 2.10.0
 https://github.com/kohlschutter/junixsocket
@@ -1133,3 +1129,4 @@ https://github.com/kohlschutter/kohlschutter-parent
 Copyright 2009-2024 Christian Kohlschütter.
 Licensed under the Apache License, Version 2.0; see the Apache License appendix above.
 The native library binaries are bundled in the application JAR and loaded on demand.
+```

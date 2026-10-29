@@ -542,6 +542,29 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
+    static final class TextRow extends SettingsRow<TextRow> {
+        private final tritium.rendering.ui.widgets.TextFieldWidget field = new tritium.rendering.ui.widgets.TextFieldWidget(FontManager.pf16bold);
+        TextRow(String label, PreferenceValue<String> preference, int maxLength) {
+            super(label, 82);
+            field.getTextField().setMaxStringLength(maxLength);
+            field.setText(preference.getValue()).drawUnderline(false);
+            field.setTextChangedCallback(preference::setValue);
+            field.setBeforeRenderCallback(() -> {
+                field.setBounds(16, 36, Math.max(0, getWidth() - 32), 32).setColor(AppTheme.foreground());
+                field.setDisabledTextColor(RenderSystem.reAlpha(AppTheme.foreground(), .75f));
+                if (!field.isFocused() && !field.getText().equals(preference.getValue())) field.setText(preference.getValue());
+            });
+            field.setOnKeyTypedCallback((character, key) -> {
+                if (!field.isFocused()) return false;
+                if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE || key == org.lwjgl.input.Keyboard.KEY_RETURN) field.setFocused(false);
+                return true;
+            });
+            addChild(field);
+        }
+        @Override protected double labelWidth() { return Math.max(24, getWidth() - 32); }
+        void unfocus() { field.setFocused(false); }
+    }
+
     static final class ToggleRow extends SettingsRow<ToggleRow> {
         private final PreferenceValue<Boolean> preference;
         private float toggleAnimation;

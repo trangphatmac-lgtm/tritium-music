@@ -94,6 +94,7 @@ public class MusicPreferences {
             fireChanged();
         });
         musicToast.setValueCallback(value -> fireChanged());
+        minecrafthidden.setValueCallback(value -> fireChanged());
         showFps.setValueCallback(value -> fireChanged());
         maxFps.setValueCallback(value -> fireChanged());
         accentColor.setValueCallback(value -> fireChanged());
@@ -217,6 +218,7 @@ public class MusicPreferences {
         json.addProperty(SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume.getValue());
         json.add(HudPreferences.HUD_KEY, hud.toJsonObject());
         json.add("minecraft", minecraft.toJsonObject());
+        json.addProperty("minecraftHidden", minecrafthidden.getValue());
         json.add("background", background.toJsonObject());
         json.add("navigation", navigation.toJsonObject());
         json.add(AudioEffectPreferences.JSON_KEY, audioEffects.toJsonObject());
@@ -240,6 +242,7 @@ public class MusicPreferences {
                 navigation.loadFromJsonObject(json.getAsJsonObject("navigation"));
             applyMode(json, QUALITY_KEY, quality);
             applyBoolean(json, MUSIC_TOAST_KEY, musicToast);
+            applyBoolean(json, "minecraftHidden", minecrafthidden);
             applyBoolean(json, SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary);
             applyBoolean(json, SHOW_FPS_KEY, showFps);
             applyNumber(json, MAX_FPS_KEY, maxFps);

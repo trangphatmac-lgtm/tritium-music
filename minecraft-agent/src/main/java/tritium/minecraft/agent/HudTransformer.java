@@ -10,7 +10,7 @@ import org.objectweb.asm.tree.*;
 public final class HudTransformer implements ClassFileTransformer {
     private static final String BRIDGE = "tritium/minecraft/bridge/HookBridge";
     public static final String[] TARGETS = {"net.minecraft.client.renderer.EntityRenderer",
-            "net.minecraft.client.Minecraft", "net.minecraft.client.gui.GuiChat"};
+            "net.minecraft.client.Minecraft"};
     private final ClassLoader loader;
     private final Set<String> applied = new HashSet<String>();
     private volatile boolean active = true;
@@ -32,8 +32,8 @@ public final class HudTransformer implements ClassFileTransformer {
             ClassReader reader = new ClassReader(input);
             ClassNode node = new ClassNode();
             reader.accept(node, 0);
-            String mcp = kind == 0 ? "updateCameraAndRender" : kind == 1 ? "runTick" : "handleMouseInput";
-            String srg = kind == 0 ? "func_181560_a" : kind == 1 ? "func_71407_l" : "func_146274_d";
+            String mcp = kind == 0 ? "updateCameraAndRender" : "runTick";
+            String srg = kind == 0 ? "func_181560_a" : "func_71407_l";
             String desc = kind == 0 ? "(FJ)V" : "()V";
             int matches = 0;
             for (MethodNode method : node.methods) {
@@ -47,8 +47,8 @@ public final class HudTransformer implements ClassFileTransformer {
                 }
                 if (kind == 0) {
                     for (AbstractInsnNode insn : method.instructions.toArray())
-                        if (insn.getOpcode() == Opcodes.RETURN) method.instructions.insertBefore(insn, callback(kind, false));
-                } else method.instructions.insert(callback(kind, kind == 2));
+                        if (insn.getOpcode() == Opcodes.RETURN) method.instructions.insertBefore(insn, callback(kind));
+                } else method.instructions.insert(callback(kind));
             }
             if (matches != 1) throw new IllegalStateException("Expected one " + mcp + desc + ", found " + matches);
             if (kind == 0) hookWorld(node);
@@ -110,16 +110,11 @@ public final class HudTransformer implements ClassFileTransformer {
         if (methods != 1) throw new IllegalStateException("Expected one renderWorldPass(IFJ)V, found " + methods);
     }
 
-    private static InsnList callback(int kind, boolean cancel) {
+    private static InsnList callback(int kind) {
         InsnList code = new InsnList();
         code.add(new InsnNode(Opcodes.ICONST_0 + kind));
         code.add(new MethodInsnNode(Opcodes.INVOKESTATIC, BRIDGE, "event", "(I)Z", false));
-        if (cancel) {
-            LabelNode next = new LabelNode();
-            code.add(new JumpInsnNode(Opcodes.IFEQ, next));
-            code.add(new InsnNode(Opcodes.RETURN));
-            code.add(next);
-        } else code.add(new InsnNode(Opcodes.POP));
+        code.add(new InsnNode(Opcodes.POP));
         return code;
     }
 }

@@ -14,6 +14,8 @@ public final class HudAgent {
     private static Object running;
     private static URLClassLoader runtimeLoader;
     private static HudTransformer transformer;
+    private static CombatTransformer combatTransformer;
+    private static MovementTransformer movementTransformer;
     private static Class<?>[] targets;
     private static Field bridge;
     private static boolean dirty;
@@ -43,21 +45,32 @@ public final class HudAgent {
         };
         try {
             final ClassLoader chosen = gameLoader;
-            final Object runtime = Class.forName("tritium.minecraft.runtime.RuntimeSession", true, runtimeLoader)
+            final Object runtime = Class.forName("tritium.minecraft.runtime.hook.RuntimeSession", true, runtimeLoader)
                     .getConstructor(String.class, ClassLoader.class).newInstance(options, gameLoader);
             running = runtime;
             Runnable install = () -> {
                 try {
                     synchronized (HudAgent.class) {
-                        targets = new Class<?>[HudTransformer.TARGETS.length];
+                        LinkedHashSet<String> names = new LinkedHashSet<String>(Arrays.asList(HudTransformer.TARGETS));
+                        names.addAll(Arrays.asList(CombatTransformer.TARGETS));
+                        names.addAll(Arrays.asList(MovementTransformer.TARGETS));
+                        String[] targetNames = names.toArray(new String[0]);
+                        targets = new Class<?>[targetNames.length];
                         for (int i = 0; i < targets.length; i++) {
-                            targets[i] = Class.forName(HudTransformer.TARGETS[i], false, chosen);
+                            targets[i] = Class.forName(targetNames[i], false, chosen);
                             if (!instrumentation.isModifiableClass(targets[i])) throw new IllegalStateException("Class is not modifiable: " + targets[i].getName());
                         }
                         transformer = new HudTransformer(chosen);
                         bridge.set(null, runtime);
+                        for (String field : new String[]{"packetCallback", "velocityCallback", "blockingCallback", "receiveCallback"}) bridge.getDeclaringClass().getField(field).set(null, runtime.getClass().getMethod(field).invoke(runtime));
+                        combatTransformer = new CombatTransformer(chosen);
+                        movementTransformer = new MovementTransformer(chosen);
                         instrumentation.addTransformer(transformer, true);
+                        instrumentation.addTransformer(combatTransformer, true);
+                        instrumentation.addTransformer(movementTransformer, true);
                         instrumentation.retransformClasses(targets);
+                        if (!movementTransformer.complete()) throw new IllegalStateException("Movement hook installation failed: " + movementTransformer.error());
+                        if (!combatTransformer.complete()) throw new IllegalStateException("Combat hook installation failed: " + combatTransformer.error());
                         if (!transformer.complete()) throw new IllegalStateException("Hook installation failed: " + transformer.error());
                     }
                 } catch (Exception failure) { throw new IllegalStateException(failure); }
@@ -73,7 +86,16 @@ public final class HudAgent {
     private static synchronized void uninstall(Instrumentation instrumentation) {
         dirty = false;
         try {
-            if (bridge != null) bridge.set(null, null);
+            if (bridge != null) {
+                bridge.set(null, null);
+                for (String field : new String[]{"packetCallback", "velocityCallback", "blockingCallback", "receiveCallback"}) bridge.getDeclaringClass().getField(field).set(null, null);
+            }
+            if (movementTransformer != null) {
+                movementTransformer.deactivate(); instrumentation.removeTransformer(movementTransformer);
+            }
+            if (combatTransformer != null) {
+                combatTransformer.deactivate(); instrumentation.removeTransformer(combatTransformer);
+            }
             if (transformer != null) {
                 transformer.deactivate();
                 instrumentation.removeTransformer(transformer);
@@ -84,7 +106,7 @@ public final class HudAgent {
             dirty = true;
             throw new IllegalStateException("HUD stopped; hook rollback incomplete. Restart Minecraft.", failure);
         } finally {
-            transformer = null; targets = null; running = null;
+            transformer = null; combatTransformer = null; movementTransformer = null; targets = null; running = null;
             if (runtimeLoader != null) try { runtimeLoader.close(); } catch (IOException ignored) { }
             runtimeLoader = null;
         }
@@ -109,8 +131,12 @@ public final class HudAgent {
         try {
             bridgeClass.getMethod("world", float.class);
             bridgeClass.getField("partialTicks");
+            bridgeClass.getMethod("packet", Object.class, Object.class);
+            bridgeClass.getField("blockingCallback");
+            bridgeClass.getField("receiveCallback");
+            bridgeClass.getMethod("receive", Object.class);
         } catch (ReflectiveOperationException oldBridge) {
-            throw new IllegalStateException("Restart Minecraft before using this agent version; its previous callback bridge has no world renderer", oldBridge);
+            throw new IllegalStateException("Restart Minecraft before using this agent version; its previous callback bridge does not support the current module hooks", oldBridge);
         }
         bridge = bridgeClass.getField("callback");
     }

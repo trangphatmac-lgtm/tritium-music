@@ -6,6 +6,8 @@ import tritium.desktop.minecraft.MinecraftConnectionManager;
 import tritium.i18n.I18n;
 import tritium.management.FontManager;
 import tritium.minecraft.protocol.HudConfig;
+import tritium.minecraft.protocol.CombatSettings;
+import tritium.minecraft.protocol.MovementSettings;
 import tritium.rendering.material.UiMaterials;
 import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
@@ -13,7 +15,7 @@ import tritium.screens.ncm.NCMPanel;
 import java.util.*;
 import java.util.function.*;
 
-/** Desktop-only control surface. Minecraft never gets a custom screen. */
+/** Desktop controls; layout actions open the in-game HUD editor. */
 public final class MinecraftPanel extends NCMPanel {
     private final MinecraftConnectionManager connection = DesktopAppState.minecraft();
     private final MinecraftPreferences preferences = DesktopAppState.preferences().minecraft();
@@ -36,6 +38,11 @@ public final class MinecraftPanel extends NCMPanel {
         cards.add(new ModuleCard("worldLyrics", "minecraft.worldLyrics", 0));
         cards.add(new ModuleCard("uninject", "minecraft.uninject", 1));
         cards.add(new ModuleCard("editHud", "minecraft.editHud", 1));
+        cards.add(new ModuleCard("aimAssist", "minecraft.aimAssist", 0));
+        cards.add(new ModuleCard("autoBlock", "minecraft.autoBlock", 1));
+        cards.add(new ModuleCard("autoClicker", "minecraft.autoClicker", 0));
+        cards.add(new ModuleCard("sprint", "minecraft.sprint", 1));
+        cards.add(new ModuleCard("stasis", "minecraft.stasis", 0));
         for (ModuleCard card : cards) grid.addChild(card);
         setBeforeRenderCallback(() -> {
             boolean ready = connection.status().stage() == MinecraftConnectionManager.Stage.READY;
@@ -169,6 +176,13 @@ public final class MinecraftPanel extends NCMPanel {
             boolean two = getWidth() >= 664; double width = two ? (getWidth() - 24) / 2 : getWidth();
             double[] bottom = new double[2];
             for (ModuleCard card : cards) {
+                boolean hidden = (CombatSettings.isCombat(card.id) || MovementSettings.isMovement(card.id)) && !DesktopAppState.preferences().minecrafthidden().getValue();
+                card.setHidden(hidden);
+                if (hidden) {
+                    if (recording == card) recording = null;
+                    for (var row : card.getChildren()) if (row instanceof SettingsPanel.TextRow textRow) textRow.unfocus();
+                    continue;
+                }
                 int column = two ? card.column : 0; card.measure(width);
                 if (position) card.setPosition(column * (width + 24), bottom[column] - actualScrollOffset);
                 bottom[column] += card.getHeight() + 16;
@@ -207,6 +221,7 @@ public final class MinecraftPanel extends NCMPanel {
             double y = 64;
             for (AbstractWidget<?> row : getChildren()) {
                 boolean visible = expanded && (!conditions.containsKey(row) || conditions.get(row).getAsBoolean());
+                if (!visible && row instanceof SettingsPanel.TextRow textRow) textRow.unfocus();
                 row.setHidden(!visible); row.setBounds(Math.max(0, width - 20), row.getHeight()); row.setPosition(10, y);
                 if (visible) y += row.getHeight() + 6;
             }
@@ -253,6 +268,8 @@ public final class MinecraftPanel extends NCMPanel {
             if (id.equals("editHud")) { addChild(new SettingsPanel.ActionRow("minecraft.reset", connection::resetLayout)); return; }
             if (id.equals("uninject")) { addChild(new SettingsPanel.ActionRow("minecraft.disconnect", connection::uninject)); return; }
             if (id.equals("worldLyrics")) { buildWorldRows(); return; }
+            if (CombatSettings.isCombat(id)) { buildCombatRows(); return; }
+            if (MovementSettings.isMovement(id)) { buildMovementRows(); return; }
             slider("minecraft.scale", m -> m.scale, (m,v) -> m.scale=v, .5, 2, .05);
             slider("settings.opacity", m -> m.opacity, (m,v) -> m.opacity=v, .05, 1, .05);
             if (id.equals("musicInfo")) toggle("settings.artistLyric", m -> m.artistLyric, (m,v) -> m.artistLyric=v);
@@ -281,6 +298,43 @@ public final class MinecraftPanel extends NCMPanel {
             if (id.equals("musicToast")) {
                 slider("minecraft.hold", m -> m.holdSeconds, (m,v) -> m.holdSeconds=v, 1, 15, .5);
                 addChild(new SettingsPanel.ActionRow("minecraft.preview", connection::previewToast));
+            }
+        }
+
+        private void buildCombatRows() {
+            for (CombatSettings.Option option : CombatSettings.options(id)) {
+                String label = "minecraft.combat." + option.key;
+                if (option.toggle) {
+                    toggle(label, m -> m.combat.on(option.key), (m, v) -> m.combat.toggles.put(option.key, v));
+                } else {
+                    NumberPreference pref = new NumberPreference(label, option.defaultValue, option.min, option.max, option.step) {
+                        @Override public Double getValue() { return module().combat.number(option.key); }
+                        @Override public void setValue(Double value) { edit(m -> m.combat.numbers.put(option.key, value)); }
+                    };
+                    addChild(new SettingsPanel.SliderRow(label, pref, value -> {
+                        if (Math.abs(value - option.specialValue) < .000001) return text("minecraft.combat." + option.special);
+                        String number = String.format(Locale.ROOT, "%.2f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
+                        return number + (option.suffix.isEmpty() ? "" : " " + option.suffix);
+                    }));
+                }
+            }
+        }
+
+        private void buildMovementRows() {
+            if (id.equals("sprint")) {
+                addChild(new SettingsPanel.ActionRow("minecraft.movement.editPosition", () -> connection.setEditing(true)));
+                toggle("minecraft.movement.disableBackwards", m -> m.movement.disableBackwards, (m,v) -> m.movement.disableBackwards=v);
+                toggle("minecraft.movement.displayText", m -> m.movement.displayText, (m,v) -> m.movement.displayText=v);
+                toggle("minecraft.movement.rainbow", m -> m.movement.rainbow, (m,v) -> m.movement.rainbow=v);
+                addChild(new SettingsPanel.TextRow("minecraft.movement.text", preference(m -> m.movement.text, (m,v) -> m.movement.text=v), 256));
+                addChild(new SettingsPanel.ActionRow("minecraft.movement.resetPosition", () -> edit(m -> { m.movement.textX=5; m.movement.textY=5; })));
+            } else {
+                NumberPreference pulse = new NumberPreference("Pulse", 60, 2, 85, 1) {
+                    @Override public Double getValue() { return module().movement.pulse; }
+                    @Override public void setValue(Double value) { edit(m -> m.movement.pulse=value); }
+                };
+                addChild(new SettingsPanel.SliderRow("minecraft.movement.pulse", pulse, value -> value == 2
+                        ? text("minecraft.combat.Disabled") : String.format(Locale.ROOT, "%.0f ticks", value)));
             }
         }
 

@@ -21,18 +21,18 @@ class WorldLyricsRenderingTest {
         DesktopNativeLoader.configureLibraryPath(); Display.setDisplayMode(new DisplayMode(960, 540));
         Display.setLocation(-10000, -10000); Display.create();
         try (URLClassLoader loader = loader()) {
-            Class<?> rendererType = loader.loadClass("tritium.minecraft.runtime.WorldLyricsRenderer");
+            Class<?> rendererType = loader.loadClass("tritium.minecraft.runtime.lyric.WorldLyricsRenderer");
             Constructor<?> ctor = rendererType.getDeclaredConstructors()[0]; ctor.setAccessible(true);
             Object renderer = ctor.newInstance(new Object[]{null});
-            Class<?> cameraType = loader.loadClass("tritium.minecraft.runtime.WorldLyricScene$Camera");
+            Class<?> cameraType = loader.loadClass("tritium.minecraft.runtime.lyric.WorldLyricScene$Camera");
             Object camera = cameraType.getConstructor().newInstance();
             cameraType.getField("eyeY").setDouble(camera, 1.62);
             cameraType.getField("aspect").setDouble(camera, 960.0 / 540);
-            Class<?> metrics = loader.loadClass("tritium.minecraft.runtime.WorldLyricScene$Metrics");
+            Class<?> metrics = loader.loadClass("tritium.minecraft.runtime.lyric.WorldLyricScene$Metrics");
             Field fontField = rendererType.getDeclaredField("font"); fontField.setAccessible(true); Object font = fontField.get(renderer);
             Method width = font.getClass().getDeclaredMethod("width", String.class); width.setAccessible(true);
             Object measure = Proxy.newProxyInstance(loader, new Class[]{metrics}, (p, m, args) -> width.invoke(font, args));
-            Class<?> sceneType = loader.loadClass("tritium.minecraft.runtime.WorldLyricScene");
+            Class<?> sceneType = loader.loadClass("tritium.minecraft.runtime.lyric.WorldLyricScene");
             Object scene = sceneType.getConstructor(metrics).newInstance(measure);
             HudConfig.Module module = new HudConfig().find("worldLyrics"); module.enabled = true;
             module.world.wiggle = false; module.world.spread = 0; module.world.glow = false;
@@ -41,7 +41,7 @@ class WorldLyricsRenderingTest {
             track.lyrics.add(line);
             Method update = sceneType.getMethod("update", PlaybackState.Track.class, double.class, boolean.class, HudConfig.Module.class, cameraType, long.class);
             Object frame = update.invoke(scene, track, 2000.0, true, module, camera, 2_000_000_000L);
-            Class<?> frameType = loader.loadClass("tritium.minecraft.runtime.WorldLyricScene$Frame");
+            Class<?> frameType = loader.loadClass("tritium.minecraft.runtime.lyric.WorldLyricScene$Frame");
             Method draw = rendererType.getDeclaredMethod("draw", frameType, cameraType, HudConfig.Module.class, int.class, int.class);
             draw.setAccessible(true);
             int target = framebuffer(), readTarget = framebuffer();

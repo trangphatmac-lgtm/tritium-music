@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MinecraftToastAppearanceTest {
     @Test void matchesDesktopTextSizeInsetsAndDefaultHeight() throws Exception {
         try (URLClassLoader agent = new URLClassLoader(new java.net.URL[]{Path.of("minecraft-agent/target/minecraft-hud-agent.jar").toUri().toURL()}, ClassLoader.getPlatformClassLoader())) {
-            Class<?> painterType = agent.loadClass("tritium.minecraft.runtime.HudPainter");
+            Class<?> painterType = agent.loadClass("tritium.minecraft.runtime.lyric.HudPainter");
             Class<?> configType = agent.loadClass("tritium.minecraft.protocol.HudConfig");
             Class<?> moduleType = agent.loadClass("tritium.minecraft.protocol.HudConfig$Module");
             Class<?> trackType = agent.loadClass("tritium.minecraft.protocol.PlaybackState$Track");

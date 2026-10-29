@@ -42,9 +42,11 @@
 
 使用 JDK Attach API 将 Java Agent 加载到正在运行的游戏中，复用游戏自身的 LWJGL 渲染环境。
 
+进入世界后，点击“编辑 HUD”或 Sprint 的“编辑文字位置”会直接打开半透明编辑界面，无需打开聊天栏。拖动调整位置，普通 HUD 可用滚轮缩放或拖动右下角调整大小；Sprint 文字仅调整位置。按 Esc 保存退出。
+
 使用条件：
 
-- 播放器运行时包含 `jdk.attach` 及对应平台的 JDK 本机库；完整 JDK 21+ 和本项目的 Windows/macOS 安装包配置均包含该模块。
+- 播放器运行时包含 `jdk.attach` 及对应平台的 JDK 本机库。
 - 游戏使用 LWJGL 2 及兼容的 MCP / SRG 类名；不同 Forge / Lunar 构建的兼容性取决于其类名和渲染实现。
 - 游戏已经进入主菜单，两个程序以同一系统用户和权限级别运行，游戏 JVM 能读取播放器缓存中的 Agent JAR。Linux/macOS 的沙盒或容器可能隔离进程、临时目录或文件访问。
 - 游戏未启用 `-XX:+DisableAttachMechanism`；JDK 9+ 若禁用动态 Agent，需加 `-XX:+EnableDynamicAgentLoading` 并重启游戏（Java 8 不添加此参数）。

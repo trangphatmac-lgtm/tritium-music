@@ -6,6 +6,8 @@ public final class HudConfig {
     public int accent = 0xffd60017;
     public int uninjectKey;
     public int editKey;
+    public boolean hidden;
+    public String editorHint = "Drag to move / Scroll to scale / Esc to finish";
     public Module[] modules = defaults();
 
     public static Module[] defaults() {
@@ -14,7 +16,12 @@ public final class HudConfig {
             new Module("musicLyrics", .5, .72, 450, 120),
             new Module("musicSpectrum", .5, 1, 640, 85),
             new Module("musicToast", .98, .03, 120, 24),
-            worldLyricsDefaults()
+            worldLyricsDefaults(),
+            new Module("aimAssist", 0, 0, 100, 24),
+            new Module("autoBlock", 0, 0, 100, 24),
+            new Module("autoClicker", 0, 0, 100, 24),
+            new Module("sprint", 0, 0, 100, 24),
+            new Module("stasis", 0, 0, 100, 24)
         };
     }
 
@@ -31,6 +38,7 @@ public final class HudConfig {
     }
 
     public void normalize() {
+        if (editorHint == null) editorHint = "Drag to move / Scroll to scale / Esc to finish";
         Module[] normalized = defaults();
         for (int i = 0; i < normalized.length; i++) {
             Module found = find(normalized[i].id);
@@ -57,10 +65,14 @@ public final class HudConfig {
         public double lyricHeight = 20, multiplier = 1, holdSeconds = 5;
         public int color = 0xc87d7d7d;
         public WorldLyrics world = new WorldLyrics();
+        public CombatSettings combat = new CombatSettings();
+        public MovementSettings movement = new MovementSettings();
+        public transient double textWidth = 100;
 
         public Module() { }
         public Module(String id, double x, double y, double width, double height) {
             this.id = id; this.x = x; this.y = y; this.width = width; this.height = height;
+            combat.normalize(id);
         }
 
         public void normalize() {
@@ -75,12 +87,24 @@ public final class HudConfig {
             if (!"Line".equals(spectrumStyle)) spectrumStyle = "Rect";
             if (world == null) world = new WorldLyrics();
             world.normalize();
+            if (combat == null) combat = new CombatSettings();
+            combat.normalize(id);
+            if (movement == null) movement = new MovementSettings();
+            movement.normalize();
         }
+
+        public boolean isCombat() { return CombatSettings.isCombat(id); }
+        public boolean isMovement() { return MovementSettings.isMovement(id); }
+        public boolean isHidden() { return isCombat() || isMovement(); }
+        public boolean isHud() { return !isWorld() && !isHidden(); }
 
         public boolean isWorld() { return "worldLyrics".equals(id); }
 
-        /** Position is a fraction of the available travel, so edge anchors survive a resize. */
+        /** HUD positions use available-travel fractions; Sprint retains Raven's GUI pixel coordinates. */
         public double[] bounds(double screenWidth, double screenHeight) {
+            if ("sprint".equals(id)) return new double[]{
+                Math.min(movement.textX, Math.max(0, screenWidth - textWidth)),
+                Math.min(movement.textY, Math.max(0, screenHeight - 9)), textWidth, 9};
             double w = Math.min(width * scale, Math.max(1, screenWidth));
             double h = Math.min(height * scale, Math.max(1, screenHeight));
             return new double[] {x * Math.max(0, screenWidth - w), y * Math.max(0, screenHeight - h), w, h};

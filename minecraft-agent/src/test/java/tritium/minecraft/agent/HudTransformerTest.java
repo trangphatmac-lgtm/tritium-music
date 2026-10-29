@@ -13,7 +13,7 @@ class HudTransformerTest {
     @Test void exactMcpAndSrgDescriptorsAndNoStructuralChanges() {
         for (boolean srg : new boolean[]{false,true}) {
             ClassLoader loader = getClass().getClassLoader(); HudTransformer transformer = new HudTransformer(loader);
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < HudTransformer.TARGETS.length; i++) {
                 String name = HudTransformer.TARGETS[i].replace('.', '/'); byte[] original = fixture(name, i, srg);
                 byte[] output = transformer.transform(loader, name, null, null, original); assertNotNull(output);
                 ClassNode before = node(original), after = node(output);

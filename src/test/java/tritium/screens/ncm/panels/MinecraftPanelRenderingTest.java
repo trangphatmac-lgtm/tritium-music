@@ -31,11 +31,13 @@ class MinecraftPanelRenderingTest {
         var connected = MinecraftConnectionManager.class.getDeclaredField("connected"); connected.setAccessible(true);
         var editing = MinecraftConnectionManager.class.getDeclaredField("editing"); editing.setAccessible(true);
         boolean wasConnected = connection.connected(), wasEditing = connection.editing();
+        boolean wasHidden = DesktopAppState.preferences().minecrafthidden().getValue();
         Object previous = field.get(connection); var preferences = DesktopAppState.preferences(); String material = preferences.interfaceStyle().getValue();
         try {
             DesktopNativeLoader.configureLibraryPath(); app("createDisplay"); Display.update(); app("initializeOpenGL");
             Framebuffer.updateMcFramebuffer(); DesktopAppState.markMainThread(); new FontManager().init();
             renderTarget = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
+            preferences.minecrafthidden().setValue(false);
             preferences.language().setValue("zh-CN"); preferences.accentColor().setValue(0xffc026d3);
             MinecraftPanel panel = new MinecraftPanel(); panel.setBounds(0, 0, RenderSystem.getWidth(), RenderSystem.getHeight()); panel.onInit();
             field.set(connection, new MinecraftConnectionManager.Status(MinecraftConnectionManager.Stage.INSTALLING, .52, "UI fixture", List.of()));
@@ -48,7 +50,8 @@ class MinecraftPanelRenderingTest {
             connected.setBoolean(connection, true); editing.setBoolean(connection, false);
             settle(panel, 500);
             ScrollPanel grid = (ScrollPanel)panel.getChildren().get(2); var cards = grid.getChildren();
-            assertEquals(7, cards.size()); assertTrue(cards.get(1).getRelativeX() > 0);
+            assertEquals(12, cards.size());
+            assertEquals(7, cards.stream().filter(c -> !c.isHidden()).count()); assertTrue(cards.get(1).getRelativeX() > 0);
             assertEquals(cards.get(0).getRelativeX(),cards.get(2).getRelativeX());
             assertEquals(cards.get(1).getRelativeX(),cards.get(3).getRelativeX());
             assertEquals(cards.get(0).getRelativeX(),cards.get(4).getRelativeX());
@@ -139,10 +142,47 @@ class MinecraftPanelRenderingTest {
             panel.onMouseClickReceived(card.getX()+card.getWidth()/2,card.getY()+52,0); settle(panel,120);
             assertTrue(card.getHeight()>64); save("minecraft-expanded");
             panel.setWidth(620); settle(panel,120);
-            for (var item : cards) assertEquals(0,item.getRelativeX()); save("minecraft-narrow");
+            for (var item : cards) if (!item.isHidden()) assertEquals(0,item.getRelativeX()); save("minecraft-narrow");
+            preferences.minecrafthidden().setValue(true); panel.setWidth(RenderSystem.getWidth()); settle(panel,120);
+            assertEquals(12,cards.stream().filter(c -> !c.isHidden()).count());
+            assertEquals(14,cards.get(7).getChildren().size()); assertEquals(17,cards.get(8).getChildren().size()); assertEquals(11,cards.get(9).getChildren().size());
+            assertEquals(6,cards.get(10).getChildren().size()); assertEquals(1,cards.get(11).getChildren().size());
+            // Use local widget coordinates after scrolling to each newly visible module.
+            for (int i=7;i<12;i++) {
+                var combat = cards.get(i);
+                grid.actualScrollOffset = grid.targetScrollOffset = combat.getRelativeY() + grid.actualScrollOffset;
+                settle(panel,120);
+                panel.onMouseClickReceived(combat.getX()+combat.getWidth()/2,combat.getY()+52,0); settle(panel,120);
+                assertEquals(combat.getChildren().size(),combat.getChildren().stream().filter(row -> !row.isHidden()).count());
+                save("minecraft-module-"+i);
+                grid.scrollToEndImmediately(); settle(panel,120);
+                var last = combat.getChildren().getLast();
+                assertTrue(last.getY()+last.getHeight() <= grid.getY()+grid.getHeight()+1);
+                if (i >= 10) save("minecraft-module-"+i+"-options");
+                if (i == 10) {
+                    var textField = (tritium.rendering.ui.widgets.TextFieldWidget) combat.getChildren().get(4).getChildren().getFirst();
+                    String originalText = textField.getText();
+                    assertFalse(originalText.isEmpty());
+                    panel.onMouseClickReceived(textField.getX()+12, textField.getY()+12, 0);
+                    assertTrue(textField.isFocused()); textField.getTextField().selectAll();
+                    assertTrue(panel.onKeyTypedReceived('X', Keyboard.KEY_X));
+                    assertEquals("X", preferences.minecraft().snapshot().find("sprint").movement.text);
+                    panel.onKeyTypedReceived('\n', Keyboard.KEY_RETURN); assertFalse(textField.isFocused());
+                    preferences.minecraft().update(c -> c.find("sprint").movement.text=originalText);
+                    var editPosition = combat.getChildren().getFirst();
+                    // The same action opens the existing editor; text dragging is covered by HudInputTest.
+                    editPosition.onMouseClicked(editPosition.getWidth()-40, 26, 0);
+                    assertTrue(connection.editing()); connection.setEditing(false);
+                }
+                var expanded = combat.getClass().getDeclaredField("expanded"); expanded.setAccessible(true); expanded.setBoolean(combat,false);
+                settle(panel,120);
+            }
+            preferences.minecrafthidden().setValue(false); settle(panel,120);
+            assertEquals(7,cards.stream().filter(c -> !c.isHidden()).count());
             assertEquals(GL11.GL_NO_ERROR,GL11.glGetError());
         } finally {
             field.set(connection,previous); preferences.interfaceStyle().setValue(material);
+            preferences.minecrafthidden().setValue(wasHidden);
             connected.setBoolean(connection,wasConnected); editing.setBoolean(connection,wasEditing);
             if (Display.isCreated()) {
                 if (renderTarget != null) { renderTarget.deleteFramebuffer(); renderTarget = null; }

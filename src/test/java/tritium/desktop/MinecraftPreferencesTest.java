@@ -8,12 +8,57 @@ import tritium.minecraft.protocol.PlaybackState;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MinecraftPreferencesTest {
+    @Test void movementSettingsAndSprintPixelLayoutPersistAndMigrate() {
+        MusicPreferences original = new MusicPreferences(); original.minecraft().ensureInitialized(original);
+        original.minecraft().update(c -> {
+            var sprint = c.find("sprint"); sprint.enabled = true; sprint.key = 24;
+            sprint.movement.text = "&aRunning"; sprint.movement.displayText = true; sprint.movement.rainbow = true;
+            sprint.movement.disableBackwards = false;
+            var stasis = c.find("stasis"); stasis.enabled = true; stasis.key = 25; stasis.movement.pulse = 2;
+        });
+        PlaybackState.Event layout = new PlaybackState.Event(); layout.id = "sprint"; layout.action = "layout";
+        layout.x = 195; layout.y = 85; original.minecraft().apply(layout);
+        MusicPreferences restored = new MusicPreferences(); restored.loadFromJsonObject(original.toJsonObject());
+        var sprint = restored.minecraft().snapshot().find("sprint");
+        assertEquals(195, sprint.movement.textX); assertEquals(85, sprint.movement.textY); assertEquals("&aRunning", sprint.movement.text);
+        assertTrue(sprint.enabled && sprint.movement.displayText && sprint.movement.rainbow); assertFalse(sprint.movement.disableBackwards);
+        assertEquals(24, sprint.key); assertEquals(25, restored.minecraft().snapshot().find("stasis").key);
+        assertEquals(2, restored.minecraft().snapshot().find("stasis").movement.pulse);
+        restored.minecraft().resetLayout(); sprint = restored.minecraft().snapshot().find("sprint");
+        assertEquals(5, sprint.movement.textX); assertEquals(5, sprint.movement.textY); assertEquals("&aRunning", sprint.movement.text);
+        var saved = original.toJsonObject(); var legacy = new com.google.gson.JsonArray();
+        for (var item : saved.getAsJsonObject("minecraft").getAsJsonArray("modules"))
+            if (!java.util.Set.of("sprint", "stasis").contains(item.getAsJsonObject().get("id").getAsString())) legacy.add(item);
+        saved.getAsJsonObject("minecraft").add("modules", legacy); restored.loadFromJsonObject(saved);
+        assertFalse(restored.minecraft().snapshot().find("sprint").enabled); assertFalse(restored.minecraft().snapshot().find("stasis").enabled);
+        assertEquals(60, restored.minecraft().snapshot().find("stasis").movement.pulse);
+    }
+
+    @Test void combatOptionsAndHiddenPersistWithoutParticipatingInHudLayout() {
+        MusicPreferences original = new MusicPreferences(); original.minecraft().ensureInitialized(original);
+        original.minecrafthidden().setValue(true);
+        original.minecraft().update(c -> {
+            var aim = c.find("aimAssist"); aim.enabled = true; aim.key = 25;
+            aim.combat.numbers.put("speed", 84.0); aim.combat.toggles.put("silentAim", true);
+            c.find("autoClicker").combat.numbers.put("inventoryCps", 12.5);
+        });
+        MusicPreferences restored = new MusicPreferences(); restored.loadFromJsonObject(original.toJsonObject());
+        assertTrue(restored.minecrafthidden().getValue());
+        Gson json = new Gson(); String expected = json.toJson(original.minecraft().snapshot().find("aimAssist"));
+        restored.minecraft().resetLayout();
+        PlaybackState.Event event = new PlaybackState.Event(); event.action = "layout"; event.id = "aimAssist"; event.scale = 2;
+        restored.minecraft().apply(event);
+        assertEquals(expected, json.toJson(restored.minecraft().snapshot().find("aimAssist")));
+        assertEquals(12.5, restored.minecraft().snapshot().find("autoClicker").combat.number("inventoryCps"));
+    }
+
     @Test void oldConfigurationAddsDisabledWorldLyricsWithGaleDefaults() {
         MusicPreferences p = new MusicPreferences(); p.minecraft().ensureInitialized(p);
         JsonObject old = p.toJsonObject();
         var modules = old.getAsJsonObject("minecraft").getAsJsonArray("modules");
         var legacyModules = new com.google.gson.JsonArray();
-        for (int i = 0; i < modules.size() - 1; i++) legacyModules.add(modules.get(i));
+        for (int i = 0; i < modules.size(); i++)
+            if (!modules.get(i).getAsJsonObject().get("id").getAsString().equals("worldLyrics")) legacyModules.add(modules.get(i));
         old.getAsJsonObject("minecraft").add("modules", legacyModules);
         MusicPreferences restored = new MusicPreferences(); restored.loadFromJsonObject(old);
         var world = restored.minecraft().snapshot().find("worldLyrics");

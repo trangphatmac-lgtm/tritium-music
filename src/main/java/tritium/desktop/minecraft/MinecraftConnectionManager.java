@@ -5,6 +5,7 @@ import com.sun.tools.attach.VirtualMachine;
 import com.sun.tools.attach.spi.AttachProvider;
 import tritium.desktop.*;
 import tritium.desktop.hud.HudArtworkCache;
+import tritium.i18n.I18n;
 import tritium.minecraft.protocol.*;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.AudioPlayer;
@@ -207,6 +208,8 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                 if (start - heartbeatAt >= TimeUnit.SECONDS.toNanos(1)) { s.wire.send(Wire.HEARTBEAT, ""); heartbeatAt = start; }
                 if (!s.stopping) {
                     HudConfig config = DesktopAppState.preferences().minecraft().snapshot(); config.accent = AppTheme.accent();
+                    config.hidden = DesktopAppState.preferences().minecrafthidden().getValue();
+                    config.editorHint = I18n.text("minecraft.editorHint");
                     String encoded = JSON.toJson(config);
                     if (!encoded.equals(lastConfig)) { s.wire.send(Wire.CONFIG, encoded); lastConfig = encoded; }
                     PlaybackState state = captureState(config.find("musicSpectrum").absoluteVolume); state.sequence = ++s.sequence;

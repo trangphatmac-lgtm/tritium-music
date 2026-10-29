@@ -28,7 +28,7 @@ class AgentAttachFixtureTest {
     }
     private static Path compileFixture(Path agent) throws Exception {
         Path classes = Path.of("target/minecraft-fixture/classes"); Files.createDirectories(classes);
-        List<String> args = new ArrayList<>(List.of("--release", "8", "-encoding", "UTF-8", "-cp", agent.toString(), "-d", classes.toString()));
+        List<String> args = new ArrayList<>(List.of("--release", "8", "-proc:none", "-encoding", "UTF-8", "-cp", agent + File.pathSeparator + System.getProperty("java.class.path"), "-d", classes.toString()));
         try (var paths = Files.walk(Path.of("src/test/minecraft-fixture/java"))) { paths.filter(p -> p.toString().endsWith(".java")).forEach(p -> args.add(p.toString())); }
         assertEquals(0, ToolProvider.getSystemJavaCompiler().run(null, null, null, args.toArray(String[]::new)));
         Path jar = Path.of("target/minecraft-fixture/fixture.jar"); Manifest manifest = new Manifest();
@@ -94,9 +94,11 @@ class AgentAttachFixtureTest {
                         assertTrue(stopped);
                     }
                 }
-                stdin.write("marker\nbridge\n"); stdin.flush();
+                stdin.write("marker\nbridge\ncombat\nmovement\n"); stdin.flush();
                 assertEquals("MARKER 31", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS));
                 assertEquals("BRIDGE true", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS));
+                assertEquals("COMBAT 0", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS), "UnInject must remove combat hooks, not only clear their callbacks");
+                assertEquals("MOVEMENT 0", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS), "UnInject must also remove movement input and receive hooks");
             }
         } finally {
             stdin.write("exit\n"); stdin.flush(); if (!process.waitFor(5,TimeUnit.SECONDS)) process.destroyForcibly(); reader.shutdownNow();

@@ -5,6 +5,7 @@ public class EntityRenderer {
     private final Profiler profiler = new Profiler();
     private boolean renderHand = true;
     public void updateCameraAndRender(float partial, long deadline) { }
+    public void getMouseOver(float partialTicks) { }
     public int marker() { return 1; }
     private void renderWorldPass(int pass, float partialTicks, long deadline) {
         profiler.endStartSection("hand");

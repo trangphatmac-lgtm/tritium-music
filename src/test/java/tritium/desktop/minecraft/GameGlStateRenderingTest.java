@@ -18,7 +18,8 @@ class GameGlStateRenderingTest {
     @Test void restoresGameOpenGlStateAfterUploadsAndDrawing() throws Exception {
         DesktopNativeLoader.configureLibraryPath(); Display.setDisplayMode(new DisplayMode(640,480)); Display.create();
         try(URLClassLoader loader=new URLClassLoader(new java.net.URL[]{Path.of("minecraft-agent/target/minecraft-hud-agent.jar").toUri().toURL()},getClass().getClassLoader())) {
-            Class<?> type=Class.forName("tritium.minecraft.runtime.GlHud",true,loader); var ctor=type.getDeclaredConstructor();ctor.setAccessible(true);Object gl=ctor.newInstance();
+            Class<?> type=Class.forName("tritium.minecraft.runtime.lyric.GlHud",true,loader); var ctor=type.getDeclaredConstructor();ctor.setAccessible(true);Object gl=ctor.newInstance();
+            GL11.glClearColor(.8f,.6f,.4f,1); GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
             int texture=GL11.glGenTextures(),buffer=GL15.glGenBuffers();
             GL13.glActiveTexture(GL13.GL_TEXTURE1);GL11.glBindTexture(GL11.GL_TEXTURE_2D,texture);GL11.glEnable(GL11.GL_TEXTURE_2D);
             GL15.glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER,buffer); GL15.glBufferData(GL21.GL_PIXEL_UNPACK_BUFFER,128,GL15.GL_STREAM_DRAW);
@@ -30,9 +31,14 @@ class GameGlStateRenderingTest {
             GL11.glViewport(7,11,620,450);
             invoke(type,gl,"begin",new Class[]{int.class,int.class},320,240);
             assertArrayEquals(new int[]{7,11,620,450},viewport());
+            invoke(type,gl,"editorBackdrop",new Class[]{});
             invoke(type,gl,"upload",new Class[]{String.class,BufferedImage.class},"test",new BufferedImage(20,20,BufferedImage.TYPE_INT_ARGB));
             invoke(type,gl,"draw",new Class[]{String.class,double[].class},"test",new double[]{10,10,20,20});
             invoke(type,gl,"end",new Class[]{});
+            ByteBuffer backdrop=BufferUtils.createByteBuffer(4);
+            GL11.glReadPixels(300,200,1,1,GL11.GL_RGBA,GL11.GL_UNSIGNED_BYTE,backdrop);
+            assertEquals(122,backdrop.get(0)&255,2,"Editor must darken the world without hiding it");
+            assertEquals(92,backdrop.get(1)&255,2); assertEquals(61,backdrop.get(2)&255,2);
             assertArrayEquals(new int[]{7,11,620,450},viewport());
             assertEquals(GL13.GL_TEXTURE1,GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE));
             assertEquals(texture,GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D)); assertTrue(GL11.glIsEnabled(GL11.GL_TEXTURE_2D));
@@ -50,7 +56,7 @@ class GameGlStateRenderingTest {
     @Test void fractionalAndHiDpiViewportsKeepOneTexturePixelPerScreenPixel() throws Exception {
         DesktopNativeLoader.configureLibraryPath(); Display.setDisplayMode(new DisplayMode(640,480)); Display.create();
         try(URLClassLoader loader=new URLClassLoader(new java.net.URL[]{Path.of("minecraft-agent/target/minecraft-hud-agent.jar").toUri().toURL()},getClass().getClassLoader())) {
-            Class<?> type=Class.forName("tritium.minecraft.runtime.GlHud",true,loader); var ctor=type.getDeclaredConstructor();ctor.setAccessible(true);Object gl=ctor.newInstance();
+            Class<?> type=Class.forName("tritium.minecraft.runtime.lyric.GlHud",true,loader); var ctor=type.getDeclaredConstructor();ctor.setAccessible(true);Object gl=ctor.newInstance();
             int framebuffer=GL30.glGenFramebuffers(),texture=GL11.glGenTextures();
             try {
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D,texture);
