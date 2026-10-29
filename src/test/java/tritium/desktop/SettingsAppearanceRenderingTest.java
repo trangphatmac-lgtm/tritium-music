@@ -326,9 +326,20 @@ class SettingsAppearanceRenderingTest {
             click(settings, tone.getX() + 30, tone.getY() + 26);
             assertEquals("key_bright", effects.masterTone().getValue());
             for (String key : java.util.List.of("Bass", "Treble", "Vocal", "Vibe", "Live")) {
-                assertThrows(java.util.NoSuchElementException.class,
-                        () -> settingRow(scroll, "settings.audioEffect" + key));
+                assertTrue(settingRow(scroll, "settings.audioEffect" + key).isHidden());
             }
+            savePreview("settings-audio-effects-master-zh-CN");
+            click(settings, mode.getX() + 30, mode.getY() + 26);
+            assertEquals("Manual", effects.mode().getValue()); assertTrue(tone.isHidden());
+            for (String key : java.util.List.of("Bass", "Treble", "Vocal", "Vibe", "Live")) {
+                var row = settingRow(scroll, "settings.audioEffect" + key);
+                assertFalse(row.isHidden());
+                scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + row.getY() - scroll.getY() - 160;
+                renderStable(settings);
+                click(settings, row.getX() + row.getWidth() - 35, row.getY() + 26);
+            }
+            assertEquals(java.util.List.of("en_bass", "en_treble", "en_vocal", "en_live"), effects.manualEnhancements());
+            assertFalse(effects.vibe().getValue()); assertTrue(effects.live().getValue());
             for (String locale : java.util.List.of("zh-CN", "zh-TW", "en")) {
                 preferences.language().setValue(locale);
                 settings.setWidth(locale.equals("en") ? 440 : 720);
@@ -342,7 +353,7 @@ class SettingsAppearanceRenderingTest {
                         assertTrue(FontManager.pf12bold.getStringWidthD(line) <= row.getWidth() - 4,
                                 "Hint must fit after a locale/width change: " + line);
                 }
-                savePreview("settings-audio-effects-master-" + locale);
+                savePreview("settings-audio-effects-manual-" + locale);
             }
         } finally {
             preferences.audioEffects().loadFromJsonObject(saved);

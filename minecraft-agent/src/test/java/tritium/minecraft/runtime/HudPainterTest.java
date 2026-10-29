@@ -6,6 +6,28 @@ import java.awt.image.BufferedImage;
 import static org.junit.jupiter.api.Assertions.*;
 
 class HudPainterTest {
+    @Test void infoAndLyricsFollowPhysicalResolutionAcrossScaleChanges() {
+        HudConfig config = new HudConfig(); HudPainter painter = new HudPainter();
+        try {
+            for (String id : new String[]{"musicInfo", "musicLyrics"}) {
+                HudConfig.Module module = config.find(id); module.scale = 1.35;
+                double width = module.width * module.scale, height = module.height * module.scale;
+                double[] textureBounds = HudPainter.textureBounds(module, new double[]{0, 0, width, height});
+                for (double[] density : new double[][]{{1, 1}, {2, 2}, {2.5, 3.25}, {4, 4}, {.75, 1.25}, {1, 1}}) {
+                    int w = (int)Math.ceil(textureBounds[2] * density[0]), h = (int)Math.ceil(textureBounds[3] * density[1]);
+                    BufferedImage image = painter.paintAtResolution(module, HudReferenceTest.track(), new PlaybackState(),
+                            1000, width, height, w, h, 1000, true, config.accent);
+                    assertEquals(w, image.getWidth(), id); assertEquals(h, image.getHeight(), id);
+                    assertTrue(java.util.Arrays.stream(HudReferenceTest.pixels(image)).anyMatch(pixel -> (pixel >>> 24) > 0), id);
+                }
+            }
+            HudConfig.Module lyrics = config.find("musicLyrics");
+            assertEquals(5120, painter.paintAtResolution(lyrics, HudReferenceTest.track(), new PlaybackState(),
+                    1000, 1280, 120, 5120, 480, 1000, true, config.accent).getWidth(),
+                    "Large render targets must not be silently reduced to 4096 pixels");
+        } finally { painter.close(); }
+    }
+
     @Test void nonFiniteIncomingStateIsSafeForAllHudRenderers() {
         PlaybackState s = new com.google.gson.Gson().fromJson(
                 "{\"positionMillis\":\"NaN\",\"durationMillis\":\"Infinity\",\"volume\":\"NaN\","

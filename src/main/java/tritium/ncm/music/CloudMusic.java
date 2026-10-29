@@ -102,6 +102,8 @@ public class CloudMusic implements SharedConstants {
 
     private static AudioEffectService.Selection audioEffectSelection() {
         var preferences = DesktopAppState.preferences().audioEffects();
+        if (preferences.isManual())
+            return new AudioEffectService.Selection("Manual", "Auto", preferences.manualEnhancements());
         return AudioEffectService.Selection.automatic(preferences.mode().getValue(),
                 preferences.masterTone().getValue());
     }
@@ -128,7 +130,7 @@ public class CloudMusic implements SharedConstants {
         if (status == null) return I18n.text("audioEffect.status.ready");
         String tone = I18n.text("audioEffect.tone." + status.tone());
         String text = I18n.text("audioEffect.status." + status.status(), tone);
-        if ("Master".equals(selected.mode()) && !selected.diy().isEmpty() && !"loading".equals(status.status())) {
+        if (("Master".equals(selected.mode()) || "Manual".equals(selected.mode())) && !"loading".equals(status.status())) {
             String enhancements = status.usedDiy().stream().map(key -> I18n.text(switch (key) {
                 case "en_bass" -> "settings.audioEffectBass";
                 case "en_treble" -> "settings.audioEffectTreble";
@@ -137,7 +139,8 @@ public class CloudMusic implements SharedConstants {
                 case "en_live" -> "settings.audioEffectLive";
                 default -> key;
             })).collect(java.util.stream.Collectors.joining(" / "));
-            if (enhancements.isEmpty()) enhancements = I18n.text("audioEffect.status.noEnhancements");
+            if (enhancements.isEmpty()) enhancements = I18n.text("Manual".equals(selected.mode())
+                    ? "audioEffect.status.noneSelected" : "audioEffect.status.noEnhancements");
             text += I18n.text("audioEffect.status.enhancements", enhancements);
         }
         return text;

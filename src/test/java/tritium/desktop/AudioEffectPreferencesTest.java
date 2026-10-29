@@ -19,7 +19,7 @@ class AudioEffectPreferencesTest {
     void defaultsToBypassWithAllMasterControlsHidden() {
         AudioEffectPreferences preferences = new AudioEffectPreferences();
         assertEquals("Off", preferences.mode().getValue());
-        assertEquals(List.of("Off", "Smart", "Master"), preferences.mode().getModes());
+        assertEquals(List.of("Off", "Smart", "Master", "Manual"), preferences.mode().getModes());
         assertEquals("Auto", preferences.masterTone().getValue());
         assertFalse(preferences.isMaster());
         for (PreferenceValue<?> control : masterControls(preferences)) assertTrue(control.isHidden());
@@ -61,7 +61,7 @@ class AudioEffectPreferencesTest {
         store.save(preferences);
         MusicPreferences restored = new MusicPreferences();
         store.load(restored);
-        JsonObject expected = new JsonObject();
+        JsonObject expected = new AudioEffectPreferences().toJsonObject();
         expected.addProperty("mode", "Master");
         expected.addProperty("masterTone", "key_silky");
         assertEquals(expected, restored.toJsonObject().getAsJsonObject(AudioEffectPreferences.JSON_KEY));
@@ -88,7 +88,7 @@ class AudioEffectPreferencesTest {
         preferences.loadFromJsonObject(json);
         assertEquals("Off", preferences.mode().getValue());
         assertEquals("Auto", preferences.masterTone().getValue());
-        assertEquals(2, preferences.toJsonObject().entrySet().size());
+        assertEquals(3, preferences.toJsonObject().entrySet().size());
         preferences.loadFromJsonObject(null);
         preferences.loadFromJsonObject(new JsonObject());
         assertFalse(preferences.toJsonObject().has("live"));
@@ -115,6 +115,53 @@ class AudioEffectPreferencesTest {
                 assertNotEquals(key, I18n.text(language, key), language.tag());
             }
         }
+    }
+
+    @Test
+    void manualChoicesPersistIndependentlyAndSpatialSwitchesApplyLastChoiceOnce() {
+        var preferences = new AudioEffectPreferences();
+        var changes = new AtomicInteger();
+        preferences.setChangeCallback(changes::incrementAndGet);
+        assertTrue(preferences.bass().isHidden());
+        preferences.mode().setValue("Manual");
+        assertFalse(preferences.bass().isHidden());
+        assertTrue(preferences.masterTone().isHidden());
+        preferences.bass().setValue(true);
+        preferences.vocal().setValue(true);
+        preferences.vibe().setValue(true);
+        changes.set(0);
+        preferences.live().setValue(true);
+        assertFalse(preferences.vibe().getValue());
+        assertEquals(1, changes.get(), "Mutual exclusion publishes a single completed selection");
+        assertEquals(List.of("en_bass", "en_vocal", "en_live"), preferences.manualEnhancements());
+        preferences.mode().setValue("Master");
+        assertTrue(preferences.live().isHidden());
+        preferences.mode().setValue("Manual");
+        assertTrue(preferences.live().getValue());
+
+        var restored = new AudioEffectPreferences();
+        restored.setChangeCallback(changes::incrementAndGet);
+        changes.set(0);
+        restored.loadFromJsonObject(preferences.toJsonObject());
+        assertEquals(0, changes.get());
+        assertEquals(preferences.toJsonObject(), restored.toJsonObject());
+        restored.vibe().setValue(true);
+        assertFalse(restored.live().getValue());
+        assertEquals(1, changes.get());
+    }
+
+    @Test
+    void invalidManualPreferencesCannotCreateConflictingOrMalformedChoices() {
+        var preferences = new AudioEffectPreferences();
+        JsonObject json = new JsonObject(), manual = new JsonObject();
+        manual.addProperty("bass", "true"); manual.add("treble", new JsonArray());
+        manual.add("vocal", JsonNull.INSTANCE);
+        manual.addProperty("vibe", true); manual.addProperty("live", true);
+        json.add("manual", manual); json.addProperty("mode", "Manual");
+        preferences.loadFromJsonObject(json);
+        assertEquals(List.of("en_vibe"), preferences.manualEnhancements());
+        json.addProperty("manual", "invalid");
+        assertDoesNotThrow(() -> preferences.loadFromJsonObject(json));
     }
 
     private static List<PreferenceValue<?>> masterControls(AudioEffectPreferences preferences) {

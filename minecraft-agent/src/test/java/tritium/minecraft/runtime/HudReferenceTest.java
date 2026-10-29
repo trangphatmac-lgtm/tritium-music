@@ -75,6 +75,28 @@ class HudReferenceTest {
         assertArrayEquals(pixels(marquee(new WidgetMarquee(font), next, 1000)), pixels(marquee(marquee, next, 8001)));
     }
 
+    @Test void marqueeRetainsNativeTextPixelsWhenVerticalAndHorizontalScalesDiffer() {
+        WidgetText font = new WidgetText(); WidgetMarquee marquee = new WidgetMarquee(font);
+        String text = "A long title with sharp edges that scrolls beyond the card";
+        for (double[] scale : new double[][]{{1, 4}, {1.25, 3.5}, {2, 2}, {1, 1}}) {
+            BufferedImage actual = new BufferedImage(240, 160, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage expected = new BufferedImage(240, 160, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D a = actual.createGraphics(), e = expected.createGraphics();
+            try {
+                for (Graphics2D g : new Graphics2D[]{a, e}) {
+                    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g.scale(scale[0], scale[1]);
+                }
+                marquee.draw(a, text, 0, 2, 100, 25, true, -1, 1000, 2500, 0);
+                font.draw(e, text, 0, 2, 25, true, -1, false);
+            } finally { a.dispose(); e.dispose(); }
+            // Exclude the right-edge fade; interior text must match direct vector rendering.
+            for (int y = 0; y < 160; y++) for (int x = 0; x < (int)(90 * scale[0]); x++)
+                assertEquals(expected.getRGB(x, y), actual.getRGB(x, y), "Native glyph pixel at " + x + "," + y);
+        }
+    }
+
     private static BufferedImage marquee(WidgetMarquee marquee, String text, long now) {
         BufferedImage image = new BufferedImage(200, 40, BufferedImage.TYPE_INT_ARGB); Graphics2D g = image.createGraphics();
         g.scale(2, 2); marquee.draw(g, text, 0, 2, 100, 25, true, -1, now, 2500, 0); g.dispose(); return image;

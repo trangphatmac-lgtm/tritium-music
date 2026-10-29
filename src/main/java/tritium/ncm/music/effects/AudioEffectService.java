@@ -30,9 +30,13 @@ public final class AudioEffectService {
         }
 
         public Selection {
-            mode = Set.of("Off", "Smart", "Master").contains(mode == null ? "" : mode) ? mode : "Off";
+            mode = Set.of("Off", "Smart", "Master", "Manual").contains(mode == null ? "" : mode) ? mode : "Off";
             tone = tone == null ? "Auto" : tone;
             diy = diy == null ? List.of() : List.copyOf(diy);
+        }
+
+        public boolean needsRecommendation() {
+            return "Smart".equals(mode) || ("Master".equals(mode) && "Auto".equals(tone));
         }
     }
     public record Result(JsonObject configuration, String status, String tone, List<String> usedDiy) {
@@ -66,12 +70,16 @@ public final class AudioEffectService {
             case "Smart" -> new Result(presets.smart("0"), "smartFallback", "", List.of());
             case "Master" -> master(selection, "Auto".equals(selection.tone()) ? EffectPresets.DEFAULT_MASTER_KEY : selection.tone(),
                     null, "Auto".equals(selection.tone()) ? "masterFallback" : "masterManual");
+            case "Manual" -> {
+                var composed = MasterEffectComposer.composeManual(selectedEnhancements(selection));
+                yield new Result(composed.effect(), "manual", "", composed.usedDiy());
+            }
             default -> new Result(null, "off", "", List.of());
         };
     }
 
     public synchronized Result load(long songId, Selection selection, String cookie) {
-        if (songId <= 0 || "Off".equals(selection.mode()) || ("Master".equals(selection.mode()) && !"Auto".equals(selection.tone())))
+        if (songId <= 0 || !selection.needsRecommendation())
             return fallback(selection);
         // No credentials are persisted. Separate recommendations across login changes.
         String session = digest("SHA-256", Objects.requireNonNullElse(cookie, "").getBytes(StandardCharsets.UTF_8)).substring(0, 24);
@@ -121,10 +129,14 @@ public final class AudioEffectService {
 
     private Result master(Selection selection, String key, JsonObject song, String status) {
         String actual = presets.masterNames().containsKey(key) ? key : EffectPresets.DEFAULT_MASTER_KEY;
+        var composed = MasterEffectComposer.compose(presets.master(actual), song, selectedEnhancements(selection), false);
+        return new Result(composed.effect(), status, actual, composed.usedDiy());
+    }
+
+    private JsonObject selectedEnhancements(Selection selection) {
         JsonObject allDiy = presets.diy(), selected = new JsonObject();
         for (String option : selection.diy()) if (allDiy.has(option)) selected.add(option, allDiy.get(option));
-        var composed = MasterEffectComposer.compose(presets.master(actual), song, selected, false);
-        return new Result(composed.effect(), status, actual, composed.usedDiy());
+        return selected;
     }
 
     static JsonObject parseMetadata(String mode, long id, JsonObject response) {

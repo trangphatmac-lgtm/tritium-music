@@ -4,6 +4,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.*;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 import java.util.*;
 
 /** All methods run on Minecraft's render thread; raw GL calls leave its state cache unchanged. */
@@ -11,8 +12,20 @@ final class GlHud implements AutoCloseable {
     private final Map<String, Texture> textures = new HashMap<String, Texture>();
     private int program, activeTexture, matrixMode, unpackBuffer;
     private boolean shader, pbo;
+    private final IntBuffer viewport = BufferUtils.createIntBuffer(16);
+    private int pixelWidth, pixelHeight, guiWidth, guiHeight, textureLimit;
+    private double densityX, densityY;
+    private boolean resized;
 
-    void begin(int pixelWidth, int pixelHeight, int width, int height) {
+    void begin(int width, int height) {
+        // The active render target may have a different density from Minecraft's
+        // display fields (HiDPI, fractional GUI sizes or a client-owned framebuffer).
+        viewport.clear(); GL11.glGetInteger(GL11.GL_VIEWPORT, viewport);
+        int w = Math.max(1, viewport.get(2)), h = Math.max(1, viewport.get(3));
+        resized = pixelWidth != w || pixelHeight != h || guiWidth != width || guiHeight != height;
+        pixelWidth = w; pixelHeight = h; guiWidth = width; guiHeight = height;
+        densityX = w / (double)Math.max(1, width); densityY = h / (double)Math.max(1, height);
+        if (textureLimit == 0) textureLimit = GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
         ContextCapabilities caps = GLContext.getCapabilities();
         shader = caps.OpenGL20; pbo = caps.OpenGL21;
         program = shader ? GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM) : 0;
@@ -35,7 +48,6 @@ final class GlHud implements AutoCloseable {
         GL11.glMatrixMode(GL11.GL_PROJECTION); GL11.glPushMatrix(); GL11.glLoadIdentity();
         GL11.glOrtho(0, width, height, 0, -1, 1);
         GL11.glMatrixMode(GL11.GL_MODELVIEW); GL11.glPushMatrix(); GL11.glLoadIdentity();
-        GL11.glViewport(0, 0, pixelWidth, pixelHeight);
         GL11.glDisable(GL11.GL_DEPTH_TEST); GL11.glDepthMask(false);
         GL11.glDisable(GL11.GL_LIGHTING); GL11.glDisable(GL11.GL_CULL_FACE);
         GL11.glDisable(GL11.GL_FOG); GL11.glDisable(GL11.GL_ALPHA_TEST); GL11.glDisable(GL11.GL_SCISSOR_TEST);
@@ -51,6 +63,10 @@ final class GlHud implements AutoCloseable {
         GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
         GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
     }
+
+    boolean resized() { return resized; }
+    int textureWidth(double width) { return Math.max(1, Math.min(textureLimit, (int)Math.ceil(width * densityX))); }
+    int textureHeight(double height) { return Math.max(1, Math.min(textureLimit, (int)Math.ceil(height * densityY))); }
 
     void upload(String id, BufferedImage image) {
         Texture t = textures.get(id);
@@ -73,11 +89,15 @@ final class GlHud implements AutoCloseable {
 
     void draw(String id, double[] b) {
         Texture t = textures.get(id); if (t == null) return;
+        // Keep native-resolution texels on physical pixel boundaries. Fractional
+        // anchors otherwise bilinearly blur even a correctly sized text texture.
+        double x = Math.round(b[0] * densityX) / densityX, y = Math.round(b[1] * densityY) / densityY;
+        double w = Math.ceil(b[2] * densityX) / densityX, h = Math.ceil(b[3] * densityY) / densityY;
         GL11.glEnable(GL11.GL_TEXTURE_2D); GL11.glBindTexture(GL11.GL_TEXTURE_2D, t.id);
         GL11.glColor4f(1, 1, 1, 1);
         GL11.glBegin(GL11.GL_QUADS);
-        vertex(0, 0, b[0], b[1]); vertex(0, 1, b[0], b[1] + b[3]);
-        vertex(1, 1, b[0] + b[2], b[1] + b[3]); vertex(1, 0, b[0] + b[2], b[1]);
+        vertex(0, 0, x, y); vertex(0, 1, x, y + h);
+        vertex(1, 1, x + w, y + h); vertex(1, 0, x + w, y);
         GL11.glEnd();
     }
     void border(double[] b, int accent) {

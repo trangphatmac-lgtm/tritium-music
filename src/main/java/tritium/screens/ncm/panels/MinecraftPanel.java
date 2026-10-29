@@ -43,7 +43,7 @@ public final class MinecraftPanel extends NCMPanel {
             if (!ready) readyAt = 0;
             boolean showCards = readyAt != 0 && System.nanoTime() - readyAt > 350_000_000L;
             header.setHidden(!showCards); grid.setHidden(!showCards); view.setHidden(showCards);
-            double top = 104;
+            double top = 72;
             grid.setBounds(24, top, Math.max(0, getWidth() - 48), Math.max(0, getHeight() - top - scrollBottomInset(24)));
             view.setBounds(24, 24, Math.max(0, getWidth() - 48), Math.max(0, getHeight() - 48));
         });
@@ -85,22 +85,11 @@ public final class MinecraftPanel extends NCMPanel {
 
     private final class Header extends AbstractWidget<Header> {
         Header() {
-            setBeforeRenderCallback(() -> setBounds(24, 24, getParentWidth() - 48, 76));
-            setOnClickCallback((x, y, button) -> {
-                if (button != 0 || !connection.connected() || y < 34 || y > 66) return false;
-                if (x >= 0 && x <= 128) connection.resetLayout(); else return false;
-                return true;
-            });
+            setClickable(false);
+            setBeforeRenderCallback(() -> setBounds(24, 24, getParentWidth() - 48, 44));
         }
         @Override public void onRender(double mx, double my) {
             FontManager.pf32.drawString("Minecraft", getX(), getY(), reAlpha(AppTheme.foreground(), getAlpha()));
-            if (connection.connected()) {
-                pill(0, 36, 128, text("minecraft.reset"));
-            }
-        }
-        private void pill(double x, double y, double w, String label) {
-            UiMaterials.withoutMaterials(() -> UiMaterials.control(getX() + x, getY() + y, w, 28, 8, reAlpha(AppTheme.settingsSurface(), getAlpha())));
-            FontManager.pf14bold.drawCenteredString(label, getX() + x + w / 2, getY() + y + 8, reAlpha(AppTheme.foreground(), getAlpha()));
         }
     }
 
@@ -151,18 +140,18 @@ public final class MinecraftPanel extends NCMPanel {
             }
             contentY = y - getY();
             for (var candidate : status.candidates()) {
-                roundedRect(left, y, width, 36, 9, reAlpha(AppTheme.settingsSurface(), getAlpha()));
+                UiMaterials.control(left, y, width, 36, 9, reAlpha(AppTheme.settingsSurface(), getAlpha()));
                 FontManager.pf16bold.drawString(candidate.name() + "  ·  PID " + candidate.pid(), left + 14, y + 11, reAlpha(AppTheme.foreground(), getAlpha())); y += 44;
             }
             if (status.stage() == MinecraftConnectionManager.Stage.FAILED || status.stage() == MinecraftConnectionManager.Stage.IDLE) {
-                roundedRect(left, y, width, 34, 9, reAlpha(AppTheme.accent(), getAlpha()));
+                UiMaterials.control(left, y, width, 34, 9, reAlpha(AppTheme.accent(), getAlpha()));
                 FontManager.pf16bold.drawCenteredString(text("minecraft.retry"), left + width / 2, y + 10, reAlpha(AppTheme.onAccent(), getAlpha()));
             }
         }
         private void drawProgressBar(double left, double y, double width) {
             double height = 6, radius = height / 2;
             double filled = Math.min(width, Math.max(height, width * Math.max(0, Math.min(1, progress))));
-            roundedRect(left, y, width, height, radius, reAlpha(AppTheme.foreground(), getAlpha() * .07f));
+            UiMaterials.control(left, y, width, height, radius, reAlpha(AppTheme.foreground(), getAlpha() * .07f));
             // Draw the capsule itself with the rounded shader: an alpha-only stencil mask
             // also writes its transparent corners and would square off the gradient.
             roundedRectGradientHorizontal(left, y, filled, height, radius,
@@ -204,9 +193,10 @@ public final class MinecraftPanel extends NCMPanel {
             setOnClickCallback((x, y, button) -> {
                 if (button != 0 || y >= 64) return false;
                 if (y < 42 && x >= keyX && x <= keyX + keyWidth) { recording = recording == this ? null : this; return true; }
-                if (id.equals("editHud")) { connection.setEditing(!connection.editing()); return true; }
                 if (y < 42 && x >= getWidth() - 64) {
-                    if (id.equals("uninject")) connection.uninject(); else preferences.update(c -> { var m = c.find(id); m.enabled = !m.enabled; });
+                    if (id.equals("uninject")) connection.uninject();
+                    else if (id.equals("editHud")) connection.setEditing(!connection.editing());
+                    else preferences.update(c -> { var m = c.find(id); m.enabled = !m.enabled; });
                 } else expanded = !expanded;
                 return true;
             });
@@ -222,13 +212,9 @@ public final class MinecraftPanel extends NCMPanel {
             }
             setBounds(width, expanded ? y + 4 : 64);
         }
-        @Override public void renderWidget(double x, double y, int wheel) {
-            // This scopes the card AND every expanded child, including the color picker, to Static.
-            UiMaterials.withoutMaterials(() -> super.renderWidget(x, y, wheel));
-        }
         @Override public void onRender(double mx, double my) {
-            int surface = DesktopAppState.preferences().appearance().getValue().equals("Light") ? 0xfff7f7f7 : 0xff111111;
-            roundedRect(getX(), getY(), getWidth(), getHeight(), 16, reAlpha(surface, getAlpha()));
+            int surface = AppTheme.color(0xff111111, 0xfff7f7f7);
+            UiMaterials.surface(getX(), getY(), getWidth(), getHeight(), 16, reAlpha(surface, getAlpha()));
             String label = FontManager.pf25bold.trim(text(title), Math.max(60, getWidth() - 150));
             FontManager.pf25bold.drawString(label, getX() + 16, getY() + 18, reAlpha(AppTheme.foreground(), getAlpha()));
             HudConfig config = preferences.snapshot();
@@ -237,25 +223,24 @@ public final class MinecraftPanel extends NCMPanel {
             if (keyText == null) keyText = "NONE";
             keyX = 24 + FontManager.pf25bold.getStringWidthD(label);
             keyWidth = Math.min(72, FontManager.pf14bold.getStringWidthD(keyText) + 14);
-            roundedRect(getX() + keyX, getY() + 16, keyWidth, 18, 4, reAlpha(AppTheme.accent(), getAlpha() * .16f));
+            UiMaterials.control(getX() + keyX, getY() + 16, keyWidth, 18, 4, reAlpha(AppTheme.accent(), getAlpha() * .16f));
             FontManager.pf14bold.drawCenteredString(FontManager.pf14bold.trim(keyText, keyWidth - 8), getX() + keyX + keyWidth / 2, getY() + 21, reAlpha(AppTheme.accent(), getAlpha()));
             double right = getX() + getWidth() - 48;
             if (id.equals("uninject")) {
-                roundedRect(right - 10, getY() + 16, 42, 20, 6, reAlpha(AppTheme.accent(), getAlpha()));
+                UiMaterials.control(right - 10, getY() + 16, 42, 20, 6, reAlpha(AppTheme.accent(), getAlpha()));
                 FontManager.pf14bold.drawCenteredString(text("common.run"), right + 11, getY() + 22, reAlpha(AppTheme.onAccent(), getAlpha()));
             } else {
                 drawToggle(id.equals("editHud") ? connection.editing() : config.find(id).enabled);
             }
             if (recording == this) FontManager.pf14bold.drawString(text("minecraft.keyHint"), getX() + 16, getY() + 46, reAlpha(AppTheme.accent(), getAlpha()));
-            if (id.equals("editHud")) return;
             double cx = getX() + getWidth() / 2, cy = getY() + 52, direction = expanded ? -1 : 1;
             chevronStroke(cx - 4, cy - direction * 2, direction * 45);
             chevronStroke(cx, cy + direction * 2, -direction * 45);
         }
         private void drawToggle(boolean on) {
             double right = getX() + getWidth() - 48;
-            roundedRect(right, getY() + 22, 24, 10, 5, reAlpha(on ? AppTheme.accent() : AppTheme.foreground(), getAlpha() * .22f));
-            roundedRect(right + (on ? 15 : 1), getY() + 23, 8, 8, 4, reAlpha(on ? AppTheme.accent() : AppTheme.foreground(), getAlpha() * (on ? 1 : .5f)));
+            UiMaterials.control(right, getY() + 22, 24, 10, 5, reAlpha(on ? AppTheme.accent() : AppTheme.foreground(), getAlpha() * .22f));
+            UiMaterials.control(right + (on ? 15 : 1), getY() + 23, 8, 8, 4, reAlpha(on ? AppTheme.accent() : AppTheme.foreground(), getAlpha() * (on ? 1 : .5f)));
         }
         private void chevronStroke(double x, double y, double angle) {
             org.lwjgl.opengl.GL11.glPushMatrix();
@@ -265,7 +250,7 @@ public final class MinecraftPanel extends NCMPanel {
             } finally { org.lwjgl.opengl.GL11.glPopMatrix(); }
         }
         private void buildRows() {
-            if (id.equals("editHud")) return;
+            if (id.equals("editHud")) { addChild(new SettingsPanel.ActionRow("minecraft.reset", connection::resetLayout)); return; }
             if (id.equals("uninject")) { addChild(new SettingsPanel.ActionRow("minecraft.disconnect", connection::uninject)); return; }
             if (id.equals("worldLyrics")) { buildWorldRows(); return; }
             slider("minecraft.scale", m -> m.scale, (m,v) -> m.scale=v, .5, 2, .05);

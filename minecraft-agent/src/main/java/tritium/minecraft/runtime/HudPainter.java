@@ -70,9 +70,17 @@ public final class HudPainter {
 
     public BufferedImage paint(HudConfig.Module module, Track track, PlaybackState state, double position,
                                double width, double height, int density, long now, boolean preview, int accent) {
+        double pad = padding(module);
+        return paintAtResolution(module, track, state, position, width, height,
+                Math.max(1, Math.min(4096, (int)Math.ceil((width + pad * 2) * density))),
+                Math.max(1, Math.min(4096, (int)Math.ceil((height + pad * 2) * density))), now, preview, accent);
+    }
+
+    /** Raster dimensions include padding and come from the actual GL viewport, not GUI scale. */
+    public BufferedImage paintAtResolution(HudConfig.Module module, Track track, PlaybackState state, double position,
+                               double width, double height, int pixelWidth, int pixelHeight, long now, boolean preview, int accent) {
         double pad = padding(module), fullWidth = width + pad * 2, fullHeight = height + pad * 2;
-        int w = Math.max(1, Math.min(4096, (int)Math.ceil(fullWidth * density)));
-        int h = Math.max(1, Math.min(4096, (int)Math.ceil(fullHeight * density)));
+        int w = Math.max(1, pixelWidth), h = Math.max(1, pixelHeight);
         BufferedImage image = surfaces.get(module.id);
         if (image == null || image.getWidth() != w || image.getHeight() != h) {
             image = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);

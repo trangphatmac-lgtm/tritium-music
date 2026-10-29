@@ -25,6 +25,12 @@ public final class MasterEffectComposer {
         @Override public JsonObject effect() { return EffectJson.copy(effect); }
     }
 
+    /** Manual mode starts neutral and keeps explicit choices, without song/template filtering.
+     * The shared merge still applies spatial exclusivity and the original gain compensation. */
+    public static Result composeManual(JsonObject selectedEnhancements) {
+        return compose(null, null, selectedEnhancements, false);
+    }
+
     /**
      * @param baseJson a single-key {key_name:{name,effect}} template wrapper
      * @param songJson nullable per-song document with aev2 and optional feature

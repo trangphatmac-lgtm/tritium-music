@@ -114,6 +114,21 @@ class AudioEffectServiceTest {
         assertEquals(0, transport.requests);
     }
 
+    @Test void manualModeHonorsChoicesWithoutSongFilteringAndWorksWithoutNetwork() {
+        var transport = new FakeTransport(); var service = service(transport);
+        var selection = new AudioEffectService.Selection("Manual", "Auto", List.of("en_bass", "en_vocal", "en_live"));
+        var result = service.load(300380, selection, "");
+        assertEquals("manual", result.status());
+        assertEquals(selection.diy(), result.usedDiy());
+        assertTrue(result.configuration().getAsJsonObject("bt").get("on").getAsBoolean());
+        assertTrue(result.configuration().getAsJsonObject("peq").get("on").getAsBoolean());
+        assertTrue(result.configuration().getAsJsonObject("rvb").get("on").getAsBoolean());
+        assertEquals(result.configuration(), service.load(42, selection, "").configuration());
+        var empty = service.load(42, new AudioEffectService.Selection("Manual", "Auto", List.of()), "");
+        assertTrue(empty.configuration().entrySet().isEmpty(), "All manual switches off is neutral");
+        assertEquals(0, transport.requests); assertEquals(0, transport.downloads);
+    }
+
     @Test void metadataSelectsMatchingSongAndDiscardsUnneededFields() {
         var response = json("{\"code\":200,\"data\":[{\"id\":7,\"baseKey\":\"key_warm\"},{\"id\":8,\"baseKey\":\"key_wide\",\"longText\":\"ignored\"}]}");
         var metadata = AudioEffectService.parseMetadata("Master", 8, response);

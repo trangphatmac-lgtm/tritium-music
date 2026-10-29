@@ -246,6 +246,12 @@ public class SettingsPanel extends NCMPanel {
                 value -> I18n.text("audioEffect.tone." + value)), effects::isMaster);
         backgroundRow(section, new HintRow("settings.audioEffectToneHint"), effects::isMaster);
         backgroundRow(section, new HintRow("settings.audioEffectMasterHint"), effects::isMaster);
+        backgroundRow(section, new ToggleRow("settings.audioEffectBass", effects.bass()), effects::isManual);
+        backgroundRow(section, new ToggleRow("settings.audioEffectTreble", effects.treble()), effects::isManual);
+        backgroundRow(section, new ToggleRow("settings.audioEffectVocal", effects.vocal()), effects::isManual);
+        backgroundRow(section, new ToggleRow("settings.audioEffectVibe", effects.vibe()), effects::isManual);
+        backgroundRow(section, new ToggleRow("settings.audioEffectLive", effects.live()), effects::isManual);
+        backgroundRow(section, new HintRow("settings.audioEffectManualHint"), effects::isManual);
     }
 
     private void addNavigationSettings(SettingsSection scroll) {

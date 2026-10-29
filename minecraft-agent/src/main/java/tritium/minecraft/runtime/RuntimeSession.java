@@ -174,13 +174,13 @@ public final class RuntimeSession implements IntPredicate {
         int width = game.width(), height = game.height();
         boolean chat = game.chatOpen(), preview = input.editing && chat;
         input.tick(config, chat, Mouse.getX() * width / (double)game.pixelWidth(), height - Mouse.getY() * height / (double)game.pixelHeight() - 1, width, height);
-        gl.begin(game.pixelWidth(), game.pixelHeight(), width, height);
+        gl.begin(width, height);
         try {
             // READY is emitted only here, after an actual game frame has initialized the renderer and applied configuration.
             if (!ready) { ready = true; send(Wire.READY, game.client); }
             if (!game.inWorld() || (game.hidden() && !preview)) return;
             long now = System.currentTimeMillis();
-            boolean repaint = System.nanoTime() - lastPaint >= 33_000_000L || next != null || preview;
+            boolean repaint = System.nanoTime() - lastPaint >= 33_000_000L || next != null || preview || gl.resized();
             PlaybackState s = state; PlaybackState.Track t = track;
             double position = s.positionMillis + (s.playing && !s.paused ? (System.nanoTime() - receivedAt) / 1_000_000.0 : 0);
             position = Math.max(0, Math.min(s.durationMillis > 0 ? s.durationMillis : Double.MAX_VALUE, position));
@@ -189,8 +189,10 @@ public final class RuntimeSession implements IntPredicate {
                 if (!m.enabled && !preview && !(m.id.equals("musicToast") && now < toastPreviewUntil)) continue;
                 if (m.id.equals("musicToast") && !preview && !painter.toastVisible(now, m.holdSeconds)) continue;
                 double[] bounds = painter.bounds(m, s, width, height, now, preview);
-                if (repaint) gl.upload(m.id, painter.paint(m, t, s, position, bounds[2], bounds[3], game.scale(), now, preview, config.accent));
-                gl.draw(m.id, HudPainter.textureBounds(m, bounds)); if (preview) gl.border(bounds, config.accent);
+                double[] textureBounds = HudPainter.textureBounds(m, bounds);
+                if (repaint) gl.upload(m.id, painter.paintAtResolution(m, t, s, position, bounds[2], bounds[3],
+                        gl.textureWidth(textureBounds[2]), gl.textureHeight(textureBounds[3]), now, preview, config.accent));
+                gl.draw(m.id, textureBounds); if (preview) gl.border(bounds, config.accent);
             }
             if (repaint) lastPaint = System.nanoTime();
         } finally { gl.end(); }

@@ -71,4 +71,16 @@ class AudioEffectControllerTest {
         tasks.remove().run();
         assertEquals("new-session", transport.cookie); assertEquals("smart", controller.status(target).status());
     }
+
+    @Test void manualModeAppliesImmediatelyAndRejectsPendingAutomaticResponse() {
+        var controller = controller(); var target = new Target();
+        controller.register(target, 42, AudioEffectServiceTest.SMART, "");
+        transport.duringRequest = () -> controller.refresh(
+                new AudioEffectService.Selection("Manual", "Auto", List.of("en_bass", "en_vocal")), "");
+        tasks.remove().run();
+        assertEquals("manual", controller.status(target).status());
+        assertEquals(List.of("en_bass", "en_vocal"), controller.status(target).usedDiy());
+        assertTrue(tasks.isEmpty(), "Manual mode must not enqueue a network lookup");
+        assertTrue(target.configuration.has("bt")); assertTrue(target.configuration.has("peq"));
+    }
 }

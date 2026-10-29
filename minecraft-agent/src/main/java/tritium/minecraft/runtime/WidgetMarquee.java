@@ -25,15 +25,18 @@ final class WidgetMarquee {
             double cycle = wait + (length + gap) / .02;
             offset = Math.max(0, elapsed % cycle - wait) * .02;
         }
-        int density = Math.max(2, (int)Math.ceil(Math.abs(g.getTransform().getScaleX())));
+        AffineTransform target = g.getTransform();
+        double densityX = Math.hypot(target.getScaleX(), target.getShearY());
+        double densityY = Math.hypot(target.getShearX(), target.getScaleY());
+        if (densityX == 0 || densityY == 0) return;
         double height = font.height(size, bold) + 4;
-        int w = Math.max(1, (int)Math.ceil(width * density)), h = Math.max(1, (int)Math.ceil(height * density));
+        int w = Math.max(1, (int)Math.ceil(width * densityX)), h = Math.max(1, (int)Math.ceil(height * densityY));
         if (surface == null || surface.getWidth() != w || surface.getHeight() != h) surface = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D layer = surface.createGraphics();
         try {
             layer.setComposite(AlphaComposite.Clear); layer.fillRect(0, 0, w, h); layer.setComposite(AlphaComposite.SrcOver);
             layer.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            layer.scale(density, density);
+            layer.scale(densityX, densityY);
             font.draw(layer, text, -offset, 2, size, bold, color, false);
             if (duration <= 0) font.draw(layer, text, length + gap - offset, 2, size, bold, color, false);
             layer.setComposite(AlphaComposite.DstIn);
@@ -45,6 +48,6 @@ final class WidgetMarquee {
             layer.fill(new Rectangle2D.Double(width - 6, 0, 6, height));
         } finally { layer.dispose(); }
         AffineTransform transform = AffineTransform.getTranslateInstance(x, y - 2);
-        transform.scale(width / w, height / h); g.drawImage(surface, transform, null);
+        transform.scale(1 / densityX, 1 / densityY); g.drawImage(surface, transform, null);
     }
 }

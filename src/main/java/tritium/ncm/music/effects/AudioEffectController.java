@@ -59,8 +59,7 @@ public final class AudioEffectController {
         long revision = ++binding.revision;
         var fallback = service.fallback(selection);
         apply(binding, fallback);
-        if (binding.songId <= 0 || "Off".equals(selection.mode())
-                || ("Master".equals(selection.mode()) && !"Auto".equals(selection.tone()))) return;
+        if (binding.songId <= 0 || !selection.needsRecommendation()) return;
         binding.result = new AudioEffectService.Result(fallback.configuration(), "loading", fallback.tone(), fallback.usedDiy());
         try {
             executor.execute(() -> {
