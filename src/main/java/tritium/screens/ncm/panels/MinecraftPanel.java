@@ -8,6 +8,7 @@ import tritium.management.FontManager;
 import tritium.minecraft.protocol.HudConfig;
 import tritium.minecraft.protocol.CombatSettings;
 import tritium.minecraft.protocol.MovementSettings;
+import tritium.minecraft.protocol.ModuleCategory;
 import tritium.rendering.material.UiMaterials;
 import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
@@ -21,13 +22,14 @@ public final class MinecraftPanel extends NCMPanel {
     private final MinecraftPreferences preferences = DesktopAppState.preferences().minecraft();
     private final List<ModuleCard> cards = new ArrayList<>();
     private ModuleCard recording;
+    private ModuleCategory category = ModuleCategory.LYRIC;
     private double progress;
     private long readyAt;
     private final Grid grid = new Grid();
     private final Progress view = new Progress();
 
     @Override public void onInit() {
-        getChildren().clear(); cards.clear();
+        getChildren().clear(); cards.clear(); grid.getChildren().clear(); recording = null;
         preferences.ensureInitialized(DesktopAppState.preferences());
         Header header = new Header();
         addChild(header); addChild(view); addChild(grid);
@@ -45,6 +47,7 @@ public final class MinecraftPanel extends NCMPanel {
         cards.add(new ModuleCard("stasis", "minecraft.stasis", 0));
         for (ModuleCard card : cards) grid.addChild(card);
         setBeforeRenderCallback(() -> {
+            if (!category.isAvailable(hiddenEnabled())) selectCategory(ModuleCategory.LYRIC);
             boolean ready = connection.status().stage() == MinecraftConnectionManager.Stage.READY;
             if (ready && readyAt == 0) readyAt = System.nanoTime();
             if (!ready) readyAt = 0;
@@ -58,6 +61,9 @@ public final class MinecraftPanel extends NCMPanel {
     @Override public void onRender(double mouseX, double mouseY) { }
     public boolean captureKey(int key) {
         if (recording == null) return false;
+        if (!recording.category.isAvailable(hiddenEnabled()) || recording.category != category) {
+            recording = null; return false;
+        }
         if (key == Keyboard.KEY_NONE || Keyboard.isRepeatEvent()) return true;
         if (key != Keyboard.KEY_ESCAPE) {
             int binding = key == Keyboard.KEY_DELETE || key == Keyboard.KEY_BACK ? 0 : key;
@@ -71,6 +77,15 @@ public final class MinecraftPanel extends NCMPanel {
         recording = null; return true;
     }
     private static String text(String key) { return I18n.text(key); }
+    private boolean hiddenEnabled() { return DesktopAppState.preferences().minecrafthidden().getValue(); }
+
+    private void selectCategory(ModuleCategory selected) {
+        if (!selected.isAvailable(hiddenEnabled()) || selected == category) return;
+        category = selected;
+        recording = null;
+        grid.actualScrollOffset = grid.targetScrollOffset = 0;
+        grid.alignChildren();
+    }
 
     public static final class InjectButton extends AbstractWidget<InjectButton> {
         public InjectButton() {
@@ -91,12 +106,48 @@ public final class MinecraftPanel extends NCMPanel {
     }
 
     private final class Header extends AbstractWidget<Header> {
+        private final ScrollPanel tabs = new ScrollPanel();
         Header() {
             setClickable(false);
-            setBeforeRenderCallback(() -> setBounds(24, 24, getParentWidth() - 48, 44));
+            tabs.setAlignment(ScrollPanel.Alignment.HORIZONTAL).setSpacing(4);
+            addChild(tabs);
+            for (ModuleCategory entry : ModuleCategory.values()) tabs.addChild(new CategoryTab(entry));
+            setBeforeRenderCallback(() -> {
+                setBounds(24, 24, Math.max(0, getParentWidth() - 48), 44);
+                double left = FontManager.pf32.getStringWidthD("Minecraft") + 24;
+                tabs.setBounds(left, 0, Math.max(0, getWidth() - left), 44);
+                for (var tab : tabs.getChildren()) {
+                    CategoryTab item = (CategoryTab) tab;
+                    item.setHidden(!item.category.isAvailable(hiddenEnabled()));
+                    item.setBounds(FontManager.pf14bold.getStringWidthD(item.label) + 24, 30);
+                    item.setPosition(item.getRelativeX(), 7);
+                }
+            });
         }
         @Override public void onRender(double mx, double my) {
-            FontManager.pf32.drawString("Minecraft", getX(), getY(), reAlpha(AppTheme.foreground(), getAlpha()));
+            FontManager.pf32.drawCenteredStringVertical("Minecraft", getX(), getY() + 22, reAlpha(AppTheme.foreground(), getAlpha()));
+        }
+    }
+
+    private final class CategoryTab extends AbstractWidget<CategoryTab> {
+        private final ModuleCategory category;
+        private final String label;
+        CategoryTab(ModuleCategory category) {
+            this.category = category;
+            this.label = Character.toUpperCase(category.id.charAt(0)) + category.id.substring(1);
+            setShouldOverrideMouseCursor(true);
+            setOnClickCallback((x, y, button) -> {
+                if (button != 0 || !category.isAvailable(hiddenEnabled())) return false;
+                selectCategory(category); return true;
+            });
+        }
+        @Override public void onRender(double mx, double my) {
+            boolean selected = MinecraftPanel.this.category == category;
+            if (selected || isHovering()) UiMaterials.control(getX(), getY(), getWidth(), getHeight(), 8,
+                    reAlpha(selected ? AppTheme.accent() : AppTheme.foreground(), getAlpha() * (selected ? .16f : .06f)));
+            FontManager.pf14bold.drawCenteredString(label, getX() + getWidth() / 2,
+                    getY() + (getHeight() - FontManager.pf14bold.getFontHeight()) / 2,
+                    reAlpha(selected ? AppTheme.accent() : AppTheme.foreground(), getAlpha() * (selected ? 1 : .6f)));
         }
     }
 
@@ -172,18 +223,26 @@ public final class MinecraftPanel extends NCMPanel {
     }
 
     private final class Grid extends ScrollPanel {
+        @Override public void onRender(double mouseX, double mouseY) {
+            super.onRender(mouseX, mouseY);
+            if (cards.stream().noneMatch(card -> !card.isHidden()))
+                FontManager.pf16bold.drawCenteredString(text("minecraft.category.empty"),
+                        getX() + getWidth() / 2, getY() + 48, reAlpha(AppTheme.foreground(), getAlpha() * .45f));
+        }
         private double layoutCards(boolean position) {
             boolean two = getWidth() >= 664; double width = two ? (getWidth() - 24) / 2 : getWidth();
             double[] bottom = new double[2];
+            int visibleIndex = 0;
             for (ModuleCard card : cards) {
-                boolean hidden = (CombatSettings.isCombat(card.id) || MovementSettings.isMovement(card.id)) && !DesktopAppState.preferences().minecrafthidden().getValue();
+                boolean hidden = card.category != category || !card.category.isAvailable(hiddenEnabled());
                 card.setHidden(hidden);
                 if (hidden) {
                     if (recording == card) recording = null;
                     for (var row : card.getChildren()) if (row instanceof SettingsPanel.TextRow textRow) textRow.unfocus();
                     continue;
                 }
-                int column = two ? card.column : 0; card.measure(width);
+                int column = two ? (category == ModuleCategory.LYRIC ? card.column : visibleIndex % 2) : 0;
+                visibleIndex++; card.measure(width);
                 if (position) card.setPosition(column * (width + 24), bottom[column] - actualScrollOffset);
                 bottom[column] += card.getHeight() + 16;
             }
@@ -195,12 +254,14 @@ public final class MinecraftPanel extends NCMPanel {
 
     private final class ModuleCard extends AbstractWidget<ModuleCard> {
         private final String id, title;
+        private final ModuleCategory category;
         private final int column;
         private boolean expanded;
         private final Map<AbstractWidget<?>, BooleanSupplier> conditions = new IdentityHashMap<>();
         private double keyX, keyWidth;
         ModuleCard(String id, String title, int column) {
             this.id = id; this.title = title; this.column = column;
+            this.category = ModuleCategory.forModule(id);
             setShouldOverrideMouseCursor(true); buildRows();
             for (AbstractWidget<?> row : getChildren())
                 row.setBeforeRenderCallback(() -> row.setBounds(Math.max(0, getWidth() - 20), row.getHeight()));

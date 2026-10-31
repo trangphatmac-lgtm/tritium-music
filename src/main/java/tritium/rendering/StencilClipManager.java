@@ -1,6 +1,7 @@
 package tritium.rendering;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 import tritium.interfaces.SharedConstants;
 
 public class StencilClipManager implements SharedConstants {
@@ -91,6 +92,9 @@ public class StencilClipManager implements SharedConstants {
         }
 
         StencilState state = Framebuffer.currentlyBinding.stencilStack.pop();
+        // Return this child's pixels to the parent before reusing the depth for
+        // a sibling clip. Merely restoring the test leaves the old shape active.
+        if (state.stencilValue > 0) restoreParentMask();
         Framebuffer.currentlyBinding.currentStencilValue = state.stencilValue;
 
         api.getGLStateManager().colorMask(state.colorMask, state.colorMask, state.colorMask, state.colorMask);
@@ -101,6 +105,38 @@ public class StencilClipManager implements SharedConstants {
             GL11.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
         } else {
             disable();
+        }
+    }
+
+    private static void restoreParentMask() {
+        int program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GL11.glMatrixMode(GL11.GL_PROJECTION); GL11.glPushMatrix(); GL11.glLoadIdentity();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW); GL11.glPushMatrix(); GL11.glLoadIdentity();
+        try {
+            // Cover the viewport independently of the current UI transform. Only
+            // stencil pixels belonging to the ending clip are decremented.
+            GL20.glUseProgram(0);
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            GL11.glDisable(GL11.GL_CULL_FACE);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST);
+            GL11.glEnable(GL11.GL_STENCIL_TEST);
+            GL11.glColorMask(false, false, false, false);
+            GL11.glDepthMask(false);
+            GL11.glStencilMask(0xFF);
+            GL11.glStencilFunc(GL11.GL_EQUAL, Framebuffer.currentlyBinding.currentStencilValue, 0xFF);
+            GL11.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_DECR);
+            GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+            GL11.glBegin(GL11.GL_QUADS);
+            GL11.glVertex2f(-1, -1); GL11.glVertex2f(1, -1);
+            GL11.glVertex2f(1, 1); GL11.glVertex2f(-1, 1);
+            GL11.glEnd();
+        } finally {
+            GL11.glMatrixMode(GL11.GL_MODELVIEW); GL11.glPopMatrix();
+            GL11.glMatrixMode(GL11.GL_PROJECTION); GL11.glPopMatrix();
+            GL20.glUseProgram(program);
+            GL11.glPopAttrib();
         }
     }
 

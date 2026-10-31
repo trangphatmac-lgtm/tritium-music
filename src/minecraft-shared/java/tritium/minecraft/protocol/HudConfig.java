@@ -95,7 +95,8 @@ public final class HudConfig {
 
         public boolean isCombat() { return CombatSettings.isCombat(id); }
         public boolean isMovement() { return MovementSettings.isMovement(id); }
-        public boolean isHidden() { return isCombat() || isMovement(); }
+        public ModuleCategory category() { return ModuleCategory.forModule(id); }
+        public boolean isHidden() { return category().isHidden(); }
         public boolean isHud() { return !isWorld() && !isHidden(); }
 
         public boolean isWorld() { return "worldLyrics".equals(id); }

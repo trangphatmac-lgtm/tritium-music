@@ -21,6 +21,13 @@ adapters/coordinators in `runtime/hook`, HUD and 3D lyrics in `runtime/lyric`.
 
 ## Module configuration
 
+`ModuleCategory` is the shared category registry: lyric, combat, movement, player,
+render, world and other. The desktop header filters cards without changing their
+enabled states. Only lyric is available without Hidden; turning Hidden off also
+returns the selection to lyric. Music features (including world lyrics), Edit HUD
+and UnInject remain in lyric. Categories without installed modules show an empty
+state; unregistered module IDs default to other.
+
 `src/minecraft-shared/java/tritium/minecraft/protocol/CombatSettings.java` is the
 single source for the 42 options, their defaults, ranges, steps and special
 labels. `HudConfig.Module.combat` persists values. The desktop builds controls

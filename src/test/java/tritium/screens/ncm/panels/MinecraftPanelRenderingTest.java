@@ -36,6 +36,9 @@ class MinecraftPanelRenderingTest {
         try {
             DesktopNativeLoader.configureLibraryPath(); app("createDisplay"); Display.update(); app("initializeOpenGL");
             Framebuffer.updateMcFramebuffer(); DesktopAppState.markMainThread(); new FontManager().init();
+            // The app initializes shared shader framebuffers while drawing its navigation,
+            // before opening the page clip. Do the same in this standalone fixture.
+            assertNotNull(tritium.rendering.shader.Shaders.RQ_SHADER);
             renderTarget = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
             preferences.minecrafthidden().setValue(false);
             preferences.language().setValue("zh-CN"); preferences.accentColor().setValue(0xffc026d3);
@@ -50,6 +53,10 @@ class MinecraftPanelRenderingTest {
             connected.setBoolean(connection, true); editing.setBoolean(connection, false);
             settle(panel, 500);
             ScrollPanel grid = (ScrollPanel)panel.getChildren().get(2); var cards = grid.getChildren();
+            ScrollPanel tabs = (ScrollPanel)panel.getChildren().getFirst().getChildren().getFirst();
+            assertEquals(7, tabs.getChildren().size());
+            assertEquals(1, tabs.getChildren().stream().filter(tab -> !tab.isHidden()).count());
+            assertFalse(tabs.getChildren().get(1).onMouseClicked(10, 10, 0));
             assertEquals(12, cards.size());
             assertEquals(7, cards.stream().filter(c -> !c.isHidden()).count()); assertTrue(cards.get(1).getRelativeX() > 0);
             assertEquals(cards.get(0).getRelativeX(),cards.get(2).getRelativeX());
@@ -126,7 +133,20 @@ class MinecraftPanelRenderingTest {
             panel.onMouseClickReceived(world.getX()+world.getWidth()/2,world.getY()+52,0); settle(panel,120);
             double allEffectsHeight = world.getHeight();
             assertTrue(allEffectsHeight > 1000); save("minecraft-world-lyrics-expanded");
-            grid.actualScrollOffset = grid.targetScrollOffset = world.getRelativeY() + 64;
+            preferences.minecrafthidden().setValue(true);
+            for (String style : List.of("Static", "Blur", "LiquidGlass")) {
+                preferences.interfaceStyle().setValue(style);
+                grid.actualScrollOffset = grid.targetScrollOffset = 0;
+                settle(panel, 120, true);
+                byte[] headerBeforeScroll = pixels(header);
+                grid.actualScrollOffset = grid.targetScrollOffset = 100;
+                settle(panel, 120, true);
+                save("minecraft-category-scrolled-" + style);
+                assertArrayEquals(headerBeforeScroll, pixels(header),
+                        "Scrolled modules must not draw into the category header in " + style);
+            }
+            preferences.minecrafthidden().setValue(false);
+            grid.actualScrollOffset = grid.targetScrollOffset = world.getRelativeY() + grid.actualScrollOffset + 64;
             settle(panel,120); save("minecraft-world-lyrics-effects");
             grid.scrollToEndImmediately(); settle(panel,120); save("minecraft-world-lyrics-position");
             var lastWorldRow = world.getChildren().get(world.getChildren().size() - 1);
@@ -144,11 +164,30 @@ class MinecraftPanelRenderingTest {
             panel.setWidth(620); settle(panel,120);
             for (var item : cards) if (!item.isHidden()) assertEquals(0,item.getRelativeX()); save("minecraft-narrow");
             preferences.minecrafthidden().setValue(true); panel.setWidth(RenderSystem.getWidth()); settle(panel,120);
-            assertEquals(12,cards.stream().filter(c -> !c.isHidden()).count());
+            assertEquals(7, tabs.getChildren().stream().filter(tab -> !tab.isHidden()).count());
+            assertEquals(7,cards.stream().filter(c -> !c.isHidden()).count());
+            for (int categoryIndex = 3; categoryIndex < 7; categoryIndex++) {
+                selectCategory(panel, tabs, categoryIndex);
+                assertTrue(cards.stream().allMatch(AbstractWidget::isHidden));
+                assertEquals(0, grid.actualScrollOffset);
+            }
+            save("minecraft-category-empty");
+            selectCategory(panel, tabs, 1);
+            assertEquals(3, cards.stream().filter(c -> !c.isHidden()).count());
+            assertEquals(0, cards.get(7).getRelativeX());
+            assertEquals(0, cards.get(7).getRelativeY());
+            save("minecraft-category-combat");
             assertEquals(14,cards.get(7).getChildren().size()); assertEquals(17,cards.get(8).getChildren().size()); assertEquals(11,cards.get(9).getChildren().size());
             assertEquals(6,cards.get(10).getChildren().size()); assertEquals(1,cards.get(11).getChildren().size());
             // Use local widget coordinates after scrolling to each newly visible module.
             for (int i=7;i<12;i++) {
+                if (i == 10) {
+                    selectCategory(panel, tabs, 2);
+                    assertEquals(2, cards.stream().filter(c -> !c.isHidden()).count());
+                    assertEquals(0, cards.get(10).getRelativeX());
+                    assertEquals(0, grid.actualScrollOffset);
+                    save("minecraft-category-movement");
+                }
                 var combat = cards.get(i);
                 grid.actualScrollOffset = grid.targetScrollOffset = combat.getRelativeY() + grid.actualScrollOffset;
                 settle(panel,120);
@@ -179,6 +218,8 @@ class MinecraftPanelRenderingTest {
             }
             preferences.minecrafthidden().setValue(false); settle(panel,120);
             assertEquals(7,cards.stream().filter(c -> !c.isHidden()).count());
+            assertEquals(1, tabs.getChildren().stream().filter(tab -> !tab.isHidden()).count());
+            assertEquals(0, grid.actualScrollOffset);
             assertEquals(GL11.GL_NO_ERROR,GL11.glGetError());
         } finally {
             field.set(connection,previous); preferences.interfaceStyle().setValue(material);
@@ -189,6 +230,14 @@ class MinecraftPanelRenderingTest {
                 UiMaterials.release(); FontManager.deleteLoadedTextures(); Display.destroy();
             }
         }
+    }
+    private static void selectCategory(MinecraftPanel panel, ScrollPanel tabs, int index) throws Exception {
+        var tab = tabs.getChildren().get(index);
+        tabs.actualScrollOffset = tabs.targetScrollOffset = tab.getRelativeX() + tabs.actualScrollOffset;
+        settle(panel, 80);
+        assertFalse(tab.isHidden());
+        panel.onMouseClickReceived(tab.getX() + tab.getWidth() / 2, tab.getY() + 15, 0);
+        settle(panel, 120);
     }
     private static void settle(AbstractWidget<?> page, int millis) throws Exception {
         settle(page, millis, false);
@@ -205,9 +254,21 @@ class MinecraftPanelRenderingTest {
             // Colored bands distinguish backdrop sampling from coincidentally equal gray pixels.
             if (patternedBackdrop) for (int x=0; x<RenderSystem.getWidth(); x+=96)
                 Rect.draw(x,0,96,RenderSystem.getHeight(),(x/96)%2==0 ? 0xff283c58 : 0xff493450);
-            UiMaterials.beginFrame(-1,-1); UiMaterials.captureBackdrop(false); page.renderWidget(-1,-1,0);
+            UiMaterials.beginFrame(-1,-1); UiMaterials.captureBackdrop(false);
+            // NCMScreen clips the whole page, so the tabs and grid are sibling nested clips.
+            StencilClipManager.beginClip(() -> Rect.draw(page.getX(), page.getY(), page.getWidth(), page.getHeight(), -1));
+            try { page.renderWidget(-1,-1,0); } finally { StencilClipManager.endClip(); }
             Display.processMessages(); Thread.sleep(12);
         } while(System.nanoTime()<end);
+    }
+    private static byte[] pixels(AbstractWidget<?> widget) {
+        double scale = RenderSystem.getUiScaleFactor();
+        int width = (int)(widget.getWidth() * scale), height = (int)(widget.getHeight() * scale);
+        ByteBuffer buffer = BufferUtils.createByteBuffer(width * height * 4);
+        GL11.glReadPixels((int)(widget.getX() * scale),
+                RenderSystem.getFramebufferHeight() - (int)(widget.getY() * scale) - height,
+                width, height, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buffer);
+        byte[] result = new byte[buffer.capacity()]; buffer.get(result); return result;
     }
     private static int pixel(double x,double y) {
         ByteBuffer b=BufferUtils.createByteBuffer(4); double scale=RenderSystem.getUiScaleFactor();
