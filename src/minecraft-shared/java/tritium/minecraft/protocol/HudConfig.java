@@ -7,11 +7,12 @@ public final class HudConfig {
     public int uninjectKey;
     public int editKey;
     public boolean hidden;
+    public String[] openB4Friends = new String[0], openB4Enemies = new String[0];
     public String editorHint = "Drag to move / Scroll to scale / Esc to finish";
     public Module[] modules = defaults();
 
     public static Module[] defaults() {
-        return new Module[] {
+        java.util.List<Module> result = new java.util.ArrayList<Module>(java.util.Arrays.asList(
             new Module("musicInfo", .02, .03, 230, 56),
             new Module("musicLyrics", .5, .72, 450, 120),
             new Module("musicSpectrum", .5, 1, 640, 85),
@@ -22,7 +23,10 @@ public final class HudConfig {
             new Module("autoClicker", 0, 0, 100, 24),
             new Module("sprint", 0, 0, 100, 24),
             new Module("stasis", 0, 0, 100, 24)
-        };
+        ));
+        for (OpenB4Settings.Definition definition : OpenB4Settings.definitions())
+            result.add(new Module(definition.id, 0, 0, 100, 24));
+        return result.toArray(new Module[0]);
     }
 
     private static Module worldLyricsDefaults() {
@@ -39,6 +43,8 @@ public final class HudConfig {
 
     public void normalize() {
         if (editorHint == null) editorHint = "Drag to move / Scroll to scale / Esc to finish";
+        if (openB4Friends == null) openB4Friends = new String[0];
+        if (openB4Enemies == null) openB4Enemies = new String[0];
         Module[] normalized = defaults();
         for (int i = 0; i < normalized.length; i++) {
             Module found = find(normalized[i].id);
@@ -67,12 +73,15 @@ public final class HudConfig {
         public WorldLyrics world = new WorldLyrics();
         public CombatSettings combat = new CombatSettings();
         public MovementSettings movement = new MovementSettings();
+        public OpenB4Settings openB4 = new OpenB4Settings();
         public transient double textWidth = 100;
+        public transient double textHeight = 37;
 
         public Module() { }
         public Module(String id, double x, double y, double width, double height) {
             this.id = id; this.x = x; this.y = y; this.width = width; this.height = height;
             combat.normalize(id);
+            openB4.normalize(id);
         }
 
         public void normalize() {
@@ -91,6 +100,8 @@ public final class HudConfig {
             combat.normalize(id);
             if (movement == null) movement = new MovementSettings();
             movement.normalize();
+            if (openB4 == null) openB4 = new OpenB4Settings();
+            openB4.normalize(id);
         }
 
         public boolean isCombat() { return CombatSettings.isCombat(id); }
@@ -103,6 +114,9 @@ public final class HudConfig {
 
         /** HUD positions use available-travel fractions; Sprint retains Raven's GUI pixel coordinates. */
         public double[] bounds(double screenWidth, double screenHeight) {
+            if ("targetHud".equals(id)) return new double[]{
+                (screenWidth - textWidth) / 2 + openB4.offsetX - 4,
+                screenHeight / 2 + openB4.offsetY - 8, textWidth, textHeight};
             if ("sprint".equals(id)) return new double[]{
                 Math.min(movement.textX, Math.max(0, screenWidth - textWidth)),
                 Math.min(movement.textY, Math.max(0, screenHeight - 9)), textWidth, 9};

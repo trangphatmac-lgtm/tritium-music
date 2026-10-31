@@ -42,7 +42,9 @@ public final class CombatTransformer implements ClassFileTransformer {
                     MethodInsnNode call=(MethodInsnNode)insn;
                     if (call.owner.equals("net/minecraft/client/renderer/EntityRenderer") && (call.name.equals("getMouseOver") || call.name.equals("func_78473_a")) && call.desc.equals("(F)V")) {
                         // Match Raven's tick-only redirect, preserving the render frame's normal crosshair.
-                        InsnList code=eventResult(7); LabelNode vanilla=new LabelNode(), end=new LabelNode();
+                        // Raven's client-rotation event precedes even a replacement tick raycast.
+                        InsnList code=new InsnList(); code.add(new MethodInsnNode(Opcodes.INVOKESTATIC,BRIDGE,"clientRotation","()V",false));
+                        code.add(eventResult(7)); LabelNode vanilla=new LabelNode(), end=new LabelNode();
                         code.add(new JumpInsnNode(Opcodes.IFEQ,vanilla));
                         code.add(new InsnNode(Opcodes.POP)); code.add(new InsnNode(Opcodes.POP));
                         code.add(new JumpInsnNode(Opcodes.GOTO,end)); code.add(vanilla);

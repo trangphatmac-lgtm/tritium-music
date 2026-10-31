@@ -2,7 +2,7 @@ package tritium.minecraft.protocol;
 
 /** Shared category metadata; category selection never changes a module's enabled state. */
 public enum ModuleCategory {
-    LYRIC("lyric"), COMBAT("combat"), MOVEMENT("movement"), PLAYER("player"),
+    LYRIC("lyric"), COMBAT("combat"), NETWORK("network"), MOVEMENT("movement"), PLAYER("player"),
     RENDER("render"), WORLD("world"), OTHER("other");
 
     public final String id;
@@ -15,6 +15,7 @@ public enum ModuleCategory {
     public static ModuleCategory forModule(String id) {
         if (CombatSettings.isCombat(id)) return COMBAT;
         if (MovementSettings.isMovement(id)) return MOVEMENT;
+        if (OpenB4Settings.contains(id)) return OpenB4Settings.definition(id).category;
         // World lyrics are a music feature, not a Hidden world module. Keep the
         // common editor and disconnect actions accessible without Hidden as well.
         if ("musicInfo".equals(id) || "musicLyrics".equals(id) || "musicSpectrum".equals(id)

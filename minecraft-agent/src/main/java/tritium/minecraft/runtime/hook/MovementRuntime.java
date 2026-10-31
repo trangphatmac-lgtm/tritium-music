@@ -12,6 +12,8 @@ public final class MovementRuntime implements AutoCloseable {
     private HudConfig config;
     private Object world, player;
     private boolean sprintOn, stasisOn;
+    private ExtendedCombatRuntime extended;
+    private PlayerRuntime playerModules;
     public MovementRuntime(Object minecraft) { this(new MovementAccess(minecraft)); }
     MovementRuntime(MovementAccess game) { this.game=game;sprint=new SprintModule(game);stasis=new StasisModule(game); }
     public void configure(HudConfig config) {
@@ -30,13 +32,17 @@ public final class MovementRuntime implements AutoCloseable {
         if (!stasisOn && t) stasis.enable();
         sprintOn=s;stasisOn=t;
     }
+    public void dependencies(ExtendedCombatRuntime extended,PlayerRuntime playerModules) { this.extended=extended;this.playerModules=playerModules; }
     private boolean currentPlayer() {
         if (config != null && (world!=game.world() || player!=game.player())) configure(config);
         return world!=null && player!=null;
     }
     public float visibleYaw() { return currentPlayer() ? game.yaw() : 0; }
-    public void preUpdate() { if (currentPlayer() && sprintOn) sprint.preUpdate(); }
-    public void preMotion(float visibleYaw) { if (currentPlayer() && sprintOn) sprint.preMotion(config.find("sprint").movement,visibleYaw); }
+    public void preUpdate() {
+        if (currentPlayer() && sprintOn && sprint.preUpdate(extended!=null && extended.sprintReset() && !extended.silentSprintReset(),
+                playerModules!=null && playerModules.blocksSprint())) extended.consumeSprintReset();
+    }
+    public void preMotion(float visibleYaw) { if (currentPlayer() && sprintOn && (playerModules==null || !playerModules.scaffolding())) sprint.preMotion(config.find("sprint").movement,visibleYaw); }
     public void tickStart() { if (currentPlayer()) stasis.tickStart(); }
     public void tickEnd() { if (currentPlayer()) stasis.tickEnd(); }
     public void postInput() { if (currentPlayer()) stasis.postInput(); }

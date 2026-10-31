@@ -8,7 +8,7 @@ public final class Wire {
     public static final int VERSION = 1, MAX_FRAME = 8 * 1024 * 1024;
     public static final int HELLO = 1, PROGRESS = 2, CONFIG = 3, TRACK = 4, STATE = 5,
             ARTWORK = 6, READY = 7, HEARTBEAT = 8, EDIT = 9, PREVIEW = 10,
-            EVENT = 11, UNINJECT = 12, STOPPED = 13, ERROR = 14, TOAST = 15;
+            EVENT = 11, UNINJECT = 12, STOPPED = 13, ERROR = 14, TOAST = 15, RADAR = 16;
     private final DataInputStream input;
     private final DataOutputStream output;
 

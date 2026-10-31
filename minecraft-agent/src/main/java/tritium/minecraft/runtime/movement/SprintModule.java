@@ -9,8 +9,17 @@ public final class SprintModule {
     private boolean stopBackwards;
     public SprintModule(MovementAccess game) { this.game=game; }
     public void preUpdate() {
+        preUpdate(false);
+    }
+    public boolean preUpdate(boolean wTapReset) {
+        return preUpdate(wTapReset, false);
+    }
+    public boolean preUpdate(boolean wTapReset, boolean scaffoldBlocksSprint) {
         if (stopBackwards) { stopBackwards=false; game.stopSprint(); }
+        else if (wTapReset) { game.stopSprint(); return true; }
+        else if (scaffoldBlocksSprint) game.stopSprint();
         else game.sprintKey(true);
+        return false;
     }
     public void preMotion(MovementSettings settings,float visibleYaw) {
         float serverYaw=game.yaw(), forward=game.forward();

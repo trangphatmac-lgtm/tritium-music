@@ -85,6 +85,10 @@ class AgentAttachFixtureTest {
                         AttachLoader.StartupException duplicate = assertThrows(AttachLoader.StartupException.class,
                                 () -> load(process.pid(), agent, "1:" + server.getLocalPort() + ":" + token));
                         assertTrue(duplicate.getMessage().contains("already attached"), duplicate.getMessage());
+                        stdin.write("openb4\nincoming\nbridgeassist\n"); stdin.flush();
+                        assertEquals("OPENB4 18 13 true", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "All OpenB4 hooks must be installed, including render exception cleanup");
+                        assertEquals("INCOMING 5", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "Every packet handler must intercept, including handlers without a thread handoff");
+                        assertEquals("BRIDGEASSIST 12 0.3 0 3 2 true 3 [RGBARGBA] [filtered:normal:0;filtered:system:1;]", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "Input precedes sneak scaling; synthetic clicks and only scroll changes cancel; rotations bracket every raycast; chat follows Forge filtering");
                         wire.send(Wire.CONFIG,"{}"); wire.send(Wire.UNINJECT, "");
                         boolean stopped = false;
                         for (int i = 0; i < 30 && !stopped; i++) {
@@ -94,11 +98,14 @@ class AgentAttachFixtureTest {
                         assertTrue(stopped);
                     }
                 }
-                stdin.write("marker\nbridge\ncombat\nmovement\n"); stdin.flush();
+                stdin.write("marker\nbridge\ncombat\nmovement\nopenb4\nincoming\nbridgeassist\n"); stdin.flush();
                 assertEquals("MARKER 31", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS));
                 assertEquals("BRIDGE true", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS));
                 assertEquals("COMBAT 0", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS), "UnInject must remove combat hooks, not only clear their callbacks");
                 assertEquals("MOVEMENT 0", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS), "UnInject must also remove movement input and receive hooks");
+                assertEquals("OPENB4 0 0 true", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS), "UnInject must restore every new module hook, including exception paths");
+                assertEquals("INCOMING 0", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS), "UnInject must restore generic incoming packet handlers");
+                assertEquals("BRIDGEASSIST 0 1.0 1 5 3 true 3 [] []", reader.submit(stdout::readLine).get(5,TimeUnit.SECONDS), "UnInject must remove input, synthetic click, scroll, rotation and filtered chat hooks");
             }
         } finally {
             stdin.write("exit\n"); stdin.flush(); if (!process.waitFor(5,TimeUnit.SECONDS)) process.destroyForcibly(); reader.shutdownNow();

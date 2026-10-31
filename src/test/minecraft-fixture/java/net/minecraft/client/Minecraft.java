@@ -12,8 +12,11 @@ public final class Minecraft {
     public Settings gameSettings = new Settings();
     public boolean inGameHasFocus;
     public int displayWidth = 800, displayHeight = 600;
+    public int rightClicks;
+    public net.minecraft.entity.player.InventoryPlayer inventory = new net.minecraft.entity.player.InventoryPlayer();
     public static Minecraft getMinecraft() { return INSTANCE; }
-    public void runTick() { org.lwjgl.input.Mouse.getEventButtonState(); new EntityRenderer().getMouseOver(1); }
+    public void runTick() { org.lwjgl.input.Mouse.getEventButtonState(); new EntityRenderer().getMouseOver(1); inventory.changeCurrentItem(1); }
+    public void rightClickMouse() { rightClicks++; }
     public boolean isUnicode() { return gameSettings.forceUnicodeFont; }
     public static final class Settings { public boolean hideGUI, forceUnicodeFont; public int guiScale; }
     public static void main(String[] args) throws Exception {
@@ -27,9 +30,12 @@ public final class Minecraft {
             if (command.equals("bridge")) {
                 Class<?> bridge = Class.forName("tritium.minecraft.bridge.HookBridge", true, null);
                 boolean cleared = true;
-                for (String field : new String[]{"callback", "packetCallback", "velocityCallback", "blockingCallback", "receiveCallback"}) cleared &= bridge.getField(field).get(null) == null;
+                for (String field : new String[]{"callback", "packetCallback", "velocityCallback", "blockingCallback", "receiveCallback", "incomingCallback", "moduleCallback"}) cleared &= bridge.getField(field).get(null) == null;
                 System.out.println("BRIDGE " + cleared);
             }
+            if (command.equals("openb4")) System.out.println(fixtures.OpenB4Probe.modules());
+            if (command.equals("incoming")) System.out.println(fixtures.OpenB4Probe.incoming());
+            if (command.equals("bridgeassist")) System.out.println(fixtures.BridgeAssistProbe.run());
             if (command.equals("combat")) {
                 java.lang.reflect.Field callback = Class.forName("tritium.minecraft.bridge.HookBridge", true, null).getField("callback");
                 java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();

@@ -9,6 +9,7 @@ import tritium.minecraft.protocol.HudConfig;
 import tritium.minecraft.protocol.CombatSettings;
 import tritium.minecraft.protocol.MovementSettings;
 import tritium.minecraft.protocol.ModuleCategory;
+import tritium.minecraft.protocol.OpenB4Settings;
 import tritium.rendering.material.UiMaterials;
 import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
@@ -45,6 +46,8 @@ public final class MinecraftPanel extends NCMPanel {
         cards.add(new ModuleCard("autoClicker", "minecraft.autoClicker", 0));
         cards.add(new ModuleCard("sprint", "minecraft.sprint", 1));
         cards.add(new ModuleCard("stasis", "minecraft.stasis", 0));
+        for (OpenB4Settings.Definition module : OpenB4Settings.definitions())
+            cards.add(new ModuleCard(module.id, module.name, 0));
         for (ModuleCard card : cards) grid.addChild(card);
         setBeforeRenderCallback(() -> {
             if (!category.isAvailable(hiddenEnabled())) selectCategory(ModuleCategory.LYRIC);
@@ -283,6 +286,7 @@ public final class MinecraftPanel extends NCMPanel {
             for (AbstractWidget<?> row : getChildren()) {
                 boolean visible = expanded && (!conditions.containsKey(row) || conditions.get(row).getAsBoolean());
                 if (!visible && row instanceof SettingsPanel.TextRow textRow) textRow.unfocus();
+                if (row instanceof SettingsPanel.HintRow hint) hint.measure(Math.max(0, width - 20));
                 row.setHidden(!visible); row.setBounds(Math.max(0, width - 20), row.getHeight()); row.setPosition(10, y);
                 if (visible) y += row.getHeight() + 6;
             }
@@ -331,6 +335,7 @@ public final class MinecraftPanel extends NCMPanel {
             if (id.equals("worldLyrics")) { buildWorldRows(); return; }
             if (CombatSettings.isCombat(id)) { buildCombatRows(); return; }
             if (MovementSettings.isMovement(id)) { buildMovementRows(); return; }
+            if (OpenB4Settings.contains(id)) { buildOpenB4Rows(); return; }
             slider("minecraft.scale", m -> m.scale, (m,v) -> m.scale=v, .5, 2, .05);
             slider("settings.opacity", m -> m.opacity, (m,v) -> m.opacity=v, .05, 1, .05);
             if (id.equals("musicInfo")) toggle("settings.artistLyric", m -> m.artistLyric, (m,v) -> m.artistLyric=v);
@@ -361,6 +366,46 @@ public final class MinecraftPanel extends NCMPanel {
                 addChild(new SettingsPanel.ActionRow("minecraft.preview", connection::previewToast));
             }
         }
+
+        private void buildOpenB4Rows() {
+            for (OpenB4Settings.Option option : OpenB4Settings.options(id)) {
+                if (option.description) {
+                    addChild(new SettingsPanel.HintRow(option.key));
+                } else if (option.action) {
+                    addChild(new SettingsPanel.ActionRow(option.key, () -> connection.setEditing(true)));
+                } else if (option.toggle) {
+                    toggle(option.key, m -> m.openB4.on(option.key), (m, value) -> m.openB4.toggles.put(option.key, value));
+                } else if (option.numeric) {
+                    NumberPreference pref = new NumberPreference(option.key, option.defaultValue, option.min, option.max, option.step) {
+                        // OpenB4Settings applies Raven's zero-based snapping.
+                        @Override public double getIncrement() { return 0; }
+                        @Override public Double getValue() { return module().openB4.number(option.key); }
+                        @Override public void setValue(Double value) { edit(m -> m.openB4.numbers.put(option.key, value)); }
+                    };
+                    addChild(new SettingsPanel.SliderRow(option.key, pref, option::format));
+                }
+            }
+            if (id.equals("radar")) {
+                toggle("minecraft.radar.offscreen", m -> m.openB4.offscreenRendering, (m,v) -> m.openB4.offscreenRendering=v);
+            }
+            if (id.equals("backtrack") || id.equals("lagRange")) {
+                addChild(new SettingsPanel.TextRow("minecraft.openB4.friends", new PreferenceValue<String>("Friends", "") {
+                    @Override public String getValue() { return String.join(", ", preferences.snapshot().openB4Friends); }
+                    @Override public void setValue(String value) { preferences.update(c -> c.openB4Friends = names(value)); }
+                }, 4096));
+                addChild(new SettingsPanel.TextRow("minecraft.openB4.enemies", new PreferenceValue<String>("Enemies", "") {
+                    @Override public String getValue() { return String.join(", ", preferences.snapshot().openB4Enemies); }
+                    @Override public void setValue(String value) { preferences.update(c -> c.openB4Enemies = names(value)); }
+                }, 4096));
+            }
+            if (id.equals("targetHud")) {
+                slider("minecraft.openB4.offsetX", m -> m.openB4.offsetX, (m,v) -> m.openB4.offsetX=v, -8192, 8192, 1);
+                slider("minecraft.openB4.offsetY", m -> m.openB4.offsetY, (m,v) -> m.openB4.offsetY=v, -8192, 8192, 1);
+                addChild(new SettingsPanel.ActionRow("minecraft.movement.resetPosition", () -> edit(m -> { m.openB4.offsetX=70; m.openB4.offsetY=40; })));
+            }
+        }
+
+        private String[] names(String value) { return Arrays.stream(value.split("[,;\\s]+" )).filter(name -> !name.isBlank()).distinct().toArray(String[]::new); }
 
         private void buildCombatRows() {
             for (CombatSettings.Option option : CombatSettings.options(id)) {

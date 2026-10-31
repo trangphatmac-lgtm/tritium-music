@@ -8,6 +8,52 @@ import tritium.minecraft.protocol.PlaybackState;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MinecraftPreferencesTest {
+    @Test void radarOffscreenDefaultsToFalseAndPersistsIndependentlyOfTheSourceOptions() {
+        MusicPreferences original = new MusicPreferences(); original.minecraft().ensureInitialized(original);
+        assertFalse(original.minecraft().offscreenRadarEnabled());
+        original.minecraft().update(c -> {
+            var radar = c.find("radar"); radar.enabled = true; radar.openB4.offscreenRendering = true;
+            radar.openB4.toggles.put("Show tracer lines", true);
+        });
+        MusicPreferences restored = new MusicPreferences(); restored.loadFromJsonObject(original.toJsonObject());
+        assertTrue(restored.minecraft().offscreenRadarEnabled());
+        assertTrue(restored.minecraft().snapshot().find("radar").openB4.on("Show tracer lines"));
+        restored.minecraft().update(c -> c.find("radar").enabled = false);
+        assertFalse(restored.minecraft().offscreenRadarEnabled());
+        assertTrue(restored.minecraft().snapshot().find("radar").openB4.offscreenRendering);
+        var legacy = original.toJsonObject();
+        for (var module : legacy.getAsJsonObject("minecraft").getAsJsonArray("modules"))
+            module.getAsJsonObject().getAsJsonObject("openB4").remove("offscreenRendering");
+        restored.loadFromJsonObject(legacy);
+        assertFalse(restored.minecraft().offscreenRadarEnabled());
+    }
+
+    @Test void antiBotAndBridgeAssistPersistAcrossDesktopProfilesAndIgnoreHudReset() {
+        MusicPreferences original = new MusicPreferences(); original.minecraft().ensureInitialized(original);
+        original.minecraft().update(c -> {
+            var bot = c.find("antiBot"); bot.enabled = true; bot.key = 48;
+            bot.openB4.numbers.put("Delay (spawn)", 1.2); bot.openB4.toggles.put("Tab list", true);
+            var bridge = c.find("bridgeAssist"); bridge.enabled = true; bridge.key = 49;
+            bridge.openB4.numbers.put("Unsneak delay", 125d);
+            bridge.openB4.toggles.put("Disable hotbar scrolling", true);
+        });
+        MusicPreferences restored = new MusicPreferences(); restored.loadFromJsonObject(original.toJsonObject());
+        Gson json = new Gson();
+        for (String id : new String[]{"antiBot", "bridgeAssist"}) {
+            String expected = json.toJson(original.minecraft().snapshot().find(id));
+            assertEquals(expected, json.toJson(restored.minecraft().snapshot().find(id)));
+            restored.minecraft().resetLayout();
+            assertEquals(expected, json.toJson(restored.minecraft().snapshot().find(id)));
+        }
+        var profile = original.toJsonObject(); var legacy = new com.google.gson.JsonArray();
+        for (var item : profile.getAsJsonObject("minecraft").getAsJsonArray("modules"))
+            if (!java.util.Set.of("antiBot", "bridgeAssist").contains(item.getAsJsonObject().get("id").getAsString())) legacy.add(item);
+        profile.getAsJsonObject("minecraft").add("modules", legacy); restored.loadFromJsonObject(profile);
+        assertFalse(restored.minecraft().snapshot().find("antiBot").enabled);
+        assertFalse(restored.minecraft().snapshot().find("bridgeAssist").enabled);
+        assertEquals(50, restored.minecraft().snapshot().find("bridgeAssist").openB4.number("Unsneak delay"));
+    }
+
     @Test void movementSettingsAndSprintPixelLayoutPersistAndMigrate() {
         MusicPreferences original = new MusicPreferences(); original.minecraft().ensureInitialized(original);
         original.minecraft().update(c -> {

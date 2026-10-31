@@ -1,0 +1,2449 @@
+[
+  {
+    "cls": "R284",
+    "name": "AntiKnockback",
+    "category": "combat",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Overrides Velocity."
+      },
+      {
+        "t": "slider",
+        "name": "Horizontal",
+        "prefix": "",
+        "suffix": "%",
+        "value": 100.0,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Vertical",
+        "prefix": "",
+        "suffix": "%",
+        "value": 100.0,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Disable in lobby",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Only while moving",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Cancel burning",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Cancel explosion",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Cancel ground",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Cancel off ground",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Cancel while falling",
+        "value": false
+      },
+      {
+        "t": "slider",
+        "name": "Cancel interval",
+        "prefix": "",
+        "suffix": "",
+        "value": 1.0,
+        "min": 1.0,
+        "max": 5.0,
+        "step": 1.0,
+        "options": null,
+        "labels": {
+          "1.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Damage boost",
+        "prefix": "",
+        "suffix": "x",
+        "value": 0.8,
+        "min": 0.8,
+        "max": 1.6,
+        "step": 0.01,
+        "options": null,
+        "labels": {
+          "0.8": "§cDisabled"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Boost with LMB",
+        "value": false
+      },
+      {
+        "t": "slider",
+        "name": "Delay",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 2000.0,
+        "step": 50.0,
+        "options": null,
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Delay if landing",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Delay only midair",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Delay only targeting",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Delay simultaneously",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Delay until ground",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable attack while delay",
+        "value": false
+      }
+    ],
+    "id": "antiKnockback"
+  },
+  {
+    "cls": "R131",
+    "name": "ClickAssist",
+    "category": "combat",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Boost your CPS."
+      },
+      {
+        "t": "toggle",
+        "name": "Disable in creative",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Disable in replays",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Left click",
+        "value": true
+      },
+      {
+        "t": "slider",
+        "name": "Chance left",
+        "prefix": "",
+        "suffix": "%",
+        "value": 80.0,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Weapon only",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only while targeting",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Right click",
+        "value": false
+      },
+      {
+        "t": "slider",
+        "name": "Chance right",
+        "prefix": "",
+        "suffix": "%",
+        "value": 80.0,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Blocks only",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Above 5 cps",
+        "value": true
+      }
+    ],
+    "id": "clickAssist"
+  },
+  {
+    "cls": "R280",
+    "name": "Hit Select",
+    "category": "combat",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Pause",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 300.0,
+        "min": 0.0,
+        "max": 500.0,
+        "step": 50.0,
+        "options": null,
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Only in combo",
+        "prefix": "",
+        "suffix": "+",
+        "value": 1.0,
+        "min": 0.0,
+        "max": 5.0,
+        "step": 1.0,
+        "options": null,
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Disable on low health",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Fake swing",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Force first hit",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only critical hits",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only while jumping",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Reset combo on swap",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Reset on damage",
+        "value": false
+      },
+      {
+        "t": "desc",
+        "name": "Activate with"
+      },
+      {
+        "t": "toggle",
+        "name": "Manual",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "AutoClicker",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "KillAura",
+        "value": true
+      }
+    ],
+    "id": "hitSelect"
+  },
+  {
+    "cls": "R298",
+    "name": "Jump Reset",
+    "category": "combat",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Chance",
+        "prefix": "",
+        "suffix": "%",
+        "value": 80.0,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 2.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Minimize vertical",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only while targeting",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Hard reset",
+        "value": false
+      },
+      {
+        "t": "slider",
+        "name": "Hard reset max delay",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 200.0,
+        "min": 50.0,
+        "max": 1000.0,
+        "step": 10.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Hard reset distance",
+        "prefix": "",
+        "suffix": "",
+        "value": 5.3,
+        "min": 3.0,
+        "max": 12.0,
+        "step": 0.1,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Aim jump",
+        "value": true
+      },
+      {
+        "t": "slider",
+        "name": "Aim jump ticks",
+        "prefix": "",
+        "suffix": "",
+        "value": 6.0,
+        "min": 1.0,
+        "max": 12.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      }
+    ],
+    "id": "jumpReset"
+  },
+  {
+    "cls": "R484",
+    "name": "Reach",
+    "category": "combat",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Survival = 3, Creative = 6"
+      },
+      {
+        "t": "slider",
+        "name": "Min",
+        "prefix": "",
+        "suffix": "",
+        "value": 3.1,
+        "min": 3.0,
+        "max": 6.0,
+        "step": 0.05,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Max",
+        "prefix": "",
+        "suffix": "",
+        "value": 3.3,
+        "min": 3.0,
+        "max": 6.0,
+        "step": 0.05,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Weapon only",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Moving only",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Sprint only",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Hit through blocks",
+        "value": false
+      }
+    ],
+    "id": "reach"
+  },
+  {
+    "cls": "R184",
+    "name": "WTap",
+    "category": "combat",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Requires sprint module."
+      },
+      {
+        "t": "slider",
+        "name": "Chance",
+        "prefix": "",
+        "suffix": "%",
+        "value": 100.0,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 2.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Delay between reset",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 300.0,
+        "min": 100.0,
+        "max": 2000.0,
+        "step": 50.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Delay until reset",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 150.0,
+        "min": 0.0,
+        "max": 2000.0,
+        "step": 50.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Disable while chasing",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Players only",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Silent",
+        "value": false
+      }
+    ],
+    "id": "wTap"
+  },
+  {
+    "cls": "R310",
+    "name": "Backtrack",
+    "category": "network",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Attack previous positions."
+      },
+      {
+        "t": "slider",
+        "name": "Delay",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 150.0,
+        "min": 50.0,
+        "max": 1500.0,
+        "step": 50.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Distance (min)",
+        "prefix": "",
+        "suffix": "",
+        "value": 2.7,
+        "min": 0.0,
+        "max": 8.0,
+        "step": 0.1,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Distance (max)",
+        "prefix": "",
+        "suffix": "",
+        "value": 5.0,
+        "min": 2.0,
+        "max": 8.0,
+        "step": 0.1,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Cooldown",
+        "prefix": "",
+        "suffix": "s",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 8.0,
+        "step": 0.1,
+        "options": null,
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "FOV",
+        "prefix": "",
+        "suffix": "",
+        "value": 360.0,
+        "min": 20.0,
+        "max": 360.0,
+        "step": 5.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Disable adventure",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Disable while chasing",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Flush on damage",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Ignore teammates",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Show server position",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only hittable",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only movement",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Weapon only",
+        "value": false
+      }
+    ],
+    "id": "backtrack"
+  },
+  {
+    "cls": "R448",
+    "name": "Blink",
+    "category": "network",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Freeze outbound packets."
+      },
+      {
+        "t": "slider",
+        "name": "Auto-disable",
+        "prefix": "",
+        "suffix": " seconds",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 8.0,
+        "step": 0.1,
+        "options": null,
+        "labels": {
+          "0.0": "§cNever",
+          "1.0": "§b1 second"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Cancel knockback",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable on attack",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable on inventory",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable on mine",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable on place",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show blink ticks",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Show initial position",
+        "value": true
+      }
+    ],
+    "id": "blink"
+  },
+  {
+    "cls": "R398",
+    "name": "Fake Lag",
+    "category": "network",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Outbound delay",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 100.0,
+        "min": 20.0,
+        "max": 1600.0,
+        "step": 20.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Pulse",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 120.0,
+        "min": 120.0,
+        "max": 1200.0,
+        "step": 15.0,
+        "options": null,
+        "labels": {
+          "120.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Disable on attack",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show server position",
+        "value": false
+      }
+    ],
+    "id": "fakeLag"
+  },
+  {
+    "cls": "R110",
+    "name": "Lag Range",
+    "category": "network",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Packet delay (close)",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 100.0,
+        "min": 10.0,
+        "max": 800.0,
+        "step": 10.0,
+        "options": null,
+        "labels": {
+          "10.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Packet delay (far)",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 200.0,
+        "min": 10.0,
+        "max": 800.0,
+        "step": 10.0,
+        "options": null,
+        "labels": {
+          "10.0": "§eSame"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Max lag time",
+        "prefix": "",
+        "suffix": " seconds",
+        "value": 5.0,
+        "min": 0.5,
+        "max": 15.0,
+        "step": 0.2,
+        "options": null,
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Start range",
+        "prefix": "",
+        "suffix": " blocks",
+        "value": 8.5,
+        "min": 7.0,
+        "max": 15.0,
+        "step": 0.1,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Block sword on lag",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable adventure",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Ignore teammates",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Invisible players",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only enemies",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Random lag",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show server position",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Weapon only",
+        "value": false
+      },
+      {
+        "t": "desc",
+        "name": "Extra flush conditions"
+      },
+      {
+        "t": "toggle",
+        "name": "Holding any block",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Holding consumable",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Holding bow",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Holding buckets",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Holding fireball",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Holding fishing rod",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Holding ladders",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "On interact item",
+        "value": true
+      }
+    ],
+    "id": "lagRange"
+  },
+  {
+    "cls": "R046",
+    "name": "AutoJump",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "toggle",
+        "name": "Stop while sneaking",
+        "value": true
+      }
+    ],
+    "id": "autoJump"
+  },
+  {
+    "cls": "R274",
+    "name": "AutoLadder",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Minimum fall distance",
+        "prefix": "",
+        "suffix": " blocks",
+        "value": 5.0,
+        "min": 5.0,
+        "max": 40.0,
+        "step": 0.5,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Only while holding ladder",
+        "value": true
+      }
+    ],
+    "id": "autoLadder"
+  },
+  {
+    "cls": "R563",
+    "name": "AutoSwap",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Automatically swaps blocks."
+      },
+      {
+        "t": "slider",
+        "name": "Switch at",
+        "prefix": "",
+        "suffix": " blocks",
+        "value": 1.0,
+        "min": 0.0,
+        "max": 5.0,
+        "step": 1.0,
+        "options": null,
+        "labels": {
+          "1.0": "§b1 block"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Only same type",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Spoof item",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Swap to greater stack",
+        "value": false
+      }
+    ],
+    "id": "autoSwap"
+  },
+  {
+    "cls": "R107",
+    "name": "AutoTool",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Hover delay",
+        "prefix": "",
+        "suffix": " ticks",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 20.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Disable on interactable",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable while holding blocks",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable while right click",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Enable when holding tools",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Enable when sneaking",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Require mouse down",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Spoof item",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Swap to previous slot",
+        "value": true
+      }
+    ],
+    "id": "autoTool"
+  },
+  {
+    "cls": "R322",
+    "name": "Delay Remover",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "toggle",
+        "name": "1.7 hitreg",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Remove jump ticks",
+        "value": false
+      }
+    ],
+    "id": "delayRemove"
+  },
+  {
+    "cls": "R493",
+    "name": "FastMine",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Vanilla is 5 delay & 1x speed."
+      },
+      {
+        "t": "slider",
+        "name": "Break delay",
+        "prefix": "",
+        "suffix": " ticks",
+        "value": 5.0,
+        "min": 0.0,
+        "max": 5.0,
+        "step": 1.0,
+        "options": null,
+        "labels": {
+          "1.0": "§b1 tick"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Break speed",
+        "prefix": "",
+        "suffix": "x",
+        "value": 1.0,
+        "min": 1.0,
+        "max": 2.0,
+        "step": 0.02,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "mode",
+        "name": "Visual mode",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 2.0,
+        "step": 1.0,
+        "options": [
+          "Pre",
+          "Post",
+          "Increment"
+        ],
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Disable in creative",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Ignore shears",
+        "value": false
+      }
+    ],
+    "id": "fastMine"
+  },
+  {
+    "cls": "R142",
+    "name": "FastPlace",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Vanilla is 4 ticks."
+      },
+      {
+        "t": "slider",
+        "name": "Delay",
+        "prefix": "",
+        "suffix": " ticks",
+        "value": 1.0,
+        "min": 1.0,
+        "max": 4.0,
+        "step": 1.0,
+        "options": null,
+        "labels": {
+          "1.0": "§b1 tick"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Minimum hold time",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 1000.0,
+        "step": 50.0,
+        "options": null,
+        "labels": {
+          "0.0": "§cNone"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Allow ladders",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Auto swap blocks",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Blocks only",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Pitch check",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show block count",
+        "value": true
+      }
+    ],
+    "id": "fastPlace"
+  },
+  {
+    "cls": "R367",
+    "name": "SafeWalk",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "mode",
+        "name": "Mode",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 3.0,
+        "step": 1.0,
+        "options": [
+          "Edge",
+          "Sneak (Keybind)",
+          "Sneak (State)",
+          "Scaffold"
+        ],
+        "labels": null
+      },
+      {
+        "t": "mode",
+        "name": "Edge tolerance",
+        "prefix": "",
+        "suffix": "",
+        "value": 1.0,
+        "min": 0.0,
+        "max": 3.0,
+        "step": 1.0,
+        "options": [
+          "Low",
+          "Medium",
+          "High",
+          "Very High"
+        ],
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Minimum pitch",
+        "prefix": "",
+        "suffix": "",
+        "value": 65.0,
+        "min": 19.0,
+        "max": 85.0,
+        "step": 1.0,
+        "options": null,
+        "labels": {
+          "19.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Unsneak delay",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 1000.0,
+        "step": 50.0,
+        "options": null,
+        "labels": {
+          "0.0": "§cNone"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Blocks only",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Disable on forward",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only while right clicking",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only while sneaking",
+        "value": false
+      }
+    ],
+    "id": "safeWalk"
+  },
+  {
+    "cls": "R102",
+    "name": "Water Bucket",
+    "category": "player",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Minimum fall distance",
+        "prefix": "",
+        "suffix": " blocks",
+        "value": 5.0,
+        "min": 3.0,
+        "max": 40.0,
+        "step": 0.5,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Pickup water",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Silent aim",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Switch to item",
+        "value": true
+      }
+    ],
+    "id": "waterBucket"
+  },
+  {
+    "cls": "R040",
+    "name": "AntiDebuff",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Removes visual effects."
+      },
+      {
+        "t": "toggle",
+        "name": "Alert in chat",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Remove blindness",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Remove nausea",
+        "value": true
+      }
+    ],
+    "id": "antiDebuff"
+  },
+  {
+    "cls": "R461",
+    "name": "BedESP",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "mode",
+        "name": "Theme",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 15.0,
+        "step": 1.0,
+        "options": [
+          "Default",
+          "Rainbow",
+          "Aurora",
+          "Cherry",
+          "Cotton candy",
+          "Flare",
+          "Flower",
+          "Forest",
+          "Frost",
+          "Gold",
+          "Grayscale",
+          "Inferno",
+          "Royal",
+          "Sandstorm",
+          "Sky",
+          "Vine"
+        ],
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Range",
+        "prefix": "",
+        "suffix": "",
+        "value": 80.0,
+        "min": 4.0,
+        "max": 200.0,
+        "step": 4.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Rate",
+        "prefix": "",
+        "suffix": " seconds",
+        "value": 0.4,
+        "min": 0.2,
+        "max": 5.0,
+        "step": 0.2,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Disable in lobby",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Draw beam",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Only render first bed",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Optimize for Bed Wars",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Render full block",
+        "value": false
+      },
+      {
+        "t": "slider",
+        "name": "Covering blocks",
+        "prefix": "",
+        "suffix": "x",
+        "value": 0.45,
+        "min": 0.45,
+        "max": 2.0,
+        "step": 0.05,
+        "options": null,
+        "labels": {
+          "0.45": "§cDisabled"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Show tools only",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show whitelisted covering",
+        "value": true
+      }
+    ],
+    "id": "bedESP"
+  },
+  {
+    "cls": "R204",
+    "name": "Chams",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "toggle",
+        "name": "Ignore bots",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Hide players",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Render self",
+        "value": false
+      }
+    ],
+    "id": "chams"
+  },
+  {
+    "cls": "R515",
+    "name": "ChestESP",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Red",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Green",
+        "prefix": "",
+        "suffix": "",
+        "value": 200.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Blue",
+        "prefix": "",
+        "suffix": "",
+        "value": 200.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Rainbow",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Outline",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Shade",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Disable if opened",
+        "value": false
+      }
+    ],
+    "id": "chestESP"
+  },
+  {
+    "cls": "R053",
+    "name": "Indicators",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "toggle",
+        "name": "Render arrows",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Render ender pearls",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Render fireballs",
+        "value": true
+      },
+      {
+        "t": "mode",
+        "name": "Arrow",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 2.0,
+        "step": 1.0,
+        "options": [
+          "Caret",
+          "Greater than",
+          "Triangle"
+        ],
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Circle radius",
+        "prefix": "",
+        "suffix": "",
+        "value": 50.0,
+        "min": 30.0,
+        "max": 200.0,
+        "step": 5.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Item colors",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Render item",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Render only threats",
+        "value": false
+      }
+    ],
+    "id": "indicators"
+  },
+  {
+    "cls": "R177",
+    "name": "ItemESP",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "toggle",
+        "name": "Disable diamond",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable emerald",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable gold",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable iron",
+        "value": false
+      }
+    ],
+    "id": "itemESP"
+  },
+  {
+    "cls": "R473",
+    "name": "Nametags",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Background",
+        "prefix": "",
+        "suffix": "%",
+        "value": 30.0,
+        "min": 0.0,
+        "max": 100.0,
+        "step": 5.0,
+        "options": null,
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Scale",
+        "prefix": "",
+        "suffix": "x",
+        "value": 1.0,
+        "min": 0.1,
+        "max": 4.0,
+        "step": 0.1,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Auto-scale",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Disable in lobby",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Only render name",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Render self",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show distance",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show health",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Show hits to kill",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show invis",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Sneak suffix",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Remove tags",
+        "value": false
+      },
+      {
+        "t": "desc",
+        "name": "Item settings"
+      },
+      {
+        "t": "toggle",
+        "name": "Show items",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show enchants",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Show durability",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Show stack size",
+        "value": true
+      }
+    ],
+    "id": "nametags"
+  },
+  {
+    "cls": "R573",
+    "name": "NoCameraClip",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Allows camera through blocks."
+      }
+    ],
+    "id": "noCameraClip"
+  },
+  {
+    "cls": "R494",
+    "name": "NoHurtCam",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Vanilla is 14x multiplier."
+      },
+      {
+        "t": "slider",
+        "name": "Multiplier",
+        "prefix": "",
+        "suffix": "x",
+        "value": 14.0,
+        "min": -40.0,
+        "max": 40.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      }
+    ],
+    "id": "noHurtCam"
+  },
+  {
+    "cls": "R344",
+    "name": "PlayerESP",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "mode",
+        "name": "Type",
+        "prefix": "",
+        "suffix": "",
+        "value": 1.0,
+        "min": 0.0,
+        "max": 7.0,
+        "step": 1.0,
+        "options": [
+          "None",
+          "Outline",
+          "Outline (Light Glow)",
+          "Outline (Heavy Glow)",
+          "Box",
+          "Shaded",
+          "2D",
+          "Ring"
+        ],
+        "labels": {
+          "0.0": "§cNone"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Red",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Green",
+        "prefix": "",
+        "suffix": "",
+        "value": 255.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Blue",
+        "prefix": "",
+        "suffix": "",
+        "value": 255.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Disable in lobby",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Rainbow",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Health bar",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Red on damage",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Render self",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Team color",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show invis",
+        "value": true
+      }
+    ],
+    "id": "playerESP"
+  },
+  {
+    "cls": "R300",
+    "name": "Radar",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "toggle",
+        "name": "Show tracer lines",
+        "value": false
+      }
+    ],
+    "id": "radar"
+  },
+  {
+    "cls": "R504",
+    "name": "TargetHUD",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "desc",
+        "name": "Only renders with KillAura."
+      },
+      {
+        "t": "mode",
+        "name": "Mode",
+        "prefix": "",
+        "suffix": "",
+        "value": 1.0,
+        "min": 0.0,
+        "max": 2.0,
+        "step": 1.0,
+        "options": [
+          "Disabled",
+          "Modern",
+          "Legacy"
+        ],
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "mode",
+        "name": "Theme",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 15.0,
+        "step": 1.0,
+        "options": [
+          "Default",
+          "Rainbow",
+          "Aurora",
+          "Cherry",
+          "Cotton candy",
+          "Flare",
+          "Flower",
+          "Forest",
+          "Frost",
+          "Gold",
+          "Grayscale",
+          "Inferno",
+          "Royal",
+          "Sandstorm",
+          "Sky",
+          "Vine"
+        ],
+        "labels": null
+      },
+      {
+        "t": "button",
+        "name": "Edit position",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Render ESP",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show difference",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Show health",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Show win/loss",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Traditional health color",
+        "value": false
+      }
+    ],
+    "id": "targetHud"
+  },
+  {
+    "cls": "R453",
+    "name": "Tracers",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "toggle",
+        "name": "Show invis",
+        "value": true
+      },
+      {
+        "t": "slider",
+        "name": "Line width",
+        "prefix": "",
+        "suffix": "",
+        "value": 1.0,
+        "min": 0.5,
+        "max": 5.0,
+        "step": 0.1,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Red",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Green",
+        "prefix": "",
+        "suffix": "",
+        "value": 255.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Blue",
+        "prefix": "",
+        "suffix": "",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 255.0,
+        "step": 1.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Rainbow",
+        "value": false
+      }
+    ],
+    "id": "tracers"
+  },
+  {
+    "cls": "R418",
+    "name": "Trajectories",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "toggle",
+        "name": "Auto-scale target",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Disable uncharged bow",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Highlight on entity",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Draw block outline",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Shorten line",
+        "value": false
+      },
+      {
+        "t": "desc",
+        "name": "Items"
+      },
+      {
+        "t": "toggle",
+        "name": "Bow",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Egg",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Ender pearl",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Ender pearl (thrown)",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Fireball (enemy)",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Fireball (thrown)",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Snowball",
+        "value": true
+      }
+    ],
+    "id": "trajectories"
+  },
+  {
+    "cls": "R356",
+    "name": "Xray",
+    "category": "render",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": false,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Range",
+        "prefix": "",
+        "suffix": "",
+        "value": 80.0,
+        "min": 4.0,
+        "max": 200.0,
+        "step": 4.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Rate",
+        "prefix": "",
+        "suffix": " seconds",
+        "value": 0.4,
+        "min": 0.2,
+        "max": 5.0,
+        "step": 0.2,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Coal",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Diamond",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Emerald",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Gold",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Iron",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Lapis",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Obsidian",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Redstone",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Spawner",
+        "value": true
+      }
+    ],
+    "id": "xray"
+  },
+  {
+    "cls": "R137",
+    "name": "AntiBot",
+    "category": "world",
+    "enabled": false,
+    "noToggle": false,
+    "hidden": false,
+    "key": 0,
+    "lite": true,
+    "failed": null,
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Delay (spawn)",
+        "prefix": "",
+        "suffix": " seconds",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 10.0,
+        "step": 0.2,
+        "options": null,
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "^ Disable in duels",
+        "value": true
+      },
+      {
+        "t": "slider",
+        "name": "Delay (respawn)",
+        "prefix": "",
+        "suffix": " seconds",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 10.0,
+        "step": 0.2,
+        "options": null,
+        "labels": {
+          "0.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "slider",
+        "name": "Pit spawn",
+        "prefix": "",
+        "suffix": " y",
+        "value": 79.0,
+        "min": 79.0,
+        "max": 140.0,
+        "step": 1.0,
+        "options": null,
+        "labels": {
+          "79.0": "§cDisabled"
+        }
+      },
+      {
+        "t": "toggle",
+        "name": "Filter watchdog",
+        "value": true
+      },
+      {
+        "t": "toggle",
+        "name": "Tab list",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Print world join",
+        "value": false
+      }
+    ],
+    "id": "antiBot"
+  }
+]

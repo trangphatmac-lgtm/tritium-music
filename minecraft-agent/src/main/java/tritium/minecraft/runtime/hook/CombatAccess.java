@@ -12,6 +12,10 @@ import java.util.*;
 public class CombatAccess extends GameReflection {
     final Object mc;
     private TeamChecks teams;
+    private AntiBotRuntime antiBot;
+    public void antiBot(AntiBotRuntime antiBot) { this.antiBot=antiBot; }
+    public boolean bot(Object entity) { return antiBot!=null && antiBot.bot(entity); }
+    public boolean ignored(Object entity) { return antiBot!=null && antiBot.ignored(entity); }
     CombatAccess(Object minecraft) {
         super(minecraft == null ? CombatAccess.class.getClassLoader() : minecraft.getClass().getClassLoader());
         mc = minecraft;
@@ -94,7 +98,7 @@ public class CombatAccess extends GameReflection {
             if (is(b, "block." + name)) return true;
         return is(b, "block.BlockDoor") && b != get(type("init.Blocks"), "iron_door/field_150454_av");
     }
-    public boolean lookingAtBot() { Object e = hitEntity(); return e != null && (!is(e, "entity.player.EntityPlayer") || dead(e) || entityId(e) == -170); }
+    public boolean lookingAtBot() { Object e = hitEntity(); return e != null && (antiBot!=null ? antiBot.bot(e,false) : !is(e, "entity.player.EntityPlayer") || dead(e) || entityId(e) == -170); }
     int entityId(Object e) { return integer(call(e, "getEntityId/func_145782_y")); }
     boolean dead(Object e) { return bool(get(e, "isDead/field_70128_L")); }
     public boolean targetMatches(Object e, boolean playersOnly) { return e != null && (is(e, "entity.player.EntityPlayer") || !playersOnly && mob(e)); }
@@ -152,6 +156,7 @@ public class CombatAccess extends GameReflection {
     }
     public void send(Object manager, Object packet) { call(manager, "sendPacket/func_179290_a", packet); }
     boolean velocityForPlayer(Object packet) { return inWorld() && entityId(player()) == integer(call(packet, "getEntityID/func_149412_c")); }
+    boolean knockback(Object packet) { int y=integer(call(packet,"getMotionY/func_149410_e")); return y>0 && y<4500; }
     public boolean attackPacket(Object packet) { return is(packet, "network.play.client.C02PacketUseEntity") && "ATTACK".equals(String.valueOf(call(packet, "getAction/func_149565_c"))); }
     public boolean placement(Object packet) { return is(packet, "network.play.client.C08PacketPlayerBlockPlacement"); }
     public boolean swordPlacement(Object packet) { return placement(packet) && swordStack(call(packet, "getStack/func_149574_g")); }

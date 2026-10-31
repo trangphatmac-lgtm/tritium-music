@@ -62,16 +62,17 @@ public final class HudInput {
         for (int i = config.modules.length - 1; i >= 0; i--) {
             HudConfig.Module module = config.modules[i];
             boolean sprint = "sprint".equals(module.id) && config.hidden;
-            if (!module.isHud() && !sprint) continue;
+            boolean target = "targetHud".equals(module.id) && config.hidden;
+            if (!module.isHud() && !sprint && !target) continue;
             double[] b = module.bounds(width, height);
             if (mx < b[0] || my < b[1] || mx > b[0] + b[2] || my > b[1] + b[3]) continue;
-            if (wheel != 0 && !sprint) {
+            if (wheel != 0 && !sprint && !target) {
                 module.scale = HudConfig.clamp(module.scale + Math.signum(wheel) * .05, .5, 2);
                 publish(module); return true;
             }
             if (button == 0 && pressed) {
                 dragging = module.id;
-                resizing = !sprint && mx >= b[0] + b[2] - 10 && my >= b[1] + b[3] - 10;
+                resizing = !sprint && !target && mx >= b[0] + b[2] - 10 && my >= b[1] + b[3] - 10;
                 offsetX = resizing ? b[0] : mx - b[0];
                 offsetY = resizing ? b[1] : my - b[1];
                 return true;
@@ -83,6 +84,12 @@ public final class HudInput {
     private void move(HudConfig config, double mx, double my, int width, int height) {
         HudConfig.Module module = config.find(dragging);
         if (module == null) return;
+        if ("targetHud".equals(module.id)) {
+            if (!config.hidden) { dragging = null; return; }
+            module.openB4.offsetX = Math.rint(mx - offsetX - (width - module.textWidth) / 2 + 4);
+            module.openB4.offsetY = Math.rint(my - offsetY - height / 2.0 + 8);
+            return;
+        }
         if ("sprint".equals(module.id)) {
             if (!config.hidden) { dragging = null; return; }
             module.movement.textX = Math.rint(HudConfig.clamp(mx - offsetX, 0, Math.max(0, width - module.textWidth)));
@@ -107,6 +114,7 @@ public final class HudInput {
     public boolean dragging() { return dragging != null; }
     private void publish(HudConfig.Module module) {
         Event event = new Event(); event.action = "layout"; event.id = module.id;
+        if ("targetHud".equals(module.id)) { event.x = module.openB4.offsetX; event.y = module.openB4.offsetY; events.accept(event); return; }
         if ("sprint".equals(module.id)) { event.x = module.movement.textX; event.y = module.movement.textY; events.accept(event); return; }
         event.x = module.x; event.y = module.y; event.width = module.width; event.height = module.height; event.scale = module.scale;
         events.accept(event);

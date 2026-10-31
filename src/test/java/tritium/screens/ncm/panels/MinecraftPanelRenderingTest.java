@@ -54,10 +54,10 @@ class MinecraftPanelRenderingTest {
             settle(panel, 500);
             ScrollPanel grid = (ScrollPanel)panel.getChildren().get(2); var cards = grid.getChildren();
             ScrollPanel tabs = (ScrollPanel)panel.getChildren().getFirst().getChildren().getFirst();
-            assertEquals(7, tabs.getChildren().size());
+            assertEquals(8, tabs.getChildren().size());
             assertEquals(1, tabs.getChildren().stream().filter(tab -> !tab.isHidden()).count());
             assertFalse(tabs.getChildren().get(1).onMouseClicked(10, 10, 0));
-            assertEquals(12, cards.size());
+            assertEquals(48, cards.size());
             assertEquals(7, cards.stream().filter(c -> !c.isHidden()).count()); assertTrue(cards.get(1).getRelativeX() > 0);
             assertEquals(cards.get(0).getRelativeX(),cards.get(2).getRelativeX());
             assertEquals(cards.get(1).getRelativeX(),cards.get(3).getRelativeX());
@@ -164,16 +164,16 @@ class MinecraftPanelRenderingTest {
             panel.setWidth(620); settle(panel,120);
             for (var item : cards) if (!item.isHidden()) assertEquals(0,item.getRelativeX()); save("minecraft-narrow");
             preferences.minecrafthidden().setValue(true); panel.setWidth(RenderSystem.getWidth()); settle(panel,120);
-            assertEquals(7, tabs.getChildren().stream().filter(tab -> !tab.isHidden()).count());
+            assertEquals(8, tabs.getChildren().stream().filter(tab -> !tab.isHidden()).count());
             assertEquals(7,cards.stream().filter(c -> !c.isHidden()).count());
-            for (int categoryIndex = 3; categoryIndex < 7; categoryIndex++) {
+            for (int categoryIndex = 7; categoryIndex < 8; categoryIndex++) {
                 selectCategory(panel, tabs, categoryIndex);
                 assertTrue(cards.stream().allMatch(AbstractWidget::isHidden));
                 assertEquals(0, grid.actualScrollOffset);
             }
             save("minecraft-category-empty");
             selectCategory(panel, tabs, 1);
-            assertEquals(3, cards.stream().filter(c -> !c.isHidden()).count());
+            assertEquals(9, cards.stream().filter(c -> !c.isHidden()).count());
             assertEquals(0, cards.get(7).getRelativeX());
             assertEquals(0, cards.get(7).getRelativeY());
             save("minecraft-category-combat");
@@ -182,7 +182,7 @@ class MinecraftPanelRenderingTest {
             // Use local widget coordinates after scrolling to each newly visible module.
             for (int i=7;i<12;i++) {
                 if (i == 10) {
-                    selectCategory(panel, tabs, 2);
+                    selectCategory(panel, tabs, 3);
                     assertEquals(2, cards.stream().filter(c -> !c.isHidden()).count());
                     assertEquals(0, cards.get(10).getRelativeX());
                     assertEquals(0, grid.actualScrollOffset);
@@ -215,6 +215,38 @@ class MinecraftPanelRenderingTest {
                 }
                 var expanded = combat.getClass().getDeclaredField("expanded"); expanded.setAccessible(true); expanded.setBoolean(combat,false);
                 settle(panel,120);
+            }
+            // New categories expose every imported option, including descriptions,
+            // mode names and the shared Friends/Enemies dependency controls.
+            for (int[] spec : new int[][]{{2,4},{4,10},{5,15},{6,1}}) {
+                selectCategory(panel, tabs, spec[0]);
+                assertEquals(spec[1], cards.stream().filter(c -> !c.isHidden()).count());
+                for (var imported : cards) if (!imported.isHidden()) {
+                    var idField = imported.getClass().getDeclaredField("id"); idField.setAccessible(true);
+                    String id = (String)idField.get(imported);
+                    int extra = id.equals("lagRange") || id.equals("backtrack") ? 2 : id.equals("targetHud") ? 3 : id.equals("radar") ? 1 : 0;
+                    assertEquals(tritium.minecraft.protocol.OpenB4Settings.options(id).size()+extra, imported.getChildren().size(), id);
+                }
+                save("minecraft-category-"+spec[0]);
+            }
+            for (String id : new String[]{"lagRange", "safeWalk", "bedESP", "targetHud", "antiBot", "bridgeAssist", "radar"}) {
+                var definition = tritium.minecraft.protocol.OpenB4Settings.definition(id);
+                selectCategory(panel, tabs, definition.category.ordinal());
+                for (var imported : cards) {
+                    var idField = imported.getClass().getDeclaredField("id"); idField.setAccessible(true);
+                    if (!id.equals(idField.get(imported))) continue;
+                    grid.actualScrollOffset=grid.targetScrollOffset=imported.getRelativeY()+grid.actualScrollOffset;
+                    settle(panel,100);
+                    panel.onMouseClickReceived(imported.getX()+imported.getWidth()/2,imported.getY()+52,0);settle(panel,100);
+                    // Expanding a last-row card increases the scroll range; the
+                    // pre-expansion offset may have been clamped to zero.
+                    grid.actualScrollOffset=grid.targetScrollOffset=imported.getRelativeY()+grid.actualScrollOffset;
+                    settle(panel,100);
+                    assertEquals(imported.getChildren().size(),imported.getChildren().stream().filter(row->!row.isHidden()).count());
+                    save("minecraft-openb4-"+id);
+                    var expanded=imported.getClass().getDeclaredField("expanded");expanded.setAccessible(true);expanded.setBoolean(imported,false);
+                    settle(panel,80);
+                }
             }
             preferences.minecrafthidden().setValue(false); settle(panel,120);
             assertEquals(7,cards.stream().filter(c -> !c.isHidden()).count());

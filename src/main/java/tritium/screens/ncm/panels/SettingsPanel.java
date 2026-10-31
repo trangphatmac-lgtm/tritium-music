@@ -371,13 +371,13 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
-    private static final class HintRow extends AbstractWidget<HintRow> {
+    static final class HintRow extends AbstractWidget<HintRow> {
         private final Supplier<String> textSupplier;
         private String[] lines = new String[0];
         private String measuredText;
         private double measuredWidth = -1;
 
-        private HintRow(String key) {
+        HintRow(String key) {
             this(() -> I18n.text(key));
         }
 
@@ -386,7 +386,7 @@ public class SettingsPanel extends NCMPanel {
             setClickable(false);
         }
 
-        private void measure(double width) {
+        void measure(double width) {
             String text = textSupplier.get();
             if (width != measuredWidth || !text.equals(measuredText)) {
                 // First-use/locale-switched glyphs need advances before caching wrapped lines.

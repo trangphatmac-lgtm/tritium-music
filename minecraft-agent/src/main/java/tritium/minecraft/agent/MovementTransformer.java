@@ -36,20 +36,30 @@ public final class MovementTransformer implements ClassFileTransformer {
                 }
                 if (inputs!=1) throw new IllegalStateException("Expected one movement input update, found "+inputs);
             } else {
-                for (String[] spec:new String[][]{{"handleEntityVelocity","func_147244_a","S12PacketEntityVelocity"},
-                        {"handlePlayerPosLook","func_147258_a","S08PacketPlayerPosLook"},{"handleExplosion","func_147283_a","S27PacketExplosion"}}) {
-                    MethodNode receive=method(node,spec[0],spec[1],"(Lnet/minecraft/network/play/server/"+spec[2]+";)V");int handoffs=0;
-                    for (AbstractInsnNode insn:receive.instructions.toArray()) if (insn instanceof MethodInsnNode) {
-                        MethodInsnNode call=(MethodInsnNode)insn;
+                int intercepted = 0;
+                for (MethodNode receive : node.methods) {
+                    if (!receive.desc.startsWith("(Lnet/minecraft/network/play/server/") || !receive.desc.endsWith(";)V")
+                            || Type.getArgumentTypes(receive.desc).length != 1 || (receive.access & Opcodes.ACC_STATIC) != 0) continue;
+                    AbstractInsnNode handoff = null;
+                    for (AbstractInsnNode insn : receive.instructions.toArray()) if (insn instanceof MethodInsnNode) {
+                        MethodInsnNode call = (MethodInsnNode) insn;
+                        if (BRIDGE.equals(call.owner) && call.name.equals("incoming")) throw new IllegalStateException("Movement hook already installed");
                         if (call.owner.equals("net/minecraft/network/PacketThreadUtil") && (call.name.equals("checkThreadAndEnqueue") || call.name.equals("func_180031_a"))) {
-                            InsnList hook=new InsnList();hook.add(new VarInsnNode(Opcodes.ALOAD,1));
-                            hook.add(new MethodInsnNode(Opcodes.INVOKESTATIC,BRIDGE,"receive","(Ljava/lang/Object;)Z",false));
-                            LabelNode next=new LabelNode();hook.add(new JumpInsnNode(Opcodes.IFEQ,next));hook.add(new InsnNode(Opcodes.RETURN));hook.add(next);
-                            receive.instructions.insert(insn,hook);handoffs++;
+                            if (handoff != null) throw new IllegalStateException("Expected one game-thread handoff in " + receive.name);
+                            handoff = insn;
                         }
                     }
-                    if (handoffs!=1) throw new IllegalStateException("Expected one game-thread handoff in "+spec[0]+", found "+handoffs);
+                    // Velocity/teleport/explosion must retain the game-thread handoff. Other
+                    // handlers (keepalive, disconnect, compression) can be dispatched by the session.
+                    if (handoff == null && (receive.desc.contains("S12PacketEntityVelocity") || receive.desc.contains("S08PacketPlayerPosLook") || receive.desc.contains("S27PacketExplosion")))
+                        throw new IllegalStateException("Expected one game-thread handoff in " + receive.name);
+                    InsnList hook = new InsnList(); hook.add(new VarInsnNode(Opcodes.ALOAD, 0)); hook.add(new VarInsnNode(Opcodes.ALOAD, 1));
+                    hook.add(new MethodInsnNode(Opcodes.INVOKESTATIC, BRIDGE, "incoming", "(Ljava/lang/Object;Ljava/lang/Object;)Z", false));
+                    LabelNode next = new LabelNode(); hook.add(new JumpInsnNode(Opcodes.IFEQ, next)); hook.add(new InsnNode(Opcodes.RETURN)); hook.add(next);
+                    if (handoff == null) receive.instructions.insert(hook); else receive.instructions.insert(handoff, hook);
+                    intercepted++;
                 }
+                if (intercepted < 3) throw new IllegalStateException("Expected one or more incoming packet handlers, found " + intercepted);
             }
             ClassWriter writer=new ClassWriter(reader,ClassWriter.COMPUTE_FRAMES|ClassWriter.COMPUTE_MAXS) {
                 @Override protected String getCommonSuperClass(String a,String b) {

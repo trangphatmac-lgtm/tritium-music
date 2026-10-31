@@ -17,12 +17,29 @@ public final class CombatRuntime implements AutoCloseable {
     private volatile boolean aimOn,clickerOn,blockerOn;
     private volatile boolean singleplayer=true;
     private long lastLeftClick,lastVelocity;
+    private volatile ExtendedCombatRuntime extended;
+    private java.util.function.BiPredicate<Boolean,Integer> mouseGate;
+    private java.util.function.BooleanSupplier scaffolding;
     public CombatRuntime(Object minecraft) { this(new CombatAccess(minecraft),new Random()); }
     CombatRuntime(CombatAccess game,Random random) {
         this.game=game; aim=new AimAssistModule(this,game,random); clicker=new AutoClickerModule(this,game,random); blocker=new AutoBlockModule(this,game,random);
     }
+    public void antiBot(AntiBotRuntime antiBot) { game.antiBot(antiBot); }
     public CombatSettings settings(String id) { return config.find(id).combat; }
+    public void extended(ExtendedCombatRuntime extended) { this.extended=extended; }
+    public void mouseGate(java.util.function.BiPredicate<Boolean,Integer> gate) { mouseGate=gate; }
+    public boolean syntheticMouse(boolean down,int button) { return mouseGate!=null && mouseGate.test(down,button); }
+    public boolean attackDisabled() { return extended!=null && extended.attackDisabled(); }
+    public boolean autoClicking() { return clickerOn && clicker.nextPress()>0; }
+    public void scaffolding(java.util.function.BooleanSupplier supplier) { scaffolding=supplier; }
+    public boolean scaffolding() { return scaffolding!=null && scaffolding.getAsBoolean(); }
+    public boolean sharedPacketQueue() { return extended!=null; }
+    public boolean autoBlockQueueActive() { return extended!=null && extended.autoBlockQueueActive(); }
+    public void openAutoBlockQueue() { if (extended!=null) extended.openAutoBlockQueue(); }
+    public void closeAutoBlockQueue() { if (extended!=null) extended.closeAutoBlockQueue(); }
+    public void discardAutoBlockQueue() { if (extended!=null) extended.discardAutoBlockQueue(); }
     public CombatAccess.Target aimTarget() { return aim.target(); }
+    public float[] pendingRotation() { return aimOn ? aim.pendingRotation() : null; }
     public boolean singleplayer() { return singleplayer; }
     public boolean blockerActive() { return blockerOn && enabled("autoBlock"); }
     public boolean enabled(String id) { HudConfig c=config; return c!=null && c.hidden && c.find(id).enabled; }
@@ -57,7 +74,7 @@ public final class CombatRuntime implements AutoCloseable {
     public boolean clicking() { return enabled("autoClicker") && settings("autoClicker").on("leftClick") ? game.mouse(0) : System.currentTimeMillis()-lastLeftClick<220; }
     public boolean send(Object manager,Object packet) { return blockerOn && enabled("autoBlock") && blocker.send(manager,packet); }
     public void velocity(Object packet) {
-        if (!game.velocityForPlayer(packet)) return;
+        if (!game.velocityForPlayer(packet) || !game.knockback(packet)) return;
         long now=System.currentTimeMillis();
         if (blockerOn) blocker.knockback(); if (clickerOn) clicker.knockback(now,lastVelocity); lastVelocity=now;
     }

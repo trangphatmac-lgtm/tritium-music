@@ -18,6 +18,7 @@ public final class AimAssistModule {
     public AimAssistModule(CombatRuntime runtime, CombatAccess game, Random random) { this.runtime=runtime; this.game=game; this.random=random; }
     private CombatSettings settings() { return runtime.settings("aimAssist"); }
     public CombatAccess.Target target() { return target; }
+    public float[] pendingRotation() { return silentRotation == null ? null : silentRotation.clone(); }
     public void update() {
         if (!initialized) { lastYaw=game.yaw(); lastPitch=game.pitch(); initialized=true; }
         if (!settings().on("silentAim")) {
@@ -48,7 +49,8 @@ public final class AimAssistModule {
         }
         target=null; double best=Double.POSITIVE_INFINITY, range=c.number("range");
         for (CombatAccess.Target e:game.targets()) {
-            if (!c.on("aimInvis") && e.invisible || e.distanceSq>range*range || e.angle>c.number("fov")/2) continue;
+            if (!c.on("aimInvis") && e.invisible || game.ignored(e.entity) || e.distanceSq>range*range || e.angle>c.number("fov")/2) continue;
+            if (e.player && game.bot(e.entity)) continue;
             if (e.player ? c.on("ignoreTeammates") && e.teammate : !c.on("aimMobs") || !e.mob || e.teammate) continue;
             if (!c.on("aimThroughBlocks") && !game.visible(e) || e.angle>=best) continue;
             best=e.angle; target=e;

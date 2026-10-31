@@ -15,6 +15,10 @@ public final class MinecraftPreferences {
 
     void setChangeCallback(Runnable callback) { changed = callback; }
     public synchronized HudConfig snapshot() { return JSON.fromJson(JSON.toJson(config), HudConfig.class); }
+    public synchronized boolean offscreenRadarEnabled() {
+        var radar = config.find("radar");
+        return radar.enabled && radar.openB4.offscreenRendering;
+    }
     public synchronized void update(Consumer<HudConfig> edit) {
         edit.accept(config); config.normalize(); config.revision++; changed.run();
     }
@@ -47,6 +51,7 @@ public final class MinecraftPreferences {
     public void resetLayout() {
         update(c -> { for (var defaults : HudConfig.defaults()) {
             if ("sprint".equals(defaults.id)) { c.find("sprint").movement.textX = 5; c.find("sprint").movement.textY = 5; }
+            if ("targetHud".equals(defaults.id)) { c.find("targetHud").openB4.offsetX = 70; c.find("targetHud").openB4.offsetY = 40; }
             if (!defaults.isHud()) continue;
             var m = c.find(defaults.id); m.x = defaults.x; m.y = defaults.y;
             m.width = defaults.width; m.height = defaults.height; m.scale = 1;
@@ -59,6 +64,9 @@ public final class MinecraftPreferences {
             if ("toggle".equals(event.action)) m.enabled = event.enabled;
             if ("layout".equals(event.action) && "sprint".equals(m.id)) {
                 m.movement.textX = event.x; m.movement.textY = event.y;
+            }
+            if ("layout".equals(event.action) && "targetHud".equals(m.id)) {
+                m.openB4.offsetX = event.x; m.openB4.offsetY = event.y;
             }
             if ("layout".equals(event.action) && m.isHud()) {
                 m.x = event.x; m.y = event.y; m.width = event.width; m.height = event.height; m.scale = event.scale;

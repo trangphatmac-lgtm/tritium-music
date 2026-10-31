@@ -16,6 +16,13 @@ class CombatAccessTest {
         assertFalse(access.blocking()); mc.field_71439_g.using=true; assertTrue(access.blocking());
         access.rotation(42,13); assertEquals(42,access.yaw()); assertEquals(13,access.pitch());
     }
+    @Test void onlyPositiveSub4500VelocityIsKnockbackAfterPacketFilters() {
+        CombatAccess access = new CombatAccess(new Mc());
+        Velocity packet = new Velocity();
+        for (int y : new int[]{-100,0,4500,8000}) { packet.y=y; assertFalse(access.knockback(packet)); }
+        for (int y : new int[]{1,3200,4499}) { packet.y=y; assertTrue(access.knockback(packet)); }
+    }
+    static class Velocity { int y; int getMotionY() { return y; } }
     static class Mc { Player thePlayer=new Player(); }
     static class Player { boolean using; Stack item=new Stack(); boolean isBlocking(){return true;} boolean isUsingItem(){return using;} Stack getItemInUse(){return item;} }
     static class Stack { String action="BLOCK"; String getItemUseAction(){return action;} }

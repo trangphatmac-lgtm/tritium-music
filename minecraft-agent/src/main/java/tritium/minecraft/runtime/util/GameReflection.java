@@ -54,6 +54,8 @@ public class GameReflection {
             if (args[i] == null && t.isPrimitive()) return false;
             if (t == int.class) t = Integer.class; if (t == float.class) t = Float.class;
             if (t == double.class) t = Double.class; if (t == boolean.class) t = Boolean.class;
+            if (t == long.class) t = Long.class; if (t == char.class) t = Character.class;
+            if (t == short.class) t = Short.class; if (t == byte.class) t = Byte.class;
             if (args[i] != null && !t.isInstance(args[i])) return false;
         }
         return true;

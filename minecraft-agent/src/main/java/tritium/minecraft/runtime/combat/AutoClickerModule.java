@@ -37,6 +37,7 @@ public final class AutoClickerModule {
     public void render(long now) {
         CombatSettings c=settings();
         if (game.focused()) {
+            if (runtime.scaffolding() || runtime.attackDisabled()) { pause(); return; }
             boolean weapon=game.weapon();
             if (!weapon && game.eating()) { pause(); return; }
             int button=c.on("leftClick") && game.mouse(0) ? 0 : c.on("rightClick") && game.mouse(1) ? 1 : -1;
@@ -79,8 +80,8 @@ public final class AutoClickerModule {
             }
         } else schedule(false,now);
     }
-    private boolean press(int button) { if (!game.mouseEvent(button,true)) return false; owned[button]=true; game.key(button,true,true); return true; }
-    private void release(int button) { game.mouseEvent(button,false); game.key(button,false,false); owned[button]=true; }
+    private boolean press(int button) { if (runtime.syntheticMouse(true,button) || !game.mouseEvent(button,true)) return false; owned[button]=true; game.key(button,true,true); return true; }
+    private void release(int button) { runtime.syntheticMouse(false,button); game.mouseEvent(button,false); game.key(button,false,false); owned[button]=true; }
     private void pause() { releaseOwned(); paused=true; inventoryClick=false; }
     private void releaseOwned() { for (int i=0;i<2;i++) if (owned[i]) { owned[i]=false; game.mouseEvent(i,false); game.restoreKey(i); } blockHitDown=false; breaking=false; }
     public void reset() { releaseOwned(); nextRelease=nextPress=0; paused=false; blockHitAcc=100; inventoryClick=false; activeButton=-1; }

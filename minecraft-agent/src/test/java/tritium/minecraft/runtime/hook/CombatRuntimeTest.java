@@ -20,7 +20,7 @@ class CombatRuntimeTest {
         assertEquals(17,CombatSettings.options("autoBlock").size());
         assertEquals(11,CombatSettings.options("autoClicker").size());
         HudConfig c=new HudConfig(); c.modules=new HudConfig.Module[]{c.find("musicInfo")}; c.normalize();
-        assertEquals(10,c.modules.length); assertFalse(c.hidden); assertFalse(c.find("aimAssist").enabled);
+        assertEquals(46,c.modules.length); assertFalse(c.hidden); assertFalse(c.find("aimAssist").enabled);
         assertEquals(50,c.find("aimAssist").combat.number("speed"));
         assertEquals(6.1,CombatSettings.options("autoBlock").get(4).max);
         CombatSettings click=c.find("autoClicker").combat;

@@ -40,6 +40,12 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     public Status status() { return status; }
     public boolean connected() { return connected; }
     public boolean editing() { return editing; }
+    public RadarFrame radarFrame() {
+        Session s = session;
+        if (s == null || !connected || s.stopping || !DesktopAppState.preferences().minecrafthidden().getValue()
+                || !DesktopAppState.preferences().minecraft().offscreenRadarEnabled()) return null;
+        return s.radar.current(System.nanoTime());
+    }
     public boolean settingsControlsHidden() { return settingsControlsHidden; }
     public void openAndInject() {
         NCMScreen.getInstance().setCurrentPanel(new MinecraftPanel());
@@ -193,6 +199,9 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                     finish(s, clean && s.error.isEmpty() ? "" : clean ? s.error : "显示已停止，Hook 撤销未完成。" + f.text()); return;
                 }
                 case Wire.HEARTBEAT -> { }
+                case Wire.RADAR -> {
+                    if (session == s && !s.stopping) s.radar.accept(JSON.fromJson(f.text(), RadarFrame.class), System.nanoTime());
+                }
                 default -> throw new IOException("Unexpected agent message: " + f.type);
             }
         }
@@ -360,6 +369,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     private static final class Session {
         final long id, created = System.nanoTime(); final String token;
         final ArrayBlockingQueue<Wire.Frame> commands = new ArrayBlockingQueue<>(64);
+        final MinecraftRadarFeed radar = new MinecraftRadarFeed();
         volatile Candidate target; volatile ServerSocket server; volatile Socket socket; volatile Wire wire;
         volatile long lastReceive = System.nanoTime(), stopAt; long sequence;
         volatile boolean stopping, ready; volatile String error = "";

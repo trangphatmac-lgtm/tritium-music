@@ -1,0 +1,84 @@
+[
+  {
+    "id": "bridgeAssist",
+    "name": "Bridge Assist",
+    "category": "player",
+    "settings": [
+      {
+        "t": "slider",
+        "name": "Edge offset",
+        "prefix": "",
+        "suffix": " block",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 0.3,
+        "step": 0.01,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Unsneak delay",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 50.0,
+        "min": 50.0,
+        "max": 300.0,
+        "step": 5.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "slider",
+        "name": "Sneak on jump",
+        "prefix": "",
+        "suffix": "ms",
+        "value": 0.0,
+        "min": 0.0,
+        "max": 500.0,
+        "step": 5.0,
+        "options": null,
+        "labels": null
+      },
+      {
+        "t": "toggle",
+        "name": "Avoid double sneaking",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Pre place",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Disable hotbar scrolling",
+        "value": false
+      },
+      {
+        "t": "desc",
+        "name": "Conditions"
+      },
+      {
+        "t": "toggle",
+        "name": "Sneak key pressed",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Holding blocks",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Looking down",
+        "value": false
+      },
+      {
+        "t": "toggle",
+        "name": "Not moving forward",
+        "value": false
+      }
+    ]
+  }
+]

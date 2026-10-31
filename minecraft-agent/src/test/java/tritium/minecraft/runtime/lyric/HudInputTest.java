@@ -105,4 +105,20 @@ class HudInputTest {
         keys[24] = true; assertTrue(input.keys(c, true, keys));
         assertEquals(2, events.size());
     }
+    @Test void targetHudDragPersistsCenterOffsetsAndNeverResizes() {
+        List<PlaybackState.Event> events = new ArrayList<PlaybackState.Event>();
+        HudInput input = new HudInput(events::add); HudConfig c = new HudConfig(); c.hidden = true;
+        HudConfig.Module hud = c.find("targetHud"); hud.textWidth = 180; hud.textHeight = 37;
+        input.edit(true); double[] before = hud.bounds(1000,700);
+        assertTrue(input.mouse(c,true,before[0]+20,before[1]+10,0,true,0,1000,700));
+        input.mouse(c,true,before[0]+60,before[1]-20,0,false,0,1000,700);
+        assertEquals(110,hud.openB4.offsetX); assertEquals(10,hud.openB4.offsetY);
+        assertEquals(1,events.size()); assertEquals("targetHud",events.get(0).id);
+        assertEquals(110,events.get(0).x); assertEquals(10,events.get(0).y);
+        double[] moved = hud.bounds(1000,700);
+        input.mouse(c,true,moved[0]+5,moved[1]+5,-1,false,1,1000,700);
+        assertEquals(1,hud.scale); assertEquals(180,hud.textWidth);
+        c.hidden=false; assertFalse(input.mouse(c,true,moved[0]+5,moved[1]+5,0,true,0,1000,700));
+    }
+
 }
