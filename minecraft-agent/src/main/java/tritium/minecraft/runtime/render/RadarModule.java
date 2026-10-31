@@ -22,7 +22,9 @@ public class RadarModule extends RenderModule {
     @Override public void disable() { hideRemote(); }
 
     @Override public void overlay(float partialTicks) {
-        if (!enabled || !g.overlay()) { hideRemote(); return; }
+        // Switching focus to Tritium can open Minecraft's pause menu. Only local
+        // drawing follows the game's HUD visibility; remote frames need a world.
+        if (!enabled || !(s.offscreenRendering ? g.inWorld() : g.overlay())) { hideRemote(); return; }
         RadarFrame frame = snapshot();
         if (s.offscreenRendering) {
             remoteVisible = true;

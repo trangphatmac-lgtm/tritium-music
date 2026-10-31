@@ -31,19 +31,34 @@ class RadarModuleTest {
         assertEquals(1, radar.paints);
     }
 
-    @Test void destinationChangesAndOverlaySuppressionClearTheDesktopImmediately() {
+    @Test void destinationChangesAndWorldUnloadClearTheDesktopImmediately() {
         Game game = new Game(); Radar radar = new Radar(game);
         OpenB4Settings settings = new HudConfig().find("radar").openB4; settings.offscreenRendering = true;
         List<RadarFrame> remote = new ArrayList<RadarFrame>(); radar.frames(remote::add);
         radar.configure(settings, true); radar.overlay(0); assertTrue(last(remote).visible);
-        game.visible = false; radar.overlay(0); assertFalse(last(remote).visible);
+        game.worldPresent = false; radar.overlay(0); assertFalse(last(remote).visible);
         int count = remote.size(); radar.overlay(0); assertEquals(count, remote.size());
-        game.visible = true; radar.overlay(0); assertTrue(last(remote).visible);
+        game.worldPresent = true; radar.overlay(0); assertTrue(last(remote).visible);
         settings.offscreenRendering = false; radar.configure(settings, true); assertFalse(last(remote).visible);
         radar.overlay(0); assertEquals(1, radar.paints);
         settings.offscreenRendering = true; radar.configure(settings, true); radar.overlay(0);
         radar.configure(settings, false); assertFalse(last(remote).visible);
         radar.overlay(0); assertEquals(1, radar.paints);
+    }
+
+    @Test void switchingToTheMusicWindowMustNotHideOffscreenRadarWhenMinecraftOpensAMenu() {
+        Game game = new Game(); Radar radar = new Radar(game);
+        OpenB4Settings settings = new HudConfig().find("radar").openB4; settings.offscreenRendering = true;
+        List<RadarFrame> remote = new ArrayList<RadarFrame>(); radar.frames(remote::add);
+        radar.configure(settings, true); radar.overlay(0);
+        game.visible = false; // Pause/inventory/debug UI suppresses the local HUD, but the world still exists.
+        game.self.yaw = 90; radar.overlay(0);
+        assertTrue(last(remote).visible, "Switching focus to Tritium must keep sending the radar");
+        assertEquals(50.5, last(remote).points[0], .00001);
+        assertEquals(0, radar.paints);
+        settings.offscreenRendering = false; radar.configure(settings, true); radar.overlay(0);
+        assertFalse(last(remote).visible); assertEquals(0, radar.paints, "Local HUD visibility remains unchanged");
+        game.visible = true; radar.overlay(0); assertEquals(1, radar.paints);
     }
 
     private static RadarFrame last(List<RadarFrame> frames) { return frames.get(frames.size() - 1); }
@@ -57,13 +72,14 @@ class RadarModuleTest {
         Player(double x, double z) { this.x = x; this.z = z; }
     }
     static class Game extends RenderAccess {
-        Player self = new Player(0, 0); boolean visible = true; List<Player> players = new ArrayList<Player>();
+        Player self = new Player(0, 0); boolean visible = true, worldPresent = true; List<Player> players = new ArrayList<Player>();
         Game() {
             super(null); players.add(self); players.add(new Player(0, 5)); players.add(new Player(10, 0));
             Player dead = new Player(1, 0); dead.death = 1; players.add(dead);
             Player bot = new Player(2, 0); bot.bot = true; players.add(bot); players.add(new Player(20, 0));
         }
-        @Override public boolean overlay() { return visible; }
+        @Override public boolean overlay() { return worldPresent && visible; }
+        @Override public boolean inWorld() { return worldPresent; }
         @Override public Object player() { return self; }
         @Override public List<?> players() { return players; }
         @Override public int scale() { return 2; }

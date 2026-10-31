@@ -95,7 +95,9 @@ Tritium draws the Radar above every page of its main window. It uniformly fits
 the game's viewport into the desktop viewport (centering the unused margins),
 preserving shape and position across window resizing, GUI scale and HiDPI changes.
 Minecraft remains the source of player positions, yaw and AntiBot decisions.
-The original HUD visibility rules still apply, including debug/menu suppression.
+Local rendering retains the original HUD visibility rules. Offscreen rendering
+continues while a world is loaded, including when switching focus to Tritium opens
+Minecraft's pause menu, or when inventory/debug UI hides the local HUD.
 Switching back, disabling Radar/Hidden, changing world and UnInject clear the
 desktop image; a disconnected or stale feed also disappears. It does not capture
 Minecraft screenshots or create a second native window.

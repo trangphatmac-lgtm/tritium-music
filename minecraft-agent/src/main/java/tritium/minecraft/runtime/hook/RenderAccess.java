@@ -63,8 +63,9 @@ public class RenderAccess extends GameReflection {
     public Object pos(int x,int y,int z) { return make("util.BlockPos",x,y,z); }
     public Object pos(double x,double y,double z) { return pos((int)Math.floor(x),(int)Math.floor(y),(int)Math.floor(z)); }
     public int coord(Object pos,int axis) { return i(invoke(pos,new String[]{"getX","getY","getZ"}[axis])); }
-    public Object state(Object pos) { return invoke(world(),"getBlockState",pos); }
-    public Object blockAt(Object pos) { return invoke(state(pos),"getBlock"); }
+    // Keep a distinct name: state(Object) would capture zero-argument GL calls such as state("pushMatrix").
+    public Object blockState(Object pos) { return invoke(world(),"getBlockState",pos); }
+    public Object blockAt(Object pos) { return invoke(blockState(pos),"getBlock"); }
     public Object vec(double x,double y,double z) { return make("util.Vec3",x,y,z); }
     public double[] vector(Object vec) { return new double[]{value(vec,"xCoord"),value(vec,"yCoord"),value(vec,"zCoord")}; }
     public Object box(double a,double c,double d,double e,double f,double h) { return make("util.AxisAlignedBB",a,c,d,e,f,h); }
