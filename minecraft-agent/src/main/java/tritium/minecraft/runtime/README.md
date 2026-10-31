@@ -1,6 +1,6 @@
 # Inject runtime layout
 
-### a fully legit Minecraft injection for music player (see ./lyric<!-- (ignore other folder) -->) 
+### a 100% legit Minecraft injection for music player (see ./lyric (ignore other folder)
 
 
 The runtime is Java 8 and is loaded beneath the game's class loader. It must not

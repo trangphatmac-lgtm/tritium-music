@@ -1,0 +1,602 @@
+{
+  "modelSha256": "a5537bea1958bd27202cba2fdf3754858cb788e0bc18366c6ecc9894b05236d1",
+  "oracleMnnVersion": "3.6.2",
+  "caseCount": 118,
+  "maxAbsAll32": 3.62396240234375E-5,
+  "maxAbsEffective19": 3.62396240234375E-5,
+  "rmseAll32": 1.930324820283612E-6,
+  "worstCase": "random_10",
+  "worstIndex": 3,
+  "cases": [
+    {
+      "name": "real_apk_override_calm",
+      "maxAbsAll32": 1.1641532182693481E-10,
+      "maxAbsEffective19": 1.1641532182693481E-10
+    },
+    {
+      "name": "real_without_override_energetic",
+      "maxAbsAll32": 9.5367431640625E-7,
+      "maxAbsEffective19": 9.5367431640625E-7
+    },
+    {
+      "name": "vocabulary_0_0_zero_base",
+      "maxAbsAll32": 0.0,
+      "maxAbsEffective19": 0.0
+    },
+    {
+      "name": "vocabulary_0_1_zero_base",
+      "maxAbsAll32": 0.0,
+      "maxAbsEffective19": 0.0
+    },
+    {
+      "name": "vocabulary_0_2_zero_base",
+      "maxAbsAll32": 0.0,
+      "maxAbsEffective19": 0.0
+    },
+    {
+      "name": "vocabulary_0_3_zero_base",
+      "maxAbsAll32": 0.0,
+      "maxAbsEffective19": 0.0
+    },
+    {
+      "name": "vocabulary_1_0_zero_base",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "vocabulary_1_1_zero_base",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "vocabulary_1_2_zero_base",
+      "maxAbsAll32": 9.5367431640625E-7,
+      "maxAbsEffective19": 9.5367431640625E-7
+    },
+    {
+      "name": "vocabulary_1_3_zero_base",
+      "maxAbsAll32": 9.5367431640625E-7,
+      "maxAbsEffective19": 9.5367431640625E-7
+    },
+    {
+      "name": "vocabulary_2_0_zero_base",
+      "maxAbsAll32": 1.3527460396289825E-7,
+      "maxAbsEffective19": 1.3527460396289825E-7
+    },
+    {
+      "name": "vocabulary_2_1_zero_base",
+      "maxAbsAll32": 2.86102294921875E-6,
+      "maxAbsEffective19": 2.86102294921875E-6
+    },
+    {
+      "name": "vocabulary_2_2_zero_base",
+      "maxAbsAll32": 1.33514404296875E-5,
+      "maxAbsEffective19": 1.33514404296875E-5
+    },
+    {
+      "name": "vocabulary_2_3_zero_base",
+      "maxAbsAll32": 3.814697265625E-6,
+      "maxAbsEffective19": 3.814697265625E-6
+    },
+    {
+      "name": "vocabulary_3_0_zero_base",
+      "maxAbsAll32": 3.337860107421875E-6,
+      "maxAbsEffective19": 3.337860107421875E-6
+    },
+    {
+      "name": "vocabulary_3_1_zero_base",
+      "maxAbsAll32": 1.621246337890625E-5,
+      "maxAbsEffective19": 1.621246337890625E-5
+    },
+    {
+      "name": "vocabulary_3_2_zero_base",
+      "maxAbsAll32": 1.1444091796875E-5,
+      "maxAbsEffective19": 1.1444091796875E-5
+    },
+    {
+      "name": "vocabulary_3_3_zero_base",
+      "maxAbsAll32": 6.67572021484375E-6,
+      "maxAbsEffective19": 6.67572021484375E-6
+    },
+    {
+      "name": "vocabulary_4_0_zero_base",
+      "maxAbsAll32": 7.3909759521484375E-6,
+      "maxAbsEffective19": 7.3909759521484375E-6
+    },
+    {
+      "name": "vocabulary_4_1_zero_base",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "vocabulary_4_2_zero_base",
+      "maxAbsAll32": 1.049041748046875E-5,
+      "maxAbsEffective19": 1.049041748046875E-5
+    },
+    {
+      "name": "vocabulary_4_3_zero_base",
+      "maxAbsAll32": 2.86102294921875E-6,
+      "maxAbsEffective19": 2.86102294921875E-6
+    },
+    {
+      "name": "vocabulary_5_0_zero_base",
+      "maxAbsAll32": 1.430511474609375E-5,
+      "maxAbsEffective19": 1.430511474609375E-5
+    },
+    {
+      "name": "vocabulary_5_1_zero_base",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "vocabulary_5_2_zero_base",
+      "maxAbsAll32": 3.814697265625E-6,
+      "maxAbsEffective19": 3.814697265625E-6
+    },
+    {
+      "name": "vocabulary_5_3_zero_base",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "vocabulary_6_0_zero_base",
+      "maxAbsAll32": 1.1920928955078125E-6,
+      "maxAbsEffective19": 1.1920928955078125E-6
+    },
+    {
+      "name": "vocabulary_6_1_zero_base",
+      "maxAbsAll32": 1.239776611328125E-5,
+      "maxAbsEffective19": 1.239776611328125E-5
+    },
+    {
+      "name": "vocabulary_6_2_zero_base",
+      "maxAbsAll32": 6.67572021484375E-6,
+      "maxAbsEffective19": 6.67572021484375E-6
+    },
+    {
+      "name": "vocabulary_6_3_zero_base",
+      "maxAbsAll32": 2.86102294921875E-6,
+      "maxAbsEffective19": 2.86102294921875E-6
+    },
+    {
+      "name": "vocabulary_7_0_zero_base",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "vocabulary_7_1_zero_base",
+      "maxAbsAll32": 9.5367431640625E-6,
+      "maxAbsEffective19": 9.5367431640625E-6
+    },
+    {
+      "name": "vocabulary_7_2_zero_base",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "vocabulary_7_3_zero_base",
+      "maxAbsAll32": 4.76837158203125E-6,
+      "maxAbsEffective19": 4.76837158203125E-6
+    },
+    {
+      "name": "vocabulary_8_0_zero_base",
+      "maxAbsAll32": 1.9073486328125E-5,
+      "maxAbsEffective19": 1.9073486328125E-5
+    },
+    {
+      "name": "vocabulary_8_1_zero_base",
+      "maxAbsAll32": 2.288818359375E-5,
+      "maxAbsEffective19": 2.288818359375E-5
+    },
+    {
+      "name": "vocabulary_8_2_zero_base",
+      "maxAbsAll32": 2.86102294921875E-6,
+      "maxAbsEffective19": 2.86102294921875E-6
+    },
+    {
+      "name": "vocabulary_8_3_zero_base",
+      "maxAbsAll32": 6.4373016357421875E-6,
+      "maxAbsEffective19": 6.4373016357421875E-6
+    },
+    {
+      "name": "vocabulary_9_0_zero_base",
+      "maxAbsAll32": 7.62939453125E-6,
+      "maxAbsEffective19": 7.62939453125E-6
+    },
+    {
+      "name": "vocabulary_9_1_zero_base",
+      "maxAbsAll32": 1.6689300537109375E-6,
+      "maxAbsEffective19": 1.6689300537109375E-6
+    },
+    {
+      "name": "vocabulary_9_2_zero_base",
+      "maxAbsAll32": 9.5367431640625E-7,
+      "maxAbsEffective19": 9.5367431640625E-7
+    },
+    {
+      "name": "vocabulary_9_3_zero_base",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "vocabulary_10_0_zero_base",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "vocabulary_10_1_zero_base",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "vocabulary_10_2_zero_base",
+      "maxAbsAll32": 2.384185791015625E-7,
+      "maxAbsEffective19": 2.384185791015625E-7
+    },
+    {
+      "name": "vocabulary_10_3_zero_base",
+      "maxAbsAll32": 2.86102294921875E-6,
+      "maxAbsEffective19": 2.86102294921875E-6
+    },
+    {
+      "name": "vocabulary_11_0_zero_base",
+      "maxAbsAll32": 9.5367431640625E-7,
+      "maxAbsEffective19": 9.5367431640625E-7
+    },
+    {
+      "name": "vocabulary_11_1_zero_base",
+      "maxAbsAll32": 9.5367431640625E-6,
+      "maxAbsEffective19": 9.5367431640625E-6
+    },
+    {
+      "name": "vocabulary_11_2_zero_base",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "vocabulary_11_3_zero_base",
+      "maxAbsAll32": 7.62939453125E-6,
+      "maxAbsEffective19": 7.62939453125E-6
+    },
+    {
+      "name": "vocabulary_12_0_zero_base",
+      "maxAbsAll32": 1.2755393981933594E-5,
+      "maxAbsEffective19": 1.2755393981933594E-5
+    },
+    {
+      "name": "vocabulary_12_1_zero_base",
+      "maxAbsAll32": 4.76837158203125E-6,
+      "maxAbsEffective19": 4.76837158203125E-6
+    },
+    {
+      "name": "vocabulary_12_2_zero_base",
+      "maxAbsAll32": 1.0609626770019531E-5,
+      "maxAbsEffective19": 1.0609626770019531E-5
+    },
+    {
+      "name": "vocabulary_12_3_zero_base",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "vocabulary_13_0_zero_base",
+      "maxAbsAll32": 7.62939453125E-6,
+      "maxAbsEffective19": 7.62939453125E-6
+    },
+    {
+      "name": "vocabulary_13_1_zero_base",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "vocabulary_13_2_zero_base",
+      "maxAbsAll32": 0.0,
+      "maxAbsEffective19": 0.0
+    },
+    {
+      "name": "vocabulary_13_3_zero_base",
+      "maxAbsAll32": 9.5367431640625E-7,
+      "maxAbsEffective19": 9.5367431640625E-7
+    },
+    {
+      "name": "vocabulary_14_0_zero_base",
+      "maxAbsAll32": 6.67572021484375E-6,
+      "maxAbsEffective19": 6.67572021484375E-6
+    },
+    {
+      "name": "vocabulary_14_1_zero_base",
+      "maxAbsAll32": 3.814697265625E-6,
+      "maxAbsEffective19": 3.814697265625E-6
+    },
+    {
+      "name": "vocabulary_14_2_zero_base",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "vocabulary_14_3_zero_base",
+      "maxAbsAll32": 2.765655517578125E-5,
+      "maxAbsEffective19": 2.765655517578125E-5
+    },
+    {
+      "name": "vocabulary_15_0_zero_base",
+      "maxAbsAll32": 1.8924474716186523E-6,
+      "maxAbsEffective19": 1.8924474716186523E-6
+    },
+    {
+      "name": "vocabulary_15_1_zero_base",
+      "maxAbsAll32": 3.337860107421875E-6,
+      "maxAbsEffective19": 3.337860107421875E-6
+    },
+    {
+      "name": "vocabulary_15_2_zero_base",
+      "maxAbsAll32": 9.5367431640625E-7,
+      "maxAbsEffective19": 9.5367431640625E-7
+    },
+    {
+      "name": "vocabulary_15_3_zero_base",
+      "maxAbsAll32": 1.4603137969970703E-6,
+      "maxAbsEffective19": 1.4603137969970703E-6
+    },
+    {
+      "name": "random_0",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "random_1",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "random_2",
+      "maxAbsAll32": 1.52587890625E-5,
+      "maxAbsEffective19": 1.52587890625E-5
+    },
+    {
+      "name": "random_3",
+      "maxAbsAll32": 2.1457672119140625E-5,
+      "maxAbsEffective19": 2.1457672119140625E-5
+    },
+    {
+      "name": "random_4",
+      "maxAbsAll32": 2.384185791015625E-7,
+      "maxAbsEffective19": 2.384185791015625E-7
+    },
+    {
+      "name": "random_5",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "random_6",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "random_7",
+      "maxAbsAll32": 1.71661376953125E-5,
+      "maxAbsEffective19": 1.71661376953125E-5
+    },
+    {
+      "name": "random_8",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "random_9",
+      "maxAbsAll32": 2.1457672119140625E-6,
+      "maxAbsEffective19": 2.1457672119140625E-6
+    },
+    {
+      "name": "random_10",
+      "maxAbsAll32": 3.62396240234375E-5,
+      "maxAbsEffective19": 3.62396240234375E-5
+    },
+    {
+      "name": "random_11",
+      "maxAbsAll32": 7.62939453125E-6,
+      "maxAbsEffective19": 7.62939453125E-6
+    },
+    {
+      "name": "random_12",
+      "maxAbsAll32": 5.245208740234375E-6,
+      "maxAbsEffective19": 5.245208740234375E-6
+    },
+    {
+      "name": "random_13",
+      "maxAbsAll32": 1.7404556274414062E-5,
+      "maxAbsEffective19": 1.7404556274414062E-5
+    },
+    {
+      "name": "random_14",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "random_15",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "random_16",
+      "maxAbsAll32": 2.86102294921875E-6,
+      "maxAbsEffective19": 2.86102294921875E-6
+    },
+    {
+      "name": "random_17",
+      "maxAbsAll32": 5.7220458984375E-6,
+      "maxAbsEffective19": 5.7220458984375E-6
+    },
+    {
+      "name": "random_18",
+      "maxAbsAll32": 3.4332275390625E-5,
+      "maxAbsEffective19": 3.4332275390625E-5
+    },
+    {
+      "name": "random_19",
+      "maxAbsAll32": 1.52587890625E-5,
+      "maxAbsEffective19": 1.52587890625E-5
+    },
+    {
+      "name": "random_20",
+      "maxAbsAll32": 7.62939453125E-6,
+      "maxAbsEffective19": 7.62939453125E-6
+    },
+    {
+      "name": "random_21",
+      "maxAbsAll32": 7.62939453125E-6,
+      "maxAbsEffective19": 7.62939453125E-6
+    },
+    {
+      "name": "random_22",
+      "maxAbsAll32": 2.6702880859375E-5,
+      "maxAbsEffective19": 2.6702880859375E-5
+    },
+    {
+      "name": "random_23",
+      "maxAbsAll32": 1.1444091796875E-5,
+      "maxAbsEffective19": 1.1444091796875E-5
+    },
+    {
+      "name": "random_24",
+      "maxAbsAll32": 7.62939453125E-6,
+      "maxAbsEffective19": 7.62939453125E-6
+    },
+    {
+      "name": "random_25",
+      "maxAbsAll32": 1.71661376953125E-5,
+      "maxAbsEffective19": 1.71661376953125E-5
+    },
+    {
+      "name": "random_26",
+      "maxAbsAll32": 7.62939453125E-6,
+      "maxAbsEffective19": 7.62939453125E-6
+    },
+    {
+      "name": "random_27",
+      "maxAbsAll32": 1.9073486328125E-6,
+      "maxAbsEffective19": 1.9073486328125E-6
+    },
+    {
+      "name": "random_28",
+      "maxAbsAll32": 1.430511474609375E-5,
+      "maxAbsEffective19": 1.430511474609375E-5
+    },
+    {
+      "name": "random_29",
+      "maxAbsAll32": 1.33514404296875E-5,
+      "maxAbsEffective19": 1.33514404296875E-5
+    },
+    {
+      "name": "random_30",
+      "maxAbsAll32": 9.5367431640625E-6,
+      "maxAbsEffective19": 9.5367431640625E-6
+    },
+    {
+      "name": "random_31",
+      "maxAbsAll32": 1.33514404296875E-5,
+      "maxAbsEffective19": 1.33514404296875E-5
+    },
+    {
+      "name": "boundary_zero_features_min",
+      "maxAbsAll32": 1.049041748046875E-5,
+      "maxAbsEffective19": 1.049041748046875E-5
+    },
+    {
+      "name": "boundary_zero_features_max",
+      "maxAbsAll32": 3.814697265625E-6,
+      "maxAbsEffective19": 3.814697265625E-6
+    },
+    {
+      "name": "boundary_zero_features_below_min",
+      "maxAbsAll32": 1.049041748046875E-5,
+      "maxAbsEffective19": 1.049041748046875E-5
+    },
+    {
+      "name": "boundary_zero_features_above_max",
+      "maxAbsAll32": 3.814697265625E-6,
+      "maxAbsEffective19": 3.814697265625E-6
+    },
+    {
+      "name": "boundary_mean_features_min",
+      "maxAbsAll32": 5.122274160385132E-9,
+      "maxAbsEffective19": 5.122274160385132E-9
+    },
+    {
+      "name": "boundary_mean_features_max",
+      "maxAbsAll32": 5.960464477539063E-8,
+      "maxAbsEffective19": 5.960464477539063E-8
+    },
+    {
+      "name": "boundary_mean_features_below_min",
+      "maxAbsAll32": 5.122274160385132E-9,
+      "maxAbsEffective19": 5.122274160385132E-9
+    },
+    {
+      "name": "boundary_mean_features_above_max",
+      "maxAbsAll32": 5.960464477539063E-8,
+      "maxAbsEffective19": 5.960464477539063E-8
+    },
+    {
+      "name": "boundary_high_features_min",
+      "maxAbsAll32": 4.94765117764473E-10,
+      "maxAbsEffective19": 4.94765117764473E-10
+    },
+    {
+      "name": "boundary_high_features_max",
+      "maxAbsAll32": 2.86102294921875E-6,
+      "maxAbsEffective19": 2.86102294921875E-6
+    },
+    {
+      "name": "boundary_high_features_below_min",
+      "maxAbsAll32": 4.94765117764473E-10,
+      "maxAbsEffective19": 4.94765117764473E-10
+    },
+    {
+      "name": "boundary_high_features_above_max",
+      "maxAbsAll32": 2.86102294921875E-6,
+      "maxAbsEffective19": 2.86102294921875E-6
+    },
+    {
+      "name": "boundary_low_features_min",
+      "maxAbsAll32": 4.76837158203125E-6,
+      "maxAbsEffective19": 4.76837158203125E-6
+    },
+    {
+      "name": "boundary_low_features_max",
+      "maxAbsAll32": 0.0,
+      "maxAbsEffective19": 0.0
+    },
+    {
+      "name": "boundary_low_features_below_min",
+      "maxAbsAll32": 4.76837158203125E-6,
+      "maxAbsEffective19": 4.76837158203125E-6
+    },
+    {
+      "name": "boundary_low_features_above_max",
+      "maxAbsAll32": 0.0,
+      "maxAbsEffective19": 0.0
+    },
+    {
+      "name": "base_sum_threshold_1e-06",
+      "maxAbsAll32": 4.284083843231201E-8,
+      "maxAbsEffective19": 4.284083843231201E-8
+    },
+    {
+      "name": "base_sum_threshold_1e-05",
+      "maxAbsAll32": 4.284083843231201E-8,
+      "maxAbsEffective19": 4.284083843231201E-8
+    },
+    {
+      "name": "base_sum_threshold_0.0001",
+      "maxAbsAll32": 4.284083843231201E-8,
+      "maxAbsEffective19": 4.284083843231201E-8
+    },
+    {
+      "name": "emotion_zero_masks_network",
+      "maxAbsAll32": 0.0,
+      "maxAbsEffective19": 0.0
+    }
+  ]
+}

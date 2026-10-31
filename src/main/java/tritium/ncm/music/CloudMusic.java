@@ -36,6 +36,7 @@ import tritium.ncm.music.automix.SongFeatureService;
 import tritium.ncm.music.dto.PlayList;
 import tritium.ncm.music.dto.User;
 import tritium.ncm.music.effects.AudioEffectController;
+import tritium.ncm.music.effects.AudioEffectDebugSnapshot;
 import tritium.ncm.music.effects.AudioEffectService;
 import tritium.rendering.GaussianKernel;
 import tritium.rendering.MusicToast;
@@ -122,13 +123,30 @@ public class CloudMusic implements SharedConstants {
         }
     }
 
+    /** Invalidate pending song effects immediately, before any blocking account validation. */
+    public static void updateSessionCookie(String cookie) {
+        synchronized (audioEffectLock) {
+            String next = cookie == null ? "" : cookie;
+            if (next.equals(OptionsUtil.getCookie())) return;
+            if (audioEffects == null) {
+                OptionsUtil.setCookie(next);
+            } else {
+                // The controller uses this same monitor when applying a completed request.
+                synchronized (audioEffects) {
+                    OptionsUtil.setCookie(next);
+                    audioEffects.refresh(audioEffectSelection(), next);
+                }
+            }
+        }
+    }
+
     public static String audioEffectStatus() {
         var selected = audioEffectSelection();
         if ("Off".equals(selected.mode())) return I18n.text("audioEffect.status.off");
         var controller = audioEffects;
         var status = controller == null ? null : controller.status(player);
         if (status == null) return I18n.text("audioEffect.status.ready");
-        String tone = I18n.text("audioEffect.tone." + status.tone());
+        String tone = I18n.text(("Emotion".equals(selected.mode()) ? "audioEffect.emotion." : "audioEffect.tone.") + status.tone());
         String text = I18n.text("audioEffect.status." + status.status(), tone);
         if (("Master".equals(selected.mode()) || "Manual".equals(selected.mode())) && !"loading".equals(status.status())) {
             String enhancements = status.usedDiy().stream().map(key -> I18n.text(switch (key) {
@@ -144,6 +162,15 @@ public class CloudMusic implements SharedConstants {
             text += I18n.text("audioEffect.status.enhancements", enhancements);
         }
         return text;
+    }
+
+    public static AudioEffectDebugSnapshot audioEffectDebugSnapshot() {
+        synchronized (audioEffectLock) {
+            var selection = audioEffectSelection();
+            return audioEffects == null
+                    ? new AudioEffectDebugSnapshot(selection, List.of())
+                    : audioEffects.debugSnapshot(player, selection);
+        }
     }
 
     public static volatile User profile;
@@ -689,11 +716,10 @@ public class CloudMusic implements SharedConstants {
             likeList = null;
             pendingFavorites.clear();
         }
-        OptionsUtil.setCookie(cookie);
+        updateSessionCookie(cookie);
         sessionStatusText = I18n.text("login.loadingUser");
         // 获取用户信息
         profile = getUserProfile();
-        audioEffectSettingChanged();
 
         if (profile == null) {
             sessionStatusText = I18n.text("login.expired");
@@ -2211,7 +2237,7 @@ public class CloudMusic implements SharedConstants {
         JsonObject d = jsonObject.getAsJsonObject("data");
 
         if ((!d.has("account") || d.get("account") instanceof JsonNull) || (!d.has("profile") || d.get("profile") instanceof JsonNull)) {
-            OptionsUtil.setCookie("");
+            updateSessionCookie("");
             return null;
         }
 

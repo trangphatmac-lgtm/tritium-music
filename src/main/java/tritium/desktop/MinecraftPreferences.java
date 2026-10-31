@@ -12,8 +12,10 @@ public final class MinecraftPreferences {
     private HudConfig config = new HudConfig();
     private boolean initialized;
     private Runnable changed = () -> {};
+    private final MinecraftUninjectPreferences uninject = new MinecraftUninjectPreferences(() -> changed.run());
 
     void setChangeCallback(Runnable callback) { changed = callback; }
+    public MinecraftUninjectPreferences uninject() { return uninject; }
     public synchronized HudConfig snapshot() { return JSON.fromJson(JSON.toJson(config), HudConfig.class); }
     public synchronized boolean offscreenRadarEnabled() {
         var radar = config.find("radar");
@@ -75,9 +77,11 @@ public final class MinecraftPreferences {
     }
     synchronized JsonObject toJsonObject() {
         JsonObject result = JSON.toJsonTree(config).getAsJsonObject(); result.addProperty("initialized", initialized);
+        result.add("uninject", uninject.toJsonObject());
         result.addProperty("toastLayoutVersion", 1); return result;
     }
     synchronized void loadFromJsonObject(JsonObject object) {
+        uninject.load(object.has("uninject") && object.get("uninject").isJsonObject() ? object.getAsJsonObject("uninject") : null);
         try {
             HudConfig loaded = JSON.fromJson(object, HudConfig.class); loaded.normalize();
             HudConfig.Module toast = loaded.find("musicToast");

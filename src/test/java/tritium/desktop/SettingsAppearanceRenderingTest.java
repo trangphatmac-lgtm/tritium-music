@@ -266,6 +266,7 @@ class SettingsAppearanceRenderingTest {
                 Thread.sleep(10);
             }
             savePreview("autoMix-debug-narrow");
+            verifyAudioEffectDebug(settings, scroll);
             verifyAudioEffects();
             verifyPlaylistExport(settings, scroll);
             verifySettingsLayout();
@@ -296,6 +297,69 @@ class SettingsAppearanceRenderingTest {
                 return key.equals(label.get(row));
             } catch (ReflectiveOperationException ignored) { return false; }
         }).findFirst().orElseThrow();
+    }
+
+    private static void verifyAudioEffectDebug(SettingsPanel settings, ScrollPanel scroll) throws Exception {
+        var preferences = DesktopAppState.preferences();
+        boolean saved = preferences.audioEffectDebug().getValue();
+        String language = preferences.language().getValue();
+        var selected = preferences.audioEffects().toJsonObject();
+        try {
+            preferences.language().setValue("zh-CN");
+            preferences.audioEffectDebug().setValue(false);
+            scroll.scrollToEndImmediately();
+            renderStable(settings);
+            var toggle = settingRow(scroll, "settings.audioEffectDebug");
+            click(settings, toggle.getX() + 20, toggle.getY() + 20);
+            assertTrue(preferences.audioEffectDebug().getValue());
+            assertEquals(selected, preferences.audioEffects().toJsonObject());
+            for (int i = 0; i < 40; i++) {
+                render(settings); AudioEffectDebugOverlay.render();
+                Display.processMessages(); Thread.sleep(10);
+            }
+            savePreview("settings-audio-effect-debug-enabled");
+            click(settings, toggle.getX() + 20, toggle.getY() + 20);
+            assertFalse(preferences.audioEffectDebug().getValue());
+            for (String locale : new String[]{"zh-CN", "zh-TW", "en"}) {
+                preferences.language().setValue(locale);
+                for (String mode : new String[]{"Smart", "Master", "Emotion", "Manual"}) {
+                    var snapshot = AudioEffectDebugOverlayTest.example(mode);
+                    for (int i = 0; i < 40; i++) {
+                        render(settings);
+                        AudioEffectDebugOverlay.render(snapshot, RenderSystem.getWidth(), RenderSystem.getHeight(), false);
+                        Display.processMessages(); Thread.sleep(10);
+                    }
+                    savePreview("audio-effect-debug-" + mode + "-" + locale);
+                    assertAudioEffectDebugFits(RenderSystem.getWidth(), RenderSystem.getHeight(), false);
+                }
+            }
+            preferences.language().setValue("zh-CN");
+            double height = Math.min(600, RenderSystem.getHeight());
+            for (double width : new double[]{RenderSystem.getWidth(), 440}) {
+                for (int i = 0; i < 40; i++) {
+                    render(settings);
+                    AutoMixDebugOverlay.render(AutoMixDebugOverlayTest.fullExample(), true, width, height, true);
+                    AudioEffectDebugOverlay.render(AudioEffectDebugOverlayTest.example("Emotion"), width, height, true);
+                    Display.processMessages(); Thread.sleep(10);
+                }
+                savePreview("audio-effect-debug-both-" + (int) width);
+                assertAudioEffectDebugFits(width, height, true);
+            }
+        } finally {
+            preferences.audioEffectDebug().setValue(saved);
+            preferences.language().setValue(language);
+        }
+    }
+
+    private static void assertAudioEffectDebugFits(double width, double height, boolean both) throws Exception {
+        var field = AudioEffectDebugOverlay.class.getDeclaredField("wrapped");
+        field.setAccessible(true);
+        double textWidth = DebugOverlayLayout.area(width, height, both, true).width() - 28;
+        for (Object item : (java.util.List<?>) field.get(null)) {
+            var line = (AudioEffectDebugOverlay.Line) item;
+            assertTrue(FontManager.pf14.getStringWidthD(line.text()) <= textWidth + 1,
+                    "Debug row must fit its panel: " + line.text());
+        }
     }
 
     private static void verifyAudioEffects() throws Exception {
@@ -329,6 +393,9 @@ class SettingsAppearanceRenderingTest {
                 assertTrue(settingRow(scroll, "settings.audioEffect" + key).isHidden());
             }
             savePreview("settings-audio-effects-master-zh-CN");
+            click(settings, mode.getX() + 30, mode.getY() + 26);
+            assertEquals("Emotion", effects.mode().getValue()); assertTrue(tone.isHidden());
+            renderStable(settings); savePreview("settings-audio-effects-emotion");
             click(settings, mode.getX() + 30, mode.getY() + 26);
             assertEquals("Manual", effects.mode().getValue()); assertTrue(tone.isHidden());
             for (String key : java.util.List.of("Bass", "Treble", "Vocal", "Vibe", "Live")) {

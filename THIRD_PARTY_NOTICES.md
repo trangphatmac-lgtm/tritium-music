@@ -1129,4 +1129,14 @@ https://github.com/kohlschutter/kohlschutter-parent
 Copyright 2009-2024 Christian Kohlschütter.
 Licensed under the Apache License, Version 2.0; see the Apache License appendix above.
 The native library binaries are bundled in the application JAR and loaded on demand.
+
+
+MNN schema reference files (development only)
+
+Upstream: https://github.com/alibaba/MNN/tree/3.6.2/schema/default
+Copyright (c) 2018, Alibaba Group Holding Limited.
+Licensed under the Apache License, Version 2.0; see the Apache License appendix
+above and tools/emotion-model/schema/LICENSE.MNN. The schema references are not
+packaged in the application. The application uses its own specialized Java
+model evaluator; it does not distribute the MNN native runtime.
 ```

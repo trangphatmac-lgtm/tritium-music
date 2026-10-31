@@ -33,8 +33,15 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     private volatile Status status = new Status(Stage.IDLE, 0, "", List.of());
     private volatile Session session;
     private volatile boolean connected, editing;
-    // Session-only UI state: restarting the application restores the settings controls.
-    private volatile boolean settingsControlsHidden;
+    private final InjectButtonVisibility visibility = InjectButtonVisibility.create(
+            AppPaths.appDataDir().resolve("minecraft-hidden-until-reboot"));
+    private final UninjectActions uninjectActions = new UninjectActions(visibility, selfDestruct -> {
+        if (selfDestruct) {
+            try { ApplicationJarDeletion.schedule(); }
+            catch (IOException e) { System.err.println("Self Destruct: " + e.getMessage()); }
+        }
+        DesktopAppState.setRunning(false);
+    });
 
     public MinecraftConnectionManager() { monitor.scheduleAtFixedRate(this::watchdog, 1, 1, TimeUnit.SECONDS); }
     public Status status() { return status; }
@@ -46,7 +53,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                 || !DesktopAppState.preferences().minecraft().offscreenRadarEnabled()) return null;
         return s.radar.current(System.nanoTime());
     }
-    public boolean settingsControlsHidden() { return settingsControlsHidden; }
+    public boolean settingsControlsHidden() { return visibility.hidden(); }
     public void openAndInject() {
         NCMScreen.getInstance().setCurrentPanel(new MinecraftPanel());
         if (!connected && !busy()) begin();
@@ -194,9 +201,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
                 case Wire.ERROR -> { s.error = f.text(); s.stopping = true; s.stopAt = System.nanoTime(); update(s, Stage.STOPPING, status.progress, s.error); }
                 case Wire.STOPPED -> {
                     boolean clean = f.text().equals("clean");
-                    // Also covers Uninject triggered by the in-game key binding.
-                    if (clean && s.error.isEmpty()) settingsControlsHidden = true;
-                    finish(s, clean && s.error.isEmpty() ? "" : clean ? s.error : "显示已停止，Hook 撤销未完成。" + f.text()); return;
+                    stopped(s, clean && s.error.isEmpty() ? "" : clean ? s.error : "显示已停止，Hook 撤销未完成。" + f.text()); return;
                 }
                 case Wire.HEARTBEAT -> { }
                 case Wire.RADAR -> {
@@ -287,9 +292,9 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     public void resetLayout() { DesktopAppState.preferences().minecraft().resetLayout(); }
     public void previewToast() { command(Wire.PREVIEW, ""); }
     public void pushToast(String text) { if (text != null && connected) command(Wire.TOAST, text); }
-    public void uninject() {
-        Session s = session; if (s == null) return;
-        settingsControlsHidden = true;
+    public synchronized void uninject() {
+        Session s = session; if (s == null || s.stopping || !connected) return;
+        s.uninjectPlan = uninjectActions.requested(DesktopAppState.preferences().minecraft().uninject());
         s.stopping = true; s.stopAt = System.nanoTime(); editing = false;
         update(s, Stage.STOPPING, 1, ""); command(Wire.UNINJECT, "");
     }
@@ -308,6 +313,22 @@ public final class MinecraftConnectionManager implements AutoCloseable {
         if (session == s) status = new Status(stage, progress, detail, List.of());
     }
     private void fail(Session s, String reason) { finish(s, reason); }
+    private synchronized void stopped(Session s, String error) {
+        if (session != s) return;
+        // A clean STOPPED without a desktop request is the in-game Uninject key binding.
+        UninjectActions.Plan plan = null;
+        if (error.isEmpty() && s.ready) {
+            plan = s.uninjectPlan != null ? s.uninjectPlan
+                    : uninjectActions.requested(DesktopAppState.preferences().minecraft().uninject());
+        }
+        finish(s, error);
+        if (plan != null) {
+            UninjectActions.Plan completed = plan;
+            DesktopAppState.runOnMainThread(() -> {
+                if (generation.get() == s.id) uninjectActions.completed(completed);
+            });
+        }
+    }
     private synchronized void finish(Session s, String error) {
         if (session != s) return;
         session = null; closeSession(s);
@@ -373,6 +394,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
         volatile Candidate target; volatile ServerSocket server; volatile Socket socket; volatile Wire wire;
         volatile long lastReceive = System.nanoTime(), stopAt; long sequence;
         volatile boolean stopping, ready; volatile String error = "";
+        volatile UninjectActions.Plan uninjectPlan;
         Session(long id) { this.id = id; byte[] bytes = new byte[32]; new SecureRandom().nextBytes(bytes); token = HexFormat.of().formatHex(bytes); }
     }
 }

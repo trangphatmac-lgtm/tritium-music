@@ -1,0 +1,58 @@
+{
+  "modelSha256": "a5537bea1958bd27202cba2fdf3754858cb788e0bc18366c6ecc9894b05236d1",
+  "graphSource": "official MNNConvert 3.6.2 --JsonFile",
+  "operationCount": 150,
+  "operationTypes": {
+    "Input": 4,
+    "UnaryOp": 5,
+    "Reduction": 5,
+    "Const": 34,
+    "BinaryOp": 41,
+    "Cast": 2,
+    "GatherV2": 4,
+    "Reshape": 12,
+    "Shape": 5,
+    "Concat": 7,
+    "ReLU6": 2,
+    "ConvertTensor": 8,
+    "Convolution": 4,
+    "Rank": 4,
+    "Unsqueeze": 5,
+    "SliceTf": 8
+  },
+  "layers": [
+    {
+      "name": "/mlp/mlp.0/Gemm_output_0__matmul_converted",
+      "inputCount": 84,
+      "outputCount": 384,
+      "weightCount": 32256,
+      "biasCount": 384,
+      "relu": false
+    },
+    {
+      "name": "/mlp/mlp.4/Gemm_output_0__matmul_converted",
+      "inputCount": 384,
+      "outputCount": 192,
+      "weightCount": 73728,
+      "biasCount": 192,
+      "relu": false
+    },
+    {
+      "name": "/mlp/mlp.8/Gemm_output_0__matmul_converted",
+      "inputCount": 192,
+      "outputCount": 96,
+      "weightCount": 18432,
+      "biasCount": 96,
+      "relu": true
+    },
+    {
+      "name": "/mlp/mlp.11/Gemm_output_0__matmul_converted",
+      "inputCount": 96,
+      "outputCount": 32,
+      "weightCount": 3072,
+      "biasCount": 32,
+      "relu": false
+    }
+  ],
+  "runtimeWeightSource": "original bundled MNN FlatBuffer, not this summary"
+}

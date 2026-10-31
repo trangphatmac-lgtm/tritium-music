@@ -13,14 +13,18 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Portable stereo implementation of the recovered Smart/Master parameter protocol.
+ * Portable stereo implementation of the recovered Smart/Master/Emotion parameter protocol.
  * This is NOT the proprietary native binary or a bit-exact emulation. Ten-band EQ uses
- * octave-width RBJ biquads; PEQ 6/7/8 are interpreted as peak/low-shelf/high-shelf (the
- * recovered numerical enums were not conclusively named). Other PEQ types are bypassed.
+ * octave-width RBJ biquads. PEQ types 0..10 follow the recovered native coefficient branches:
+ * fixed-Q low/high pass, band pass, notch, fixed-Q low/high shelf, peak, variable-Q
+ * low/high shelf and variable-Q low/high pass respectively.
  * Reverb uses a damped Schroeder network and tapped early reflections; stereo enhancement
- * uses mid/side width, delayed decorrelation, and optional side-spectrum shelving. Their scales, tone insert routing,
- * and the order EQ -> BT -> PEQ -> compressor -> stereo -> reverb -> limiter are desktop
- * adaptations where the native implementation is unavailable. Delay values are milliseconds,
+ * uses mid/side width, delayed decorrelation, and optional side-spectrum shelving. Their
+ * scales, reverb tone insert routing and stereo speaker level interpretation, as well as the
+ * ALC detector, chorus modulation and stereo speaker fold-down are desktop adaptations
+ * where the native implementation is unavailable. An explicit order array is respected;
+ * absent it, the previous desktop EQ -> BT -> PEQ -> compressor -> stereo -> reverb order
+ * is retained, with new modules inserted and the limiter always last. Delay values are milliseconds,
  * compressor times seconds, level/EQ values dB. Output protection only affects active effects.
  *
  * JSON, coefficient calculation and all delay allocation happen in setConfiguration/reset.
@@ -35,6 +39,7 @@ public final class AudioEffectDsp extends UnitGenerator {
     private final int fadeFrames;
     private final AtomicReference<Change> pending = new AtomicReference<>();
     private Plan plan;
+    private volatile DebugSnapshot debugSnapshot;
     private Processor current, previous;
     private int fadeRemaining;
     private record Change(Processor processor, boolean fade) {}
@@ -46,16 +51,74 @@ public final class AudioEffectDsp extends UnitGenerator {
         fadeFrames = Math.max(1, (int) (sampleRate * .02));
         addPort(input); addPort(output);
         plan = compile(null, sampleRate);
+        debugSnapshot = describe(plan, sampleRate);
         current = new Processor(plan, sampleRate);
     }
 
     public synchronized void setConfiguration(JsonObject config) {
         plan = compile(config, sampleRate);
+        debugSnapshot = describe(plan, sampleRate);
         pending.set(new Change(new Processor(plan, sampleRate), true));
     }
 
     /** Clear filter/reverb history after a discontinuity while retaining the selected plan. */
     public synchronized void reset() { pending.set(new Change(new Processor(plan, sampleRate), false)); }
+
+    /** Compiled configuration, not a loudness measurement. Never inspects mutable PCM state. */
+    public DebugSnapshot debugSnapshot() { return debugSnapshot; }
+
+    public record Parameter(String name, double value, String unit) { }
+    public record Module(String name, List<Parameter> parameters) {
+        public Module { parameters = List.copyOf(parameters); }
+    }
+    public record DebugSnapshot(double sampleRate, boolean active, List<Module> modules) {
+        public DebugSnapshot { modules = List.copyOf(modules); }
+    }
+
+    private static Parameter parameter(String name, double value, String unit) {
+        return new Parameter(name, value, unit);
+    }
+    private static double decibels(double amplitude) { return 20 * Math.log10(amplitude); }
+    private static double milliseconds(double coefficient, double rate) { return -1000 / (rate * Math.log(coefficient)); }
+
+    private static DebugSnapshot describe(Plan p, double rate) {
+        List<Module> modules = new ArrayList<>();
+        for (int stage : p.order) {
+            modules.add(switch (stage) {
+                case EQ -> new Module("eq", p.eqParameters);
+                case BT -> new Module("bt", p.btParameters);
+                case PEQ -> new Module("peq", List.of(parameter("filters", p.filters[PEQ].length, ""),
+                        parameter("gain", decibels(p.gain), "dB")));
+                case CMP -> new Module("cmp", List.of(parameter("threshold", p.compressor.threshold, "dB"),
+                        parameter("ratio", p.compressor.ratio, ":1"),
+                        parameter("attack", milliseconds(p.compressor.attack, rate), "ms"),
+                        parameter("release", milliseconds(p.compressor.release, rate), "ms")));
+                case CHORUS -> new Module("chorus", List.of(parameter("delay", p.chorus.milliseconds, "ms"),
+                        parameter("depth", p.chorus.depth * 100, "%"), parameter("rate", p.chorus.rate, "Hz"),
+                        parameter("mix", p.chorus.mix * 100, "%")));
+                case STEREO -> new Module("se", List.of(parameter("width", p.stereo.width, "x"),
+                        parameter("decorrelation", p.stereo.decorrelation * 100, "%"),
+                        parameter("ambience", p.stereo.ambience * 100, "%")));
+                case SPATIAL -> new Module("spspatial", List.of(parameter("upmix", p.spatial.upmix ? 1 : 0, ""),
+                        parameter("gain", decibels(p.spatial.global), "dB"), parameter("width", p.spatial.virtualWidth, "x")));
+                case ECHO -> new Module("dly", List.of(parameter("delay", p.echo.milliseconds, "ms"),
+                        parameter("feedback", p.echo.feedback * 100, "%"), parameter("wet", decibels(p.echo.wet), "dB")));
+                case REVERB -> new Module("rvb", List.of(parameter("late", p.reverb.late ? 1 : 0, ""),
+                        parameter("early", p.reverb.early ? 1 : 0, ""), parameter("predelay", p.reverb.predelay, "ms"),
+                        parameter("decay", p.reverb.decay, "s"), parameter("wet", decibels(p.reverb.wet), "dB")));
+                case ALC -> new Module("alc", List.of(parameter("points", p.alc.x.length, ""),
+                        parameter("attack", milliseconds(p.alc.attack, rate), "ms"),
+                        parameter("release", milliseconds(p.alc.release, rate), "ms"),
+                        parameter("lookahead", p.alc.lookaheadFrames * 1000.0 / rate, "ms")));
+                default -> throw new IllegalStateException("Unknown effect stage " + stage);
+            });
+        }
+        if (p.limiter != null) modules.add(new Module("limiter", List.of(
+                parameter("threshold", p.limiter.threshold, "dB"), parameter("output", decibels(p.limiter.outputGain), "dB"),
+                parameter("attack", milliseconds(p.limiter.attack, rate), "ms"),
+                parameter("release", milliseconds(p.limiter.release, rate), "ms"))));
+        return new DebugSnapshot(rate, p.active, modules);
+    }
 
     @Override public void generate(int start, int limit) {
         process(input.getValues(0), input.getValues(1), output.getValues(0), output.getValues(1), start, limit);
@@ -88,35 +151,52 @@ public final class AudioEffectDsp extends UnitGenerator {
     private record Compressor(double pre, double post, double threshold, double ratio,
                               double attack, double release, double range) {}
     private record Stereo(double width, double decorrelation, double ambience, boolean shape) {}
+    private record Echo(double milliseconds, double feedback, double dry, double wet) {}
+    private record Chorus(double milliseconds, double depth, double rate, double mix, int voices) {}
+    private record Spatial(boolean upmix, double global, double center, double frontL, double frontR,
+                           double left, double right, double virtualWidth) {}
+    private record Alc(double[] x, double[] y, double shortCoefficient, double longCoefficient,
+                       double attack, double release, int holdFrames, int updateFrames,
+                       int lookaheadFrames, int type, double knee) {}
     private record Limiter(double threshold, double attack, double release, double outputGain,
                            double ratio, boolean infinite) {}
     private record Reverb(boolean late, boolean early, double predelay, double decay, double damping,
                           double size, double density, double diffusion, double quality, double width,
                           double earlyDelay, double earlySize, int pattern, double dry, double er,
                           double wet, Coeff[] tone) {}
-    private record Plan(Coeff[] filters, double gain, Compressor compressor, Stereo stereo,
-                        Reverb reverb, Limiter limiter, boolean active) {}
+    private record Plan(Coeff[][] filters, double gain, Compressor compressor, Stereo stereo,
+                        Reverb reverb, Echo echo, Chorus chorus, Spatial spatial, Alc alc,
+                        int[] order, Limiter limiter, boolean active,
+                        List<Parameter> eqParameters, List<Parameter> btParameters) {}
+    private static final int EQ = 0, BT = 1, PEQ = 2, CMP = 3, CHORUS = 4, STEREO = 5,
+            SPATIAL = 6, ECHO = 7, REVERB = 8, ALC = 9;
 
     private static Plan compile(JsonObject config, double rate) {
         JsonObject c = config == null ? new JsonObject() : config;
         if (c.has("effect") && c.get("effect").isJsonObject()) c = c.getAsJsonObject("effect");
         if (c.has("aev2") && c.get("aev2").isJsonObject()) c = c.getAsJsonObject("aev2");
         List<Coeff> filters = new ArrayList<>();
+        List<Parameter> eqParameters = new ArrayList<>(), btParameters = new ArrayList<>();
         JsonObject eq = object(c, "eq"), bt = object(c, "bt"), peq = object(c, "peq");
         if (on(eq)) {
             JsonArray gains = array(eq, "eqs");
             for (int i = 0; i < Math.min(10, gains.size()); i++) {
                 double gain = number(gains.get(i), 0, -24, 24);
+                eqParameters.add(parameter((int) EQ_HZ[i] + "Hz", gain, "dB"));
                 if (Math.abs(gain) > 1e-8) filters.add(biquad(6, EQ_HZ[i], 1.41421356237, gain, rate));
             }
         }
+        Coeff[] eqFilters = filters.toArray(Coeff[]::new); filters.clear();
         if (on(bt)) {
             double bass = value(bt, "bass", 0, -24, 24), treble = value(bt, "treble", 0, -24, 24);
+            btParameters.add(parameter("bass", bass, "dB"));
+            btParameters.add(parameter("treble", treble, "dB"));
             if (bass != 0) filters.add(biquad(7, positive(bt, "bassFreq", 120, 20, rate * .45),
                     positive(bt, "bassQ", .7071, .1, 10), bass, rate));
             if (treble != 0) filters.add(biquad(8, positive(bt, "trebleFreq", 6000, 20, rate * .45),
                     positive(bt, "trebleQ", .7071, .1, 10), treble, rate));
         }
+        Coeff[] btFilters = filters.toArray(Coeff[]::new); filters.clear();
         double gain = 1;
         if (on(peq)) {
             gain = db(value(peq, "gain", value(peq, "overallgain", 0, -24, 24), -24, 24));
@@ -129,7 +209,7 @@ public final class AudioEffectDsp extends UnitGenerator {
                 int index = (int) value(band, "band", i, -1, 9);
                 if (index < 0 || index > 8) continue;
                 int type = (int) value(band, "type", -1, -1, 99);
-                slots[index] = on(band) && type >= 6 && type <= 8
+                slots[index] = on(band) && type >= 0 && type <= 10
                         ? biquad(type, value(band, "freq", 1000, 10, rate * .45),
                         positive(band, "q", .7071, .1, 20), value(band, "gain", 0, -24, 24), rate) : null;
             }
@@ -147,6 +227,19 @@ public final class AudioEffectDsp extends UnitGenerator {
         if (on(se)) stereo = new Stereo(1 + value(se, "presence", 0, 0, 10) * .08,
                 value(se, "stereoizer", 0, 0, 10) * .025,
                 value(se, "ambience", 0, 0, 10) * .025, bool(se, "sshaper", false));
+        JsonObject dly = object(c, "dly"), ch = object(c, "chorus"), sp = object(c, "spspatial");
+        Echo echo = on(dly) ? new Echo(value(dly, "delay", 0, 0, 5000),
+                value(dly, "feedback", 0, 0, 1), db(value(dly, "dry", 0, -96.3, 6)),
+                db(value(dly, "wet", -12, -96.3, 6))) : null;
+        Chorus chorus = on(ch) ? new Chorus(value(ch, "delay", 15, 0, 100),
+                value(ch, "depth", .4, 0, 1), value(ch, "rate", .3, 0, 20),
+                value(ch, "mix", .25, 0, 1), (int) value(ch, "voices", 2, 1, 8)) : null;
+        Spatial spatial = on(sp) ? new Spatial(value(sp, "upmix", 1, 0, 2) != 0,
+                db(value(sp, "global", 0, -24, 12)), db(value(sp, "center", 0, -24, 12)),
+                db(value(sp, "fl", 0, -24, 12)), db(value(sp, "fr", 0, -24, 12)),
+                db(value(sp, "left", 0, -24, 12)), db(value(sp, "right", 0, -24, 12)),
+                value(sp, "lronoff", 0, 0, 1) == 0 ? 1 : 1 + Math.sin(Math.toRadians(value(sp, "lrangle", 10, 0, 90))) * .5) : null;
+        Alc alc = compileAlc(object(c, "alc"), rate);
         Reverb reverb = null;
         JsonObject rvb = object(c, "rvb");
         if (on(rvb)) {
@@ -166,13 +259,13 @@ public final class AudioEffectDsp extends UnitGenerator {
                 }
             }
             reverb = new Reverb(bool(late, "on", !late.entrySet().isEmpty()), on(er),
-                    value(late, "pdelay", 20, 0, 500), positive(late, "dtime", 1, .1, 10),
+                    value(late, "pdelay", 20, 0, 500), value(late, "dtime", 1, 0, 10),
                     positive(late, "hfdamping", 6, .1, 20), value(late, "rshape", 50, 0, 100),
                     value(late, "density", 60, 0, 100), value(late, "diffusion", 60, 0, 100),
                     value(late, "q", 6, 1, 10), value(late, "swidth", 100, 0, 200) / 100,
                     value(er, "sdelay", 20, 0, 500), value(er, "rsize", 50, 0, 100),
-                    (int) value(er, "pattern", 0, 0, 20), db(value(levels, "dry", 0, -96, 6)),
-                    db(value(levels, "er", -24, -96, 6)), db(value(levels, "rvb", -24, -96, 6)),
+                    (int) value(er, "pattern", 0, 0, 20), db(value(levels, "dry", 0, -96.3, 6)),
+                    db(value(levels, "er", -24, -96.3, 6)), db(value(levels, "rvb", -24, -96.3, 6)),
                     tone.toArray(Coeff[]::new));
         }
         JsonObject limiter = object(c, "limiter");
@@ -181,16 +274,73 @@ public final class AudioEffectDsp extends UnitGenerator {
                 Math.exp(-1 / (rate * positive(limiter, "release", .04, .005, 5))),
                 db(value(limiter, "outputgain", 0, -36, 12)), value(limiter, "ratio", 4, 1, 40),
                 bool(limiter, "infiniteRatio", true)) : null;
-        boolean active = !filters.isEmpty() || gain != 1 || compressor != null || stereo != null || reverb != null || on(limiter);
-        return new Plan(filters.toArray(Coeff[]::new), gain, compressor, stereo, reverb, limit, active);
+        boolean[] enabled = {eqFilters.length > 0, btFilters.length > 0, !filters.isEmpty() || gain != 1,
+                compressor != null, chorus != null, stereo != null, spatial != null, echo != null, reverb != null, alc != null};
+        int[] order = compileOrder(array(c, "order"), enabled);
+        return new Plan(new Coeff[][]{eqFilters, btFilters, filters.toArray(Coeff[]::new)}, gain,
+                compressor, stereo, reverb, echo, chorus, spatial, alc, order, limit, order.length > 0 || limit != null,
+                List.copyOf(eqParameters), List.copyOf(btParameters));
+    }
+
+    /** Includes the active modules of all 64 bundled emotion templates. */
+    static boolean supportsModule(String name) { return stageIndex(name) >= 0 || "limiter".equals(name); }
+    private static int stageIndex(String name) {
+        return switch (name) {
+            case "eq" -> EQ; case "bt" -> BT; case "peq" -> PEQ; case "cmp" -> CMP;
+            case "chorus" -> CHORUS; case "se" -> STEREO; case "spspatial" -> SPATIAL;
+            case "dly" -> ECHO; case "rvb" -> REVERB; case "alc" -> ALC; default -> -1;
+        };
+    }
+    private static int[] compileOrder(JsonArray requested, boolean[] enabled) {
+        int[] stages = new int[enabled.length]; boolean[] seen = new boolean[enabled.length]; int count = 0;
+        for (JsonElement entry : requested) {
+            if (!entry.isJsonPrimitive() || !entry.getAsJsonPrimitive().isString()) continue;
+            int stage = stageIndex(entry.getAsString());
+            if (stage >= 0 && enabled[stage] && !seen[stage]) { stages[count++] = stage; seen[stage] = true; }
+        }
+        // An order may omit disabled or newly introduced modules. Append active omissions,
+        // without accidentally processing a repeated module twice or dropping it entirely.
+        for (int stage = 0; stage < enabled.length; stage++)
+            if (enabled[stage] && !seen[stage]) stages[count++] = stage;
+        return Arrays.copyOf(stages, count);
+    }
+    private static Alc compileAlc(JsonObject a, double rate) {
+        if (!on(a)) return null;
+        JsonArray points = array(a, "xypoints");
+        var curve = new java.util.TreeMap<Double, Double>();
+        for (int i = 0; i + 1 < Math.min(32, points.size()); i += 2)
+            curve.put(number(points.get(i), -200, -200, 12), number(points.get(i + 1), -200, -200, 12));
+        if (curve.size() < 2) { curve.clear(); curve.put(-200.0, -200.0); curve.put(0.0, 0.0); }
+        double[] x = new double[curve.size()], y = new double[curve.size()]; int index = 0;
+        for (var point : curve.entrySet()) { x[index] = point.getKey(); y[index++] = point.getValue(); }
+        return new Alc(x, y, Math.exp(-1 / (rate * positive(a, "st", .02, .0001, 2))),
+                Math.exp(-1 / (rate * positive(a, "lt", .5, .001, 10))),
+                Math.exp(-1 / (rate * positive(a, "attack", .005, .0001, 2))),
+                Math.exp(-1 / (rate * positive(a, "release", .1, .001, 10))),
+                (int) (rate * value(a, "hold", .05, 0, 2)), (int) value(a, "minisize", 64, 1, 4096),
+                (int) (rate * value(a, "lookahead", 0, 0, .5)), (int) value(a, "type", 0, 0, 2),
+                value(a, "xyknee", 0, 0, 24));
     }
 
     /** RBJ normalized biquads, with independent transposed-direct-form state per channel. */
     private static Coeff biquad(int type, double hz, double q, double gain, double rate) {
+        // libneaudioeffects.so: unsigned-short jump table at 0x13f624, dispatch 0x97e1c.
+        // Types 4/5 (0x97fd8/0x9807c) use sqrt(2*A)*sin(w), i.e. fixed Q=1/sqrt(2).
+        if (type == 0 || type == 1 || type == 4 || type == 5) q = Math.sqrt(.5);
+        if (type == 4) type = 7;
+        if (type == 5) type = 8;
         double w = 2 * Math.PI * Math.max(10, Math.min(rate * .45, hz)) / rate;
         double cos = Math.cos(w), sin = Math.sin(w), a = Math.pow(10, gain / 40), alpha = sin / (2 * q);
         double b0, b1, b2, a0, a1, a2;
-        if (type == 7 || type == 8) {
+        if (type == 0 || type == 9 || type == 1 || type == 10) {
+            boolean highpass = type == 1 || type == 10;
+            b0 = (1 + (highpass ? cos : -cos)) * .5;
+            b1 = (highpass ? -2 : 2) * b0; b2 = b0;
+            a0 = 1 + alpha; a1 = -2 * cos; a2 = 1 - alpha;
+        } else if (type == 2 || type == 3) {
+            b0 = type == 2 ? alpha : 1; b1 = type == 2 ? 0 : -2 * cos; b2 = type == 2 ? -alpha : 1;
+            a0 = 1 + alpha; a1 = -2 * cos; a2 = 1 - alpha;
+        } else if (type == 7 || type == 8) {
             double beta = 2 * Math.sqrt(a) * alpha;
             if (type == 7) {
                 b0 = a * ((a + 1) - (a - 1) * cos + beta);
@@ -231,14 +381,22 @@ public final class AudioEffectDsp extends UnitGenerator {
 
     private static final class Processor {
         final Plan p;
-        final Filter[] l, r;
+        final Filter[][] l, r;
         final Room room;
+        final EchoProcessor echo;
+        final ChorusProcessor chorus;
+        final AlcProcessor alc;
         final Delay decorrelation;
         final Filter[] spectrumShape;
         double envelope, limitEnvelope, left, right;
         Processor(Plan p, double rate) {
-            this.p = p; l = filters(p.filters); r = filters(p.filters);
+            this.p = p;
+            l = new Filter[][]{filters(p.filters[0]), filters(p.filters[1]), filters(p.filters[2])};
+            r = new Filter[][]{filters(p.filters[0]), filters(p.filters[1]), filters(p.filters[2])};
             room = p.reverb == null ? null : new Room(p.reverb, rate);
+            echo = p.echo == null ? null : new EchoProcessor(p.echo, rate);
+            chorus = p.chorus == null ? null : new ChorusProcessor(p.chorus, rate);
+            alc = p.alc == null ? null : new AlcProcessor(p.alc);
             decorrelation = p.stereo == null ? null : new Delay((int) (rate * .013));
             // The original spectrumShaper coefficients are unknown. Keep low frequencies
             // focused and add gentle high-frequency spread instead of introducing distortion.
@@ -248,29 +406,49 @@ public final class AudioEffectDsp extends UnitGenerator {
         }
         void tick(double inL, double inR) {
             if (!p.active) { left = inL; right = inR; return; }
-            double a = inL * p.gain, b = inR * p.gain;
-            for (int i = 0; i < l.length; i++) { a = l[i].tick(a); b = r[i].tick(b); }
-            if (p.compressor != null) {
-                Compressor c = p.compressor;
-                a *= c.pre; b *= c.pre;
-                double peak = Math.max(Math.abs(a), Math.abs(b));
-                double coefficient = peak > envelope ? c.attack : c.release;
-                envelope = coefficient * envelope + (1 - coefficient) * peak;
-                double over = 20 * Math.log10(Math.max(1e-12, envelope)) - c.threshold;
-                double reduction = Math.max(0, over) * (1 - 1 / c.ratio);
-                if (c.range > 0) reduction = Math.min(reduction, c.range);
-                double gain = db(-reduction) * c.post;
-                a *= gain; b *= gain;
+            double a = inL, b = inR;
+            for (int stage : p.order) {
+                switch (stage) {
+                    case EQ, BT, PEQ -> {
+                        if (stage == PEQ) { a *= p.gain; b *= p.gain; }
+                        for (int i = 0; i < l[stage].length; i++) { a = l[stage][i].tick(a); b = r[stage][i].tick(b); }
+                    }
+                    case CMP -> {
+                        Compressor c = p.compressor;
+                        a *= c.pre; b *= c.pre;
+                        double peak = Math.max(Math.abs(a), Math.abs(b));
+                        double coefficient = peak > envelope ? c.attack : c.release;
+                        envelope = coefficient * envelope + (1 - coefficient) * peak;
+                        double over = 20 * Math.log10(Math.max(1e-12, envelope)) - c.threshold;
+                        double reduction = Math.max(0, over) * (1 - 1 / c.ratio);
+                        if (c.range > 0) reduction = Math.min(reduction, c.range);
+                        double gain = db(-reduction) * c.post;
+                        a *= gain; b *= gain;
+                    }
+                    case CHORUS -> { chorus.tick(a, b); a = chorus.left; b = chorus.right; }
+                    case STEREO -> {
+                        Stereo s = p.stereo;
+                        double mid = (a + b) * .5, side = (a - b) * .5;
+                        double delayed = decorrelation.push(mid);
+                        double spread = side * s.width + (mid - delayed) * s.decorrelation + delayed * s.ambience;
+                        for (Filter filter : spectrumShape) spread = filter.tick(spread);
+                        a = mid + spread; b = mid - spread;
+                    }
+                    case SPATIAL -> {
+                        Spatial s = p.spatial;
+                        double mid = (a + b) * .5, side = (a - b) * .5 * s.virtualWidth;
+                        // Stereo fold-down: an extracted coherent centre plus residual fronts.
+                        // Zero-dB controls reconstruct the input exactly. Rear/height/LFE
+                        // paths are inactive in every bundled stereo emotion template.
+                        a = (s.upmix ? mid * s.center + side * s.frontL : (mid + side) * s.frontL) * s.global * s.left;
+                        b = (s.upmix ? mid * s.center - side * s.frontR : (mid - side) * s.frontR) * s.global * s.right;
+                    }
+                    case ECHO -> { echo.tick(a, b); a = echo.left; b = echo.right; }
+                    case REVERB -> { room.tick(a, b); a = room.left; b = room.right; }
+                    case ALC -> { alc.tick(a, b); a = alc.left; b = alc.right; }
+                    default -> throw new AssertionError("Uncompiled DSP stage");
+                }
             }
-            if (p.stereo != null) {
-                Stereo s = p.stereo;
-                double mid = (a + b) * .5, side = (a - b) * .5;
-                double delayed = decorrelation.push(mid);
-                double spread = side * s.width + (mid - delayed) * s.decorrelation + delayed * s.ambience;
-                for (Filter filter : spectrumShape) spread = filter.tick(spread);
-                a = mid + spread; b = mid - spread;
-            }
-            if (room != null) { room.tick(a, b); a = room.left; b = room.right; }
             double ceiling = 1;
             if (p.limiter != null) {
                 Limiter limiter = p.limiter;
@@ -283,6 +461,120 @@ public final class AudioEffectDsp extends UnitGenerator {
                 if (limiter.infinite) ceiling = Math.min(1, db(limiter.threshold) * limiter.outputGain);
             }
             left = protect(a, ceiling); right = protect(b, ceiling);
+        }
+    }
+
+    /** A causal, stereo-independent echo. Unity feedback is bounded inside the loop. */
+    private static final class EchoProcessor {
+        final Echo p;
+        final Delay l, r;
+        final boolean zeroDelay;
+        double left, right;
+        EchoProcessor(Echo p, double rate) {
+            this.p = p; zeroDelay = p.milliseconds == 0;
+            int frames = Math.max(1, (int) Math.round(rate * p.milliseconds / 1000));
+            l = new Delay(frames); r = new Delay(frames);
+        }
+        void tick(double a, double b) {
+            if (zeroDelay) { left = a * (p.dry + p.wet); right = b * (p.dry + p.wet); return; }
+            double delayedL = l.values[l.position], delayedR = r.values[r.position];
+            // High input or feedback=1 cannot leave an infinite/overflowing delay state.
+            l.push(protect(a + delayedL * p.feedback, 16));
+            r.push(protect(b + delayedR * p.feedback, 16));
+            left = a * p.dry + delayedL * p.wet;
+            right = b * p.dry + delayedR * p.wet;
+        }
+    }
+
+    /** Fractional-delay chorus; per-voice sine oscillators avoid per-sample trigonometry. */
+    private static final class ChorusProcessor {
+        final Chorus p;
+        final Delay l, r;
+        final double[] sine, cosine;
+        final double stepSin, stepCos, delayFrames, depthFrames;
+        double left, right;
+        int renormalize;
+        ChorusProcessor(Chorus p, double rate) {
+            this.p = p; delayFrames = Math.max(1, rate * p.milliseconds / 1000);
+            depthFrames = Math.min(delayFrames - 1, rate * .005 * p.depth);
+            l = new Delay((int) Math.ceil(delayFrames + depthFrames) + 2); r = new Delay(l.values.length);
+            sine = new double[p.voices]; cosine = new double[p.voices];
+            for (int i = 0; i < p.voices; i++) {
+                double phase = 2 * Math.PI * i / p.voices;
+                sine[i] = Math.sin(phase); cosine[i] = Math.cos(phase);
+            }
+            double step = 2 * Math.PI * p.rate / rate;
+            stepSin = Math.sin(step); stepCos = Math.cos(step);
+        }
+        void tick(double a, double b) {
+            double wetL = 0, wetR = 0;
+            for (int i = 0; i < sine.length; i++) {
+                wetL += l.fractionalTap(delayFrames + depthFrames * sine[i]);
+                wetR += r.fractionalTap(delayFrames + depthFrames * cosine[i]);
+                double oldSin = sine[i];
+                sine[i] = oldSin * stepCos + cosine[i] * stepSin;
+                cosine[i] = cosine[i] * stepCos - oldSin * stepSin;
+            }
+            if (++renormalize == 4096) {
+                renormalize = 0;
+                for (int i = 0; i < sine.length; i++) {
+                    double norm = Math.hypot(sine[i], cosine[i]); sine[i] /= norm; cosine[i] /= norm;
+                }
+            }
+            l.push(a); r.push(b);
+            left = a * (1 - p.mix) + wetL * p.mix / p.voices;
+            right = b * (1 - p.mix) + wetR * p.mix / p.voices;
+        }
+    }
+
+    /** Linked adaptive level control using the recovered dB input/output curve. */
+    private static final class AlcProcessor {
+        final Alc p;
+        final Delay delayL, delayR;
+        double shortPower, longPower, held, gain = 1, target = 1, left, right;
+        int holdRemaining, updateRemaining;
+        AlcProcessor(Alc p) {
+            this.p = p;
+            delayL = p.lookaheadFrames > 0 ? new Delay(p.lookaheadFrames) : null;
+            delayR = p.lookaheadFrames > 0 ? new Delay(p.lookaheadFrames) : null;
+        }
+        void tick(double a, double b) {
+            // Keep hostile/overflowing upstream samples out of persistent detector history.
+            // This bound is far above any audio level reachable by the bundled templates.
+            double detectorL = Math.max(-1e6, Math.min(1e6, finite(a, 0)));
+            double detectorR = Math.max(-1e6, Math.min(1e6, finite(b, 0)));
+            double peak = Math.max(Math.abs(detectorL), Math.abs(detectorR));
+            double power = (detectorL * detectorL + detectorR * detectorR) * .5;
+            shortPower = p.shortCoefficient * shortPower + (1 - p.shortCoefficient) * power;
+            longPower = p.longCoefficient * longPower + (1 - p.longCoefficient) * power;
+            double level = p.type == 2 ? peak : Math.sqrt(p.type == 1 ? longPower : Math.max(shortPower, longPower));
+            if (level >= held) { held = level; holdRemaining = p.holdFrames; }
+            else if (holdRemaining > 0) holdRemaining--;
+            else held = level;
+            if (updateRemaining-- <= 0) {
+                double inDb = Math.max(-200, 20 * Math.log10(Math.max(1e-10, held)));
+                target = db(Math.max(-60, Math.min(24, curve(inDb) - inDb)));
+                updateRemaining = p.updateFrames - 1;
+            }
+            double coefficient = target < gain ? p.attack : p.release;
+            gain = coefficient * gain + (1 - coefficient) * target;
+            left = (delayL == null ? a : delayL.push(a)) * gain;
+            right = (delayR == null ? b : delayR.push(b)) * gain;
+        }
+        double curve(double value) {
+            if (p.knee == 0) return linear(value);
+            // Smooth a piecewise-linear curve over the requested knee width. Bundled
+            // templates use knee=0; this bounded averaging is a desktop extension.
+            return (linear(value - p.knee * .5) + 2 * linear(value) + linear(value + p.knee * .5)) * .25;
+        }
+        double linear(double value) {
+            if (value <= p.x[0]) return p.y[0] + value - p.x[0];
+            for (int i = 1; i < p.x.length; i++) if (value <= p.x[i]) {
+                double mix = (value - p.x[i - 1]) / (p.x[i] - p.x[i - 1]);
+                return p.y[i - 1] + mix * (p.y[i] - p.y[i - 1]);
+            }
+            int last = p.x.length - 1;
+            return p.y[last] + value - p.x[last];
         }
     }
 
@@ -300,13 +592,20 @@ public final class AudioEffectDsp extends UnitGenerator {
             if (index < 0) index += values.length;
             return values[index];
         }
+        double fractionalTap(double frames) {
+            double bounded = Math.max(1, Math.min(values.length - 1, frames));
+            int whole = (int) bounded;
+            double fraction = bounded - whole;
+            double a = tap(whole), b = tap(whole + 1);
+            return a + (b - a) * fraction;
+        }
     }
     private static final class Comb {
         final Delay delay;
         final double feedback, damping;
         double low;
         Comb(int frames, double rate, double decay, double damping) {
-            delay = new Delay(frames); feedback = Math.pow(10, -3 * frames / (rate * decay));
+            delay = new Delay(frames); feedback = decay <= 0 ? 0 : Math.pow(10, -3 * frames / (rate * decay));
             this.damping = damping;
         }
         double tick(double input) {
@@ -368,7 +667,7 @@ public final class AudioEffectDsp extends UnitGenerator {
                 earlyL.push(a * .8 + b * .2); earlyR.push(b * .8 + a * .2);
             }
             if (p.late) {
-                double delayedL = preL.push(a), delayedR = preR.push(b);
+                double delayedL = p.predelay == 0 ? a : preL.push(a), delayedR = p.predelay == 0 ? b : preR.push(b);
                 for (int i = 0; i < combL.length; i++) {
                     wetL += combL[i].tick(delayedL * .8 + delayedR * .2);
                     wetR += combR[i].tick(delayedR * .8 + delayedL * .2);

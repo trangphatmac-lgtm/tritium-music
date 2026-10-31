@@ -32,16 +32,22 @@ final class AutoMixDebugOverlay {
     static void render() {
         if (!DesktopAppState.preferences().autoMixDebug().getValue()) return;
         render(CloudMusic.autoMixDebugSnapshot(), DesktopAppState.preferences().autoMix().getValue(),
-                RenderSystem.getWidth(), RenderSystem.getHeight());
+                RenderSystem.getWidth(), RenderSystem.getHeight(), DesktopAppState.preferences().audioEffectDebug().getValue());
     }
 
     static void render(AutoMixDebugSnapshot snapshot, boolean enabled, double viewportWidth, double viewportHeight) {
+        render(snapshot, enabled, viewportWidth, viewportHeight, false);
+    }
+
+    static void render(AutoMixDebugSnapshot snapshot, boolean enabled, double viewportWidth, double viewportHeight, boolean both) {
         if (viewportWidth < 100 || viewportHeight < 180) return;
-        double width = Math.min(520, viewportWidth - 24);
+        var area = DebugOverlayLayout.area(viewportWidth, viewportHeight, both, false);
+        double width = area.width();
         String language = I18n.language().tag();
         if (snapshot != lastSnapshot || !language.equals(lastLanguage) || enabled != lastEnabled || width != lastWidth) {
             List<Line> lines = new ArrayList<>();
             for (Line line : describe(snapshot, enabled)) {
+                FontManager.pf14.prepareGlyphs(line.text());
                 for (String part : FontManager.pf14.fitWidth(line.text(), width - 28)) {
                     lines.add(new Line(part, line.color()));
                 }
@@ -54,11 +60,11 @@ final class AutoMixDebugOverlay {
         }
         double height = 51 + wrapped.size() * 18;
         // Leave room for the player and the bottom settings toggles, also in a small window.
-        double scale = Math.min(1, (viewportHeight - 150) / height);
-        double x = viewportWidth - width * scale - 12;
+        double scale = Math.min(1, area.height() / height);
+        double x = area.x() + width * (1 - scale);
         GL11.glPushMatrix();
         try {
-            GL11.glTranslated(x, 44, 0);
+            GL11.glTranslated(x, area.y(), 0);
             GL11.glScaled(scale, scale, 1);
             Rect.draw(0, 0, width, height, 0xED151A22);
             Rect.draw(0, 0, 3, height, ACCENT);

@@ -29,6 +29,7 @@ public class MusicPreferences {
     static final String LYRIC_HOVER_OPACITY_KEY = "ui.lyricHoverOpacity";
     static final String LYRIC_DEBUG_KEY = "lyrics.debug";
     static final String AUTO_MIX_DEBUG_KEY = "player.autoMixDebug";
+    static final String AUDIO_EFFECT_DEBUG_KEY = "player.audioEffectDebug";
     static final String VOLUME_KEY = "player.volume";
     static final String AUTO_MIX_KEY = "player.autoMix";
     static final String AUTO_MIX_FULL_MODE_KEY = "player.autoMixFullMode";
@@ -64,6 +65,7 @@ public class MusicPreferences {
     private final NumberPreference lyricHoverOpacity = new NumberPreference("Lyric Hover Opacity", .5, 0, 1, .01);
     private final PreferenceValue<Boolean> lyricDebug = new PreferenceValue<>("Per-word lyrics debug", false);
     private final PreferenceValue<Boolean> autoMixDebug = new PreferenceValue<>("AutoMix debug", false);
+    private final PreferenceValue<Boolean> audioEffectDebug = new PreferenceValue<>("Audio effect debug", false);
     private final NumberPreference volume = new NumberPreference("Volume", 0.1, 0.0, 1.0, 0.01);
     private final PreferenceValue<Boolean> autoMix = new PreferenceValue<>("AutoMix", false);
     private final PreferenceValue<Boolean> autoMixFullMode = new PreferenceValue<>("AutoMix Full Mode", true);
@@ -117,6 +119,7 @@ public class MusicPreferences {
             fireChanged();
         });
         autoMixDebug.setValueCallback(value -> fireChanged());
+        audioEffectDebug.setValueCallback(value -> fireChanged());
         volume.setValueCallback(value -> {
             CloudMusic.setVolume(value.floatValue());
             fireChanged();
@@ -205,6 +208,7 @@ public class MusicPreferences {
         json.addProperty(LYRIC_HOVER_OPACITY_KEY, lyricHoverOpacity.getValue());
         json.addProperty(LYRIC_DEBUG_KEY, lyricDebug.getValue());
         json.addProperty(AUTO_MIX_DEBUG_KEY, autoMixDebug.getValue());
+        json.addProperty(AUDIO_EFFECT_DEBUG_KEY, audioEffectDebug.getValue());
         json.addProperty(VOLUME_KEY, volume.getValue());
         json.addProperty(AUTO_MIX_KEY, autoMix.getValue());
         json.addProperty(AUTO_MIX_FULL_MODE_KEY, autoMixFullMode.getValue());
@@ -263,6 +267,7 @@ public class MusicPreferences {
             }
             applyBoolean(json, LYRIC_DEBUG_KEY, lyricDebug);
             applyBoolean(json, AUTO_MIX_DEBUG_KEY, autoMixDebug);
+            applyBoolean(json, AUDIO_EFFECT_DEBUG_KEY, audioEffectDebug);
             applyNumber(json, VOLUME_KEY, volume);
             applyBoolean(json, AUTO_MIX_KEY, autoMix);
             applyBoolean(json, AUTO_MIX_FULL_MODE_KEY, autoMixFullMode);
@@ -417,6 +422,10 @@ public class MusicPreferences {
 
     public PreferenceValue<Boolean> autoMixDebug() {
         return autoMixDebug;
+    }
+
+    public PreferenceValue<Boolean> audioEffectDebug() {
+        return audioEffectDebug;
     }
 
     public PreferenceValue<Boolean> minecrafthidden() {

@@ -245,6 +245,10 @@ public class AudioPlayer implements AutoMixTransition.Deck, AudioEffectTarget {
 
     @Override public boolean isAudioEffectClosed() { return closed; }
 
+    @Override public AudioEffectDsp.DebugSnapshot audioEffectDebugSnapshot() {
+        return audioEffect.debugSnapshot();
+    }
+
     @Override public synchronized void setMixFilter(double lowPassHz, double highPassHz) {
         if (closed) return;
         clearAdvancedFilter();

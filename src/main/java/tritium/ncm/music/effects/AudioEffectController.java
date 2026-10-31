@@ -15,6 +15,8 @@ public final class AudioEffectController {
         final long songId;
         long revision;
         AudioEffectService.Result result;
+        AudioEffectService.Selection selection;
+        long updatedAtMillis;
         Binding(AudioEffectTarget target, long songId) {
             this.target = new WeakReference<>(target); this.songId = songId;
         }
@@ -51,16 +53,32 @@ public final class AudioEffectController {
         return binding == null ? null : binding.result;
     }
 
+    /** No lookup or configuration changes: safe to poll only while the overlay is visible. */
+    public synchronized AudioEffectDebugSnapshot debugSnapshot(AudioEffectTarget current,
+                                                               AudioEffectService.Selection selection) {
+        List<AudioEffectDebugSnapshot.Deck> decks = new ArrayList<>();
+        for (Binding binding : bindings.values()) {
+            AudioEffectTarget target = binding.target.get();
+            if (target == null || target.isAudioEffectClosed()) continue;
+            decks.add(new AudioEffectDebugSnapshot.Deck(binding.songId, target == current, binding.revision,
+                    binding.updatedAtMillis, binding.selection, binding.result, target.audioEffectDebugSnapshot()));
+        }
+        decks.sort(Comparator.comparing(AudioEffectDebugSnapshot.Deck::current).reversed()
+                .thenComparingLong(AudioEffectDebugSnapshot.Deck::songId));
+        return new AudioEffectDebugSnapshot(selection, decks);
+    }
+
     private void removeClosed() {
         bindings.entrySet().removeIf(entry -> entry.getKey() == null || entry.getKey().isAudioEffectClosed());
     }
 
     private void configure(Binding binding, AudioEffectService.Selection selection, String cookie) {
         long revision = ++binding.revision;
+        binding.selection = selection;
         var fallback = service.fallback(selection);
         apply(binding, fallback);
         if (binding.songId <= 0 || !selection.needsRecommendation()) return;
-        binding.result = new AudioEffectService.Result(fallback.configuration(), "loading", fallback.tone(), fallback.usedDiy());
+        binding.result = new AudioEffectService.Result(fallback.configuration(), "loading", fallback.tone(), fallback.usedDiy(), fallback.diagnostics());
         try {
             executor.execute(() -> {
                 synchronized (this) { if (!current(binding, revision)) return; }
@@ -86,5 +104,6 @@ public final class AudioEffectController {
         if (target == null || target.isAudioEffectClosed()) return;
         target.setAudioEffect(result.configuration());
         binding.result = result;
+        binding.updatedAtMillis = System.currentTimeMillis();
     }
 }

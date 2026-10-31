@@ -19,7 +19,7 @@ class AudioEffectPreferencesTest {
     void defaultsToBypassWithAllMasterControlsHidden() {
         AudioEffectPreferences preferences = new AudioEffectPreferences();
         assertEquals("Off", preferences.mode().getValue());
-        assertEquals(List.of("Off", "Smart", "Master", "Manual"), preferences.mode().getModes());
+        assertEquals(List.of("Off", "Smart", "Master", "Emotion", "Manual"), preferences.mode().getModes());
         assertEquals("Auto", preferences.masterTone().getValue());
         assertFalse(preferences.isMaster());
         for (PreferenceValue<?> control : masterControls(preferences)) assertTrue(control.isHidden());
@@ -78,7 +78,7 @@ class AudioEffectPreferencesTest {
     void ignoresMalformedAndUnknownEntriesWithoutDiscardingValidChoices() {
         AudioEffectPreferences preferences = new AudioEffectPreferences();
         JsonObject json = new JsonObject();
-        json.addProperty("mode", "Emotion");
+        json.addProperty("mode", "UnknownMode");
         json.addProperty("masterTone", "unknown");
         json.addProperty("bass", "true");
         json.add("treble", new JsonArray());
@@ -115,6 +115,25 @@ class AudioEffectPreferencesTest {
                 assertNotEquals(key, I18n.text(language, key), language.tag());
             }
         }
+    }
+
+    @Test
+    void emotionModePersistsWithoutEnablingMasterOrManualControls(@TempDir Path dir) {
+        MusicPreferences preferences = new MusicPreferences();
+        preferences.audioEffects().masterTone().setValue("key_warm");
+        preferences.audioEffects().mode().setValue("Emotion");
+        assertTrue(preferences.audioEffects().isEmotion());
+        assertTrue(preferences.audioEffects().masterTone().isHidden());
+        assertTrue(preferences.audioEffects().bass().isHidden());
+        DesktopPreferenceStore store = new DesktopPreferenceStore(dir.resolve("preferences.json"));
+        store.save(preferences);
+        MusicPreferences restored = new MusicPreferences();
+        store.load(restored);
+        assertTrue(restored.audioEffects().isEmotion());
+        assertEquals("key_warm", restored.audioEffects().masterTone().getValue());
+        restored.audioEffects().mode().setValue("Master");
+        assertFalse(restored.audioEffects().isEmotion());
+        assertFalse(restored.audioEffects().masterTone().isHidden());
     }
 
     @Test

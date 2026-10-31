@@ -57,7 +57,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
                 if (!acceptingQrLogin || cookie == null || cookie.isBlank()) {
                     return;
                 }
-                OptionsUtil.setCookie(cookie);
+                CloudMusic.updateSessionCookie(cookie);
                 success = true;
                 this.closing = true;
             } catch (RuntimeException e) {
@@ -290,7 +290,7 @@ public class LoginRenderer implements SharedRenderingConstants, SharedConstants 
         if (loginThread != null) {
             loginThread.interrupt();
         }
-        OptionsUtil.setCookie(cookie);
+        CloudMusic.updateSessionCookie(cookie);
         statusText = I18n.text("login.signingIn");
         success = true;
         closing = true;

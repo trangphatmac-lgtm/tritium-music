@@ -6,4 +6,5 @@ import com.google.gson.JsonObject;
 public interface AudioEffectTarget {
     void setAudioEffect(JsonObject configuration);
     boolean isAudioEffectClosed();
+    default AudioEffectDsp.DebugSnapshot audioEffectDebugSnapshot() { return null; }
 }

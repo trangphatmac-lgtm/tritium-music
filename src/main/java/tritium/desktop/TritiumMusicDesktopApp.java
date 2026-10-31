@@ -201,6 +201,7 @@ public final class TritiumMusicDesktopApp {
             renderFpsOverlay();
         }
         AutoMixDebugOverlay.render();
+        AudioEffectDebugOverlay.render();
         tritium.desktop.minecraft.MinecraftRadarOverlay.render();
         CursorUtils.setOverride();
         DesktopTextInput.endFrame();

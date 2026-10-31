@@ -10,7 +10,7 @@ public final class AudioEffectPreferences {
     static final String JSON_KEY = "audioEffects";
 
     private final ModePreference mode = new ModePreference("Audio Effect", "Off",
-            new String[]{"Off", "Smart", "Master", "Manual"});
+            new String[]{"Off", "Smart", "Master", "Emotion", "Manual"});
     private final ModePreference masterTone = new ModePreference("Master Tone", "Auto", new String[]{
             "Auto", "key_bright", "key_brilliant", "key_transparent", "key_pure", "key_light", "key_clear",
             "key_balanced", "key_mellow", "key_soft", "key_deep", "key_warm", "key_full", "key_thick",
@@ -117,6 +117,7 @@ public final class AudioEffectPreferences {
 
     public boolean isManual() { return "Manual".equals(mode.getValue()); }
     public boolean isMaster() { return "Master".equals(mode.getValue()); }
+    public boolean isEmotion() { return "Emotion".equals(mode.getValue()); }
     public ModePreference mode() { return mode; }
     public ModePreference masterTone() { return masterTone; }
     public PreferenceValue<Boolean> bass() { return bass; }

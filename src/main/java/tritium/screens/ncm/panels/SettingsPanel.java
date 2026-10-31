@@ -170,6 +170,8 @@ public class SettingsPanel extends NCMPanel {
         section.addChild(new ToggleRow("settings.wordLyrics", preferences.lyricDebug()));
         section.addChild(new ToggleRow("settings.autoMixDebug", preferences.autoMixDebug()));
         section.addChild(new BackgroundStatusRow(() -> I18n.text("settings.autoMixDebugHint")));
+        section.addChild(new ToggleRow("settings.audioEffectDebug", preferences.audioEffectDebug()));
+        section.addChild(new BackgroundStatusRow(() -> I18n.text("settings.audioEffectDebugHint")));
     }
 
     private void addBackgroundSettings(SettingsScrollPanel scrollPanel) {
@@ -246,6 +248,7 @@ public class SettingsPanel extends NCMPanel {
                 value -> I18n.text("audioEffect.tone." + value)), effects::isMaster);
         backgroundRow(section, new HintRow("settings.audioEffectToneHint"), effects::isMaster);
         backgroundRow(section, new HintRow("settings.audioEffectMasterHint"), effects::isMaster);
+        backgroundRow(section, new HintRow("settings.audioEffectEmotionHint"), effects::isEmotion);
         backgroundRow(section, new ToggleRow("settings.audioEffectBass", effects.bass()), effects::isManual);
         backgroundRow(section, new ToggleRow("settings.audioEffectTreble", effects.treble()), effects::isManual);
         backgroundRow(section, new ToggleRow("settings.audioEffectVocal", effects.vocal()), effects::isManual);

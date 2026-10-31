@@ -21,6 +21,10 @@ public final class AudioEffectService {
     static final int MAX_PACKAGE = 4 * 1024 * 1024;
     private static final int MAX_METADATA = 128 * 1024;
     private static final Set<String> SMART_KEYS = Set.of("0", "1", "2", "3", "4", "6", "7", "9", "10", "11", "12", "13", "14", "17", "18", "19", "20", "21");
+    private static final List<String> EMOTION_FEATURES = List.of("genre_id", "dynamic_range", "loudness_lufs",
+            "stereo_width_ratio", "repbpm", "chorus_loudness", "vocal_main_freq", "vocal_time_ratio",
+            "harmonic_intensity_ratio", "vocal_dynamic_range", "drum_time_ratio", "rhythm_complexity",
+            "vocal_energy_ratio", "drum_energy_ratio", "bass_energy_ratio", "other_instrument_energy_ratio");
 
     public record Selection(String mode, String tone, List<String> diy) {
         /** Offer all candidates to the song-aware filter; mutually exclusive effects are resolved there. */
@@ -30,28 +34,49 @@ public final class AudioEffectService {
         }
 
         public Selection {
-            mode = Set.of("Off", "Smart", "Master", "Manual").contains(mode == null ? "" : mode) ? mode : "Off";
+            mode = Set.of("Off", "Smart", "Master", "Emotion", "Manual").contains(mode == null ? "" : mode) ? mode : "Off";
             tone = tone == null ? "Auto" : tone;
             diy = diy == null ? List.of() : List.copyOf(diy);
         }
 
         public boolean needsRecommendation() {
-            return "Smart".equals(mode) || ("Master".equals(mode) && "Auto".equals(tone));
+            return "Smart".equals(mode) || "Emotion".equals(mode) || ("Master".equals(mode) && "Auto".equals(tone));
         }
     }
-    public record Result(JsonObject configuration, String status, String tone, List<String> usedDiy) {
-        public Result { configuration = copy(configuration); usedDiy = List.copyOf(usedDiy); }
+    public record Result(JsonObject configuration, String status, String tone, List<String> usedDiy,
+                         Map<String, String> diagnostics) {
+        public Result {
+            configuration = copy(configuration); usedDiy = List.copyOf(usedDiy);
+            diagnostics = Map.copyOf(diagnostics);
+        }
+        public Result(JsonObject configuration, String status, String tone, List<String> usedDiy) {
+            this(configuration, status, tone, usedDiy, Map.of());
+        }
         @Override public JsonObject configuration() { return copy(configuration); }
     }
     interface Transport {
         JsonObject request(String endpoint, Map<String, Object> parameters, String cookie) throws Exception;
         byte[] download(String url, String cookie) throws Exception;
     }
+    @FunctionalInterface
+    interface EmotionInference {
+        float[] predict(int emotion, int genre, float[] features, float[] base) throws Exception;
+    }
+    /** Loads the bundled weights on the effect worker, never during settings changes or PCM processing. */
+    private static final class BundledEmotionInference implements EmotionInference {
+        private EmotionModelRuntime model;
+        @Override public synchronized float[] predict(int emotion, int genre, float[] features, float[] base) throws Exception {
+            if (model == null) model = new EmotionModelRuntime();
+            return model.predict(emotion, genre, features, base);
+        }
+    }
     private record Cached(JsonObject data, long fetchedAt) { }
     private final Path directory;
     private final Transport transport;
     private final LongSupplier clock;
     private final EffectPresets presets = new EffectPresets();
+    private final EmotionEffectCodec emotionCodec = new EmotionEffectCodec();
+    private final EmotionInference emotionInference;
     private final Map<String, Cached> recent = new LinkedHashMap<>(32, .75f, true) {
         @Override protected boolean removeEldestEntry(Map.Entry<String, Cached> entry) { return size() > 1000; }
     };
@@ -61,18 +86,26 @@ public final class AudioEffectService {
 
     public AudioEffectService() { this(AppPaths.cacheDir().resolve("AudioEffects"), new HttpTransport(), System::currentTimeMillis); }
     AudioEffectService(Path directory, Transport transport, LongSupplier clock) {
+        this(directory, transport, clock, new BundledEmotionInference());
+    }
+    AudioEffectService(Path directory, Transport transport, LongSupplier clock, EmotionInference emotionInference) {
         this.directory = directory; this.transport = transport; this.clock = clock;
+        this.emotionInference = Objects.requireNonNull(emotionInference);
     }
 
     /** Immediate bundled configuration, with no network or disk cache reads. */
     public Result fallback(Selection selection) {
         return switch (selection.mode()) {
-            case "Smart" -> new Result(presets.smart("0"), "smartFallback", "", List.of());
+            case "Smart" -> new Result(presets.smart("0"), "smartFallback", "", List.of(), Map.of("soundKey", "0"));
             case "Master" -> master(selection, "Auto".equals(selection.tone()) ? EffectPresets.DEFAULT_MASTER_KEY : selection.tone(),
                     null, "Auto".equals(selection.tone()) ? "masterFallback" : "masterManual");
             case "Manual" -> {
                 var composed = MasterEffectComposer.composeManual(selectedEnhancements(selection));
                 yield new Result(composed.effect(), "manual", "", composed.usedDiy());
+            }
+            case "Emotion" -> {
+                var prepared = emotionCodec.prepare(null, 0);
+                yield new Result(emotionCodec.fallback(prepared), "emotionFallback", prepared.label(), List.of(), emotionDiagnostics(prepared));
             }
             default -> new Result(null, "off", "", List.of());
         };
@@ -95,9 +128,11 @@ public final class AudioEffectService {
         JsonObject data = cached == null ? null : cached.data;
         if (stale && failures.getOrDefault(key, 0L) <= now && !Thread.currentThread().isInterrupted()) {
             try {
-                JsonObject response = "Smart".equals(selection.mode())
-                        ? transport.request("/api/usertool/smart/sound/get", Map.of("songId", Long.toString(songId)), cookie)
-                        : transport.request("/api/vip-rights/svip/sound/effect/get", Map.of("songIds", "[" + songId + "]"), cookie);
+                JsonObject response = switch (selection.mode()) {
+                    case "Smart" -> transport.request("/api/usertool/smart/sound/get", Map.of("songId", Long.toString(songId)), cookie);
+                    case "Emotion" -> transport.request("/api/vip-rights/emotion/audio/effect/get", Map.of("songIds", "[" + songId + "]"), cookie);
+                    default -> transport.request("/api/vip-rights/svip/sound/effect/get", Map.of("songIds", "[" + songId + "]"), cookie);
+                };
                 JsonObject fetched = parseMetadata(selection.mode(), songId, response);
                 if (fetched != null) {
                     data = fetched; cached = new Cached(copy(data), now);
@@ -111,8 +146,10 @@ public final class AudioEffectService {
         if (data == null) return fallback(selection);
         if ("Smart".equals(selection.mode())) {
             String soundKey = string(data, "soundKey");
-            return new Result(presets.smart(soundKey), !stale && SMART_KEYS.contains(soundKey) ? "smart" : "smartFallback", "", List.of());
+            return new Result(presets.smart(soundKey), !stale && SMART_KEYS.contains(soundKey) ? "smart" : "smartFallback", "", List.of(),
+                    Map.of("soundKey", SMART_KEYS.contains(soundKey) ? soundKey : "0"));
         }
+        if ("Emotion".equals(selection.mode())) return emotion(songId, data, stale);
         String baseKey = string(data, "baseKey");
         JsonObject song = null;
         boolean packageFailed = false;
@@ -125,6 +162,32 @@ public final class AudioEffectService {
         }
         return master(selection, baseKey, song, stale || packageFailed || !presets.masterNames().containsKey(baseKey)
                 ? "masterFallback" : "masterAuto");
+    }
+
+    private Result emotion(long songId, JsonObject data, boolean stale) {
+        var prepared = emotionCodec.prepare(data, songId);
+        if (!prepared.inferenceEligible())
+            return new Result(emotionCodec.fallback(prepared), "emotionTemplate", prepared.label(), List.of(), emotionDiagnostics(prepared));
+        try {
+            if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+            float[] output = emotionInference.predict(prepared.emotionIndex(), prepared.genreIndex(),
+                    prepared.features(), prepared.base());
+            // Decoding validates the complete model result before any DSP parameters are applied.
+            return new Result(emotionCodec.decode(prepared, output), stale ? "emotionCached" : "emotionModel",
+                    prepared.label(), List.of(), emotionDiagnostics(prepared));
+        } catch (Exception failure) {
+            if (failure instanceof InterruptedException) Thread.currentThread().interrupt();
+            var diagnostics = new LinkedHashMap<>(emotionDiagnostics(prepared));
+            diagnostics.put("reason", failure.getClass().getSimpleName());
+            return new Result(emotionCodec.fallback(prepared), "emotionModelFallback", prepared.label(), List.of(), diagnostics);
+        }
+    }
+
+    private static Map<String, String> emotionDiagnostics(EmotionEffectCodec.Prepared prepared) {
+        return Map.of("template", prepared.templateKey(), "reason", prepared.reason(),
+                "emotionIndex", Integer.toString(prepared.emotionIndex()),
+                "genreIndex", Integer.toString(prepared.genreIndex()),
+                "inferenceEligible", Boolean.toString(prepared.inferenceEligible()));
     }
 
     private Result master(Selection selection, String key, JsonObject song, String status) {
@@ -142,6 +205,7 @@ public final class AudioEffectService {
     static JsonObject parseMetadata(String mode, long id, JsonObject response) {
         if (response == null || number(response, "code", -1) != 200) return null;
         JsonElement data = response.get("data");
+        if ("Emotion".equals(mode)) return parseEmotionMetadata(id, data);
         if ("Smart".equals(mode)) {
             if (data == null || !data.isJsonObject()) return null;
             String key = string(data.getAsJsonObject(), "soundKey");
@@ -162,6 +226,38 @@ public final class AudioEffectService {
                 result.add("effect", safe);
             }
             return result;
+        }
+        return null;
+    }
+
+    /** Keep only this song's numeric audio features and bounded labels; never persist arbitrary API fields. */
+    private static JsonObject parseEmotionMetadata(long id, JsonElement data) {
+        if (data == null || !data.isJsonArray()) return null;
+        for (JsonElement item : data.getAsJsonArray()) {
+            if (!item.isJsonObject()) continue;
+            JsonObject entry = item.getAsJsonObject();
+            if (number(entry, "song_id", -1) != id) continue;
+            JsonObject safe = new JsonObject(); safe.addProperty("song_id", id);
+            for (String field : List.of("emotion_label", "key_mode")) {
+                String value = string(entry, field);
+                if (value.length() <= 256) safe.addProperty(field, value);
+            }
+            for (String field : EMOTION_FEATURES) {
+                JsonElement value = entry.get(field);
+                if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) continue;
+                double n = value.getAsDouble();
+                if (Double.isFinite(n)) safe.addProperty(field, n);
+            }
+            JsonElement mel = entry.get("mel_spectrogram_32");
+            if (mel != null && mel.isJsonArray() && mel.getAsJsonArray().size() == 32) {
+                JsonArray values = new JsonArray();
+                for (JsonElement value : mel.getAsJsonArray()) {
+                    if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber() || !Double.isFinite(value.getAsDouble())) break;
+                    values.add(new JsonPrimitive(value.getAsDouble()));
+                }
+                if (values.size() == 32) safe.add("mel_spectrogram_32", values);
+            }
+            return safe;
         }
         return null;
     }

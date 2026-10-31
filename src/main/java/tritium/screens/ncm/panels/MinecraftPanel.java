@@ -331,7 +331,15 @@ public final class MinecraftPanel extends NCMPanel {
         }
         private void buildRows() {
             if (id.equals("editHud")) { addChild(new SettingsPanel.ActionRow("minecraft.reset", connection::resetLayout)); return; }
-            if (id.equals("uninject")) { addChild(new SettingsPanel.ActionRow("minecraft.disconnect", connection::uninject)); return; }
+            if (id.equals("uninject")) {
+                var options = preferences.uninject();
+                addChild(new SettingsPanel.ChoiceRow("minecraft.uninject.hideInjectButton", options.hideInjectButton()));
+                addChild(new SettingsPanel.ToggleRow("minecraft.uninject.autoClose", options.autoClose()));
+                addChild(new SettingsPanel.ToggleRow("minecraft.uninject.selfDestruct", options.selfDestruct()));
+                addChild(new SettingsPanel.HintRow("minecraft.uninject.selfDestructHint"));
+                addChild(new SettingsPanel.ActionRow("minecraft.disconnect", connection::uninject));
+                return;
+            }
             if (id.equals("worldLyrics")) { buildWorldRows(); return; }
             if (CombatSettings.isCombat(id)) { buildCombatRows(); return; }
             if (MovementSettings.isMovement(id)) { buildMovementRows(); return; }

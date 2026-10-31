@@ -8,6 +8,34 @@ import tritium.minecraft.protocol.PlaybackState;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MinecraftPreferencesTest {
+    @Test void uninjectOptionsDefaultMigrateAndPersistWithoutChangingHudSettings() {
+        MusicPreferences original = new MusicPreferences();
+        var options = original.minecraft().uninject();
+        assertEquals(MinecraftUninjectPreferences.NEXT_LAUNCH, options.hideInjectButton().getValue());
+        assertFalse(options.autoClose().getValue()); assertFalse(options.selfDestruct().getValue());
+        int[] changes = {0}; original.setChangeCallback(() -> changes[0]++);
+        options.hideInjectButton().setValue(MinecraftUninjectPreferences.NEXT_REBOOT);
+        options.autoClose().setValue(true); options.selfDestruct().setValue(true);
+        assertEquals(3, changes[0]);
+        original.minecraft().update(c -> c.uninjectKey = 37);
+        MusicPreferences restored = new MusicPreferences(); restored.loadFromJsonObject(original.toJsonObject());
+        var loaded = restored.minecraft().uninject();
+        assertEquals(MinecraftUninjectPreferences.NEXT_REBOOT, loaded.hideInjectButton().getValue());
+        assertTrue(loaded.autoClose().getValue()); assertTrue(loaded.selfDestruct().getValue());
+        restored.minecraft().resetLayout();
+        assertTrue(loaded.selfDestruct().getValue()); assertEquals(37, restored.minecraft().snapshot().uninjectKey);
+        var legacy = original.toJsonObject(); legacy.getAsJsonObject("minecraft").remove("uninject");
+        restored.loadFromJsonObject(legacy);
+        assertEquals(MinecraftUninjectPreferences.NEXT_LAUNCH, loaded.hideInjectButton().getValue());
+        assertFalse(loaded.autoClose().getValue()); assertFalse(loaded.selfDestruct().getValue());
+        assertEquals(37, restored.minecraft().snapshot().uninjectKey);
+        var invalid = new JsonObject(); invalid.addProperty("hideInjectButton", "unknown");
+        invalid.addProperty("autoClose", "true"); invalid.add("selfDestruct", new JsonObject());
+        legacy.getAsJsonObject("minecraft").add("uninject", invalid); restored.loadFromJsonObject(legacy);
+        assertEquals(MinecraftUninjectPreferences.NEXT_LAUNCH, loaded.hideInjectButton().getValue());
+        assertFalse(loaded.autoClose().getValue()); assertFalse(loaded.selfDestruct().getValue());
+    }
+
     @Test void radarOffscreenDefaultsToFalseAndPersistsIndependentlyOfTheSourceOptions() {
         MusicPreferences original = new MusicPreferences(); original.minecraft().ensureInitialized(original);
         assertFalse(original.minecraft().offscreenRadarEnabled());

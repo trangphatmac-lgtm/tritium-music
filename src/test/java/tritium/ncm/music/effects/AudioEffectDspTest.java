@@ -51,6 +51,91 @@ class AudioEffectDspTest {
         assertEquals(2, rms(cut[0], RATE / 2) / rms(cut[1], RATE / 2), 1e-10);
     }
 
+    @Test void recoveredFixedShelfAndHighpassTypesHaveTheExpectedFrequencyResponse() {
+        JsonObject shelf = peq(5, 1000, .1, -12);
+        assertEquals(1, response(shelf, 50), .001);
+        assertEquals(Math.pow(10, -.6), response(shelf, 12_000), .001);
+        // Native type 5 ignores q; types 7/8 are the variable-Q shelf variants.
+        assertArrayEquals(configured(shelf, tones(997, .1, 0, RATE))[0],
+                configured(peq(5, 1000, 10, -12), tones(997, .1, 0, RATE))[0], 0);
+        JsonObject fixedHighpass = peq(1, 1000, 10, 0);
+        assertTrue(response(fixedHighpass, 100) < .011);
+        assertEquals(1 / Math.sqrt(2), response(fixedHighpass, 1000), .001);
+        assertEquals(1, response(fixedHighpass, 10_000), .001);
+        // The native highpass type 10 uses q; resonance at cutoff equals q.
+        assertEquals(2, response(peq(10, 1000, 2, 0), 1000), .001);
+    }
+
+    @Test void feedbackDelayHasExactSpacingIndependentChannelsAndClearsOnSeek() {
+        JsonObject config = json("{dly:{on:true,delay:100,feedback:0.5,dry:-96.3,wet:0}}");
+        double[][] impulse = new double[2][RATE / 2]; impulse[0][0] = .25;
+        double[][] output = configured(config, impulse);
+        assertEquals(.25 * Math.pow(10, -96.3 / 20), output[0][0], 1e-16);
+        for (int i = 1; i < output[0].length; i++) {
+            double expected = i % 4800 == 0 ? .25 * Math.pow(.5, i / 4800 - 1) : 0;
+            assertEquals(expected, output[0][i], 1e-16, "Frame " + i);
+        }
+        assertEquals(0, energy(output[1], 0, output[1].length), 0);
+        AudioEffectDsp dsp = new AudioEffectDsp(RATE); dsp.setConfiguration(config); dsp.reset();
+        render(dsp, impulse); dsp.reset();
+        assertEquals(0, energy(render(dsp, new double[2][RATE])[0], 0, RATE), 0);
+        // Instantaneous feedback has no causal delay line; zero delay is a finite dry/wet mix.
+        assertEquals(.2, configured(json("{dly:{on:true,delay:0,feedback:1,dry:0,wet:0}}"),
+                new double[][]{{.1}, {0}})[0][0], 1e-15);
+    }
+
+    @Test void chorusDelaysTheWetSignalAndItsModulationIsAudibleWithoutChannelLeakage() {
+        double[][] impulse = new double[2][RATE / 10]; impulse[0][0] = .2;
+        JsonObject staticDelay = json("{chorus:{on:true,delay:15,depth:0,rate:0,mix:1,voices:2}}");
+        double[][] wet = configured(staticDelay, impulse);
+        assertEquals(0, energy(wet[0], 0, 720), 0);
+        assertEquals(.2, wet[0][720], 0);
+        assertEquals(.04, energy(wet[0], 0, wet[0].length), 1e-15);
+        double[][] input = tones(997, .1, 0, RATE * 2);
+        JsonObject chorus = json("{chorus:{on:true,delay:15,depth:0.4,rate:0.3,mix:0.25,voices:2}}");
+        double[][] modulated = configured(chorus, input);
+        chorus.getAsJsonObject("chorus").addProperty("depth", 0);
+        double[] unmodulated = configured(chorus, input)[0];
+        double difference = 0;
+        for (int i = RATE; i < input[0].length; i++) difference += Math.pow(modulated[0][i] - unmodulated[i], 2);
+        assertTrue(difference > 1, "Modulated delay must alter the signal");
+        assertEquals(0, rms(modulated[1], 0), 0);
+    }
+
+    @Test void adaptiveLevelCurveRaisesQuietMusicAndPreservesChannelBalance() {
+        JsonObject alc = json("{alc:{on:true,attack:0.005,release:0.1,hold:0.05,st:0.02,lt:0.5,minisize:64,"
+                + "xypoints:[0,0,-10,-8,-20,-16,-30,-25,-40,-36,-50,-46,-70,-70,-200,-200]}}");
+        double[][] input = tones(997, .05, .025, RATE * 2);
+        double[][] output = configured(alc, input);
+        double boost = rms(output[0], RATE) / rms(input[0], RATE);
+        assertTrue(boost > 1.6 && boost < 1.85, "Quiet programme should gain roughly 4–5 dB, got " + boost);
+        assertEquals(2, rms(output[0], RATE) / rms(output[1], RATE), 1e-12);
+        assertEquals(0, rms(configured(alc, new double[2][RATE])[0], 0), 0);
+        // A constant +6 dB transfer curve provides a reference independent of detector choice.
+        alc.getAsJsonObject("alc").add("xypoints", json("{p:[-200,-194,0,6]}").getAsJsonArray("p"));
+        assertEquals(Math.pow(10, .3), rms(configured(alc, input)[0], RATE) / rms(input[0], RATE), .0001);
+    }
+
+    @Test void speakerFoldDownSeparatelyControlsCoherentCentreAndStereoFronts() {
+        JsonObject spatial = json("{spspatial:{on:true,upmix:1,center:6,fl:-6,fr:-6,global:0}}");
+        double[][] mono = tones(997, .1, .1, RATE), side = tones(997, .1, -.1, RATE);
+        assertEquals(Math.pow(10, .3), rms(configured(spatial, mono)[0], RATE / 2) / rms(mono[0], RATE / 2), 1e-12);
+        assertEquals(Math.pow(10, -.3), rms(configured(spatial, side)[0], RATE / 2) / rms(side[0], RATE / 2), 1e-12);
+        double[][] input = tones(997, .1, .03, RATE);
+        double[][] unity = configured(json("{spspatial:{on:true}}"), input);
+        assertArrayEquals(input[0], unity[0], 1e-16); assertArrayEquals(input[1], unity[1], 1e-16);
+    }
+
+    @Test void explicitModuleOrderChangesDynamicsAndDoesNotDuplicateStages() {
+        JsonObject before = json("{peq:{on:true,gain:12},cmp:{on:true,threshold:-18,ratio:8,attack:0.001,release:0.01},order:[peq,cmp]}");
+        JsonObject after = json(before.toString()); after.add("order", json("{o:[cmp,peq]}").getAsJsonArray("o"));
+        double[][] input = tones(997, .15, .075, RATE);
+        double first = rms(configured(before, input)[0], RATE / 2), last = rms(configured(after, input)[0], RATE / 2);
+        assertTrue(last > first * 2, "Pre-compressor gain and post-compressor gain must not be interchangeable");
+        JsonObject duplicate = json(before.toString()); duplicate.add("order", json("{o:[peq,peq,cmp]}").getAsJsonArray("o"));
+        assertArrayEquals(configured(before, input)[0], configured(duplicate, input)[0], 0);
+    }
+
     @Test void linkedCompressorReducesLoudSignalsAndPreservesStereoBalance() {
         JsonObject cmp = json("{cmp:{on:true,threshold:-18,ratio:4,attack:0.005,release:0.12,range:0}}");
         double[][] loud = configured(cmp, tones(500, .8, .4, RATE));
@@ -127,6 +212,18 @@ class AudioEffectDspTest {
         }
     }
 
+    @Test void zeroDecayStopsFeedbackAndNegative963LevelIsRetained() {
+        double[][] impulse = new double[2][RATE]; impulse[0][0] = .25;
+        JsonObject zero = reverb(0);
+        zero.getAsJsonObject("rvb").getAsJsonObject("rvb").addProperty("pdelay", 0);
+        zero.getAsJsonObject("rvb").getAsJsonObject("ol").addProperty("dry", -96.3);
+        double[][] output = configured(zero, impulse);
+        assertEquals(.25 * Math.pow(10, -96.3 / 20), output[0][0], 1e-16);
+        assertTrue(energy(output[0], 1, RATE / 4) > 1e-7, "Zero feedback retains the initial reflection");
+        assertTrue(energy(output[0], RATE / 2, RATE) < 1e-20, "Zero decay must not silently fall back to 1 second");
+        assertTrue(energy(configured(reverb(1), impulse)[0], RATE / 2, RATE) > 1e-9);
+    }
+
     @Test void seekResetRemovesTailButKeepsConfiguration() {
         AudioEffectDsp dsp = new AudioEffectDsp(RATE);
         dsp.setConfiguration(reverb(3)); dsp.reset();
@@ -175,6 +272,70 @@ class AudioEffectDspTest {
             }
         }
         assertEquals(55, checked, "18 smart + 32 master + 5 DIY parameter groups");
+    }
+
+    @Test void allEmotionTemplatesHaveImplementedModulesAndStableResettableStereoState() throws Exception {
+        try (var stream = getClass().getResourceAsStream("/tritium/audioeffects/emotion/templates.json")) {
+            assertNotNull(stream);
+            JsonObject templates = new JsonParser().parse(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
+            assertEquals(64, templates.entrySet().size());
+            double[][] input = tones(523.25, .2, .13, RATE);
+            for (var entry : templates.entrySet()) {
+                JsonObject template = entry.getValue().getAsJsonObject();
+                for (var module : template.entrySet()) {
+                    if (!module.getValue().isJsonObject()) continue;
+                    JsonObject settings = module.getValue().getAsJsonObject();
+                    if (settings.has("on") && settings.get("on").getAsBoolean())
+                        assertTrue(AudioEffectDsp.supportsModule(module.getKey()), entry.getKey() + ":" + module.getKey());
+                }
+                AudioEffectDsp dsp = new AudioEffectDsp(RATE); dsp.setConfiguration(template); dsp.reset();
+                double[][] out = render(dsp, input);
+                for (double[] channel : out) for (double sample : channel) {
+                    assertTrue(Double.isFinite(sample), entry.getKey());
+                    assertTrue(Math.abs(sample) <= 1, entry.getKey());
+                }
+                dsp.reset();
+                double[][] silence = render(dsp, new double[2][RATE / 2]);
+                assertEquals(0, energy(silence[0], 0, silence[0].length), 0, entry.getKey());
+                assertEquals(0, energy(silence[1], 0, silence[1].length), 0, entry.getKey());
+            }
+        }
+    }
+
+    @Test void statefulModulesAreIndependentOfRenderBlockSizeAndSupportInPlacePcm() {
+        JsonObject config = json("{chorus:{on:true,delay:15,depth:0.4,rate:0.3,mix:0.25,voices:2},"
+                + "dly:{on:true,delay:37.5,feedback:0.7,wet:-12},alc:{on:true,xypoints:[-200,-200,-20,-16,0,0]}}");
+        double[][] input = tones(523.25, .2, .13, RATE);
+        double[][] expected = configured(config, input);
+        AudioEffectDsp dsp = new AudioEffectDsp(RATE); dsp.setConfiguration(config); dsp.reset();
+        for (int start = 0; start < RATE; start += 127)
+            dsp.process(input[0], input[1], input[0], input[1], start, Math.min(RATE, start + 127));
+        assertArrayEquals(expected[0], input[0], 0); assertArrayEquals(expected[1], input[1], 0);
+        // A second deck with its own Processor must start with empty delay/envelope history.
+        double[][] silentDeck = configured(config, new double[2][RATE]);
+        assertEquals(0, energy(silentDeck[0], 0, RATE), 0);
+    }
+
+    @Test void extremeNewModuleParametersAndUnityFeedbackStayBounded() {
+        JsonObject extremes = json("{dly:{on:true,delay:0.02,feedback:99,dry:99,wet:99},"
+                + "chorus:{on:true,delay:999,depth:999,rate:999,mix:999,voices:999},"
+                + "spspatial:{on:true,global:999,center:999,fl:999,fr:999,lronoff:1,lrangle:999},"
+                + "alc:{on:true,st:0,lt:0,attack:0,release:0,minisize:0,lookahead:0.01,xyknee:99,"
+                + "xypoints:[0,99,-20,99,-20,-999,-200,-200]}}");
+        double[][] input = tones(997, .8, -.4, RATE * 2);
+        double[][] output = configured(extremes, input);
+        for (double[] channel : output) for (double sample : channel) {
+            assertTrue(Double.isFinite(sample)); assertTrue(Math.abs(sample) <= 1);
+        }
+        assertTrue(energy(output[0], RATE, RATE * 2) > 0, "Protection must not permanently mute the processor");
+    }
+
+    private static JsonObject peq(int type, double hz, double q, double gain) {
+        return json("{peq:{on:true,f:[{on:true,band:0,type:" + type + ",freq:" + hz + ",q:" + q + ",gain:" + gain + "}]}}");
+    }
+    private static double response(JsonObject config, double hz) {
+        double[][] input = tones(hz, .1, 0, RATE);
+        return rms(configured(config, input)[0], RATE / 2) / rms(input[0], RATE / 2);
     }
 
     private static JsonObject reverb(double seconds) {

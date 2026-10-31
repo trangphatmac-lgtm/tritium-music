@@ -9,7 +9,7 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class OptionsUtil {
 
-    private String COOKIE = "";
+    private volatile String COOKIE = "";
 
     public void setCookie(String cookie) {
         COOKIE = cookie;

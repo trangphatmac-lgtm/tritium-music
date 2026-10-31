@@ -1,0 +1,21 @@
+{
+  "name": "emofxnet.mnn",
+  "model_key": "motional_sound_effects_model",
+  "bytes": 553384,
+  "sha256": "a5537bea1958bd27202cba2fdf3754858cb788e0bc18366c6ecc9894b05236d1",
+  "acquired_at": "2026-10-31T21:24:00+08:00",
+  "source_url": "https://a1.music.126.net/obj/wonDkMKVw6HCmzDDjcOl/80155043247/c4ce/049f/b6d9/c2e9eb7c406c2eb71c93329375d43aa8.data",
+  "source_package_md5": "c2e9eb7c406c2eb71c93329375d43aa8",
+  "source_package_bytes": 494624,
+  "inputs": {
+    "emotion_idx": "int32[1]",
+    "genre_idx": "int32[1]",
+    "features": "float32[1,64]",
+    "base_extra_flat": "float32[1,32]"
+  },
+  "output": {
+    "aev2": "float32[1,32]"
+  },
+  "runtime": "Specialized pure Java evaluator of this exact original MNN graph",
+  "oracle": "Official MNN 3.6.2 CPU, 118 cases; tools/emotion-model/README.md"
+}

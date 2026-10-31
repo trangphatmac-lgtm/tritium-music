@@ -125,6 +125,44 @@ class MinecraftPanelRenderingTest {
             assertFalse(connection.editing());
             panel.onMouseClickReceived(editor.getX()+editor.getWidth()/2,editor.getY()+52,0); settle(panel,120);
             assertTrue(reset.isHidden()); assertEquals(64,editor.getHeight());
+            AbstractWidget<?> uninject = cards.get(5);
+            var uninjectOptions = preferences.minecraft().uninject();
+            String hideMode = uninjectOptions.hideInjectButton().getValue();
+            boolean autoClose = uninjectOptions.autoClose().getValue(), selfDestruct = uninjectOptions.selfDestruct().getValue();
+            try {
+                uninjectOptions.hideInjectButton().setValue(tritium.desktop.MinecraftUninjectPreferences.NEXT_LAUNCH);
+                uninjectOptions.autoClose().setValue(false); uninjectOptions.selfDestruct().setValue(false);
+                panel.onMouseClickReceived(uninject.getX()+uninject.getWidth()/2,uninject.getY()+52,0); settle(panel,120);
+                assertEquals(5, uninject.getChildren().size());
+                assertTrue(uninject.getChildren().stream().noneMatch(AbstractWidget::isHidden));
+                var hide = uninject.getChildren().getFirst();
+                hide.onMouseClicked(20, 20, 0);
+                assertEquals(tritium.desktop.MinecraftUninjectPreferences.NEXT_REBOOT, uninjectOptions.hideInjectButton().getValue());
+                hide.onMouseClicked(20, 20, 0);
+                assertEquals(tritium.desktop.MinecraftUninjectPreferences.OFF, uninjectOptions.hideInjectButton().getValue());
+                hide.onMouseClicked(20, 20, 0);
+                assertEquals(tritium.desktop.MinecraftUninjectPreferences.NEXT_LAUNCH, uninjectOptions.hideInjectButton().getValue());
+                uninject.getChildren().get(1).onMouseClicked(20, 20, 0);
+                uninject.getChildren().get(2).onMouseClicked(20, 20, 0);
+                assertTrue(uninjectOptions.autoClose().getValue()); assertTrue(uninjectOptions.selfDestruct().getValue());
+                assertEquals(MinecraftConnectionManager.Stage.READY, connection.status().stage());
+                grid.actualScrollOffset = grid.targetScrollOffset = uninject.getRelativeY() + grid.actualScrollOffset;
+                settle(panel,120); save("minecraft-uninject-options");
+                preferences.language().setValue("en"); settle(panel,120); save("minecraft-uninject-options-en");
+                panel.setWidth(620); settle(panel,120);
+                grid.actualScrollOffset = grid.targetScrollOffset = uninject.getRelativeY() + grid.actualScrollOffset;
+                settle(panel,120); save("minecraft-uninject-options-narrow");
+                assertTrue(uninject.getHeight() > 300);
+                assertTrue(uninject.getY() >= grid.getY());
+                assertTrue(uninject.getY() + uninject.getHeight() <= grid.getY() + grid.getHeight());
+            } finally {
+                uninjectOptions.hideInjectButton().setValue(hideMode);
+                uninjectOptions.autoClose().setValue(autoClose); uninjectOptions.selfDestruct().setValue(selfDestruct);
+                preferences.language().setValue("zh-CN"); panel.setWidth(RenderSystem.getWidth());
+                grid.actualScrollOffset = grid.targetScrollOffset = 0;
+                settle(panel,120);
+                panel.onMouseClickReceived(uninject.getX()+uninject.getWidth()/2,uninject.getY()+52,0); settle(panel,120);
+            }
             AbstractWidget<?> world = cards.get(4);
             assertEquals(18, world.getChildren().size());
             panel.onMouseClickReceived(world.getX()+keyX.getDouble(world)+6,world.getY()+30,0);

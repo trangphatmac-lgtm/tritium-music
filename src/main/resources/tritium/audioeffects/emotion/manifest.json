@@ -1,0 +1,1712 @@
+{
+  "apk_version": "9.5.40",
+  "hbc_version": 89,
+  "hbc_sha256": "46906df29044c569beb6fb0752221b7237369101f1fa2c11a0e2c4cff6465dea",
+  "template_count": 64,
+  "modules": {
+    "bitter:folk-family": 875,
+    "bitter:instrumental-family": 876,
+    "bitter:pop-family": 877,
+    "bitter:rhythm-family": 878,
+    "calm:folk-family": 879,
+    "calm:instrumental-family": 880,
+    "calm:pop-family": 881,
+    "calm:rhythm-family": 882,
+    "confident:folk-family": 883,
+    "confident:instrumental-family": 884,
+    "confident:pop-family": 885,
+    "confident:rhythm-family": 886,
+    "default:folk-family": 887,
+    "default:instrumental-family": 888,
+    "default:pop-family": 889,
+    "default:rhythm-family": 890,
+    "depressed:folk-family": 891,
+    "depressed:instrumental-family": 892,
+    "depressed:pop-family": 893,
+    "depressed:rhythm-family": 894,
+    "ecstatic:folk-family": 895,
+    "ecstatic:instrumental-family": 896,
+    "ecstatic:pop-family": 897,
+    "ecstatic:rhythm-family": 898,
+    "energetic:folk-family": 899,
+    "energetic:instrumental-family": 900,
+    "energetic:pop-family": 901,
+    "energetic:rhythm-family": 902,
+    "healing:folk-family": 903,
+    "healing:instrumental-family": 904,
+    "healing:pop-family": 905,
+    "healing:rhythm-family": 906,
+    "joyful:folk-family": 907,
+    "joyful:instrumental-family": 908,
+    "joyful:pop-family": 909,
+    "joyful:rhythm-family": 910,
+    "lonely:folk-family": 911,
+    "lonely:instrumental-family": 912,
+    "lonely:pop-family": 913,
+    "lonely:rhythm-family": 914,
+    "nostalgic:folk-family": 915,
+    "nostalgic:instrumental-family": 916,
+    "nostalgic:pop-family": 917,
+    "nostalgic:rhythm-family": 918,
+    "passionate:folk-family": 919,
+    "passionate:instrumental-family": 920,
+    "passionate:pop-family": 921,
+    "passionate:rhythm-family": 922,
+    "relaxed:folk-family": 923,
+    "relaxed:instrumental-family": 924,
+    "relaxed:pop-family": 925,
+    "relaxed:rhythm-family": 926,
+    "romantic:folk-family": 927,
+    "romantic:instrumental-family": 928,
+    "romantic:pop-family": 929,
+    "romantic:rhythm-family": 930,
+    "sad:folk-family": 931,
+    "sad:instrumental-family": 932,
+    "sad:pop-family": 933,
+    "sad:rhythm-family": 934,
+    "sweet:folk-family": 935,
+    "sweet:instrumental-family": 936,
+    "sweet:pop-family": 937,
+    "sweet:rhythm-family": 938
+  },
+  "signed_integer_corrections": [
+    {
+      "function": 9266,
+      "instruction_offset": "000000cd",
+      "value_buffer_offset": 6451,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9268,
+      "instruction_offset": "00000074",
+      "value_buffer_offset": 6863,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9269,
+      "instruction_offset": "0000007f",
+      "value_buffer_offset": 7090,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9269,
+      "instruction_offset": "000000d3",
+      "value_buffer_offset": 6451,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9270,
+      "instruction_offset": "000000ce",
+      "value_buffer_offset": 7393,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9270,
+      "instruction_offset": "000000dc",
+      "value_buffer_offset": 7421,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9270,
+      "instruction_offset": "000000ea",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9270,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 7524,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9270,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 7524,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967269,
+      "signed_int32": -27
+    },
+    {
+      "function": 9271,
+      "instruction_offset": "000000ce",
+      "value_buffer_offset": 7393,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9271,
+      "instruction_offset": "000000dc",
+      "value_buffer_offset": 7421,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9271,
+      "instruction_offset": "000000ea",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9271,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 7626,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9271,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 7626,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967272,
+      "signed_int32": -24
+    },
+    {
+      "function": 9272,
+      "instruction_offset": "000000ce",
+      "value_buffer_offset": 7393,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9272,
+      "instruction_offset": "000000dc",
+      "value_buffer_offset": 7421,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9272,
+      "instruction_offset": "000000ea",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9272,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 7833,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9272,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 7833,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    },
+    {
+      "function": 9273,
+      "instruction_offset": "000000ce",
+      "value_buffer_offset": 7393,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9273,
+      "instruction_offset": "000000dc",
+      "value_buffer_offset": 7421,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9273,
+      "instruction_offset": "000000ea",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9273,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 7867,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9273,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 7867,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967268,
+      "signed_int32": -28
+    },
+    {
+      "function": 9274,
+      "instruction_offset": "000000d4",
+      "value_buffer_offset": 8001,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9274,
+      "instruction_offset": "000000e2",
+      "value_buffer_offset": 8035,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9274,
+      "instruction_offset": "000000f0",
+      "value_buffer_offset": 8069,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9274,
+      "instruction_offset": "00000143",
+      "value_buffer_offset": 8177,
+      "field": "er",
+      "decompiler_unsigned": 4294967268,
+      "signed_int32": -28
+    },
+    {
+      "function": 9274,
+      "instruction_offset": "00000143",
+      "value_buffer_offset": 8177,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9274,
+      "instruction_offset": "00000157",
+      "value_buffer_offset": 8190,
+      "field": "rear",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9274,
+      "instruction_offset": "00000157",
+      "value_buffer_offset": 8190,
+      "field": "center",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9276,
+      "instruction_offset": "000000d4",
+      "value_buffer_offset": 8001,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9276,
+      "instruction_offset": "000000e2",
+      "value_buffer_offset": 8035,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9276,
+      "instruction_offset": "000000f0",
+      "value_buffer_offset": 8069,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9276,
+      "instruction_offset": "00000143",
+      "value_buffer_offset": 8177,
+      "field": "er",
+      "decompiler_unsigned": 4294967268,
+      "signed_int32": -28
+    },
+    {
+      "function": 9276,
+      "instruction_offset": "00000143",
+      "value_buffer_offset": 8177,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9276,
+      "instruction_offset": "00000157",
+      "value_buffer_offset": 8190,
+      "field": "rear",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9276,
+      "instruction_offset": "00000157",
+      "value_buffer_offset": 8190,
+      "field": "center",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9277,
+      "instruction_offset": "000000d4",
+      "value_buffer_offset": 8001,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9277,
+      "instruction_offset": "000000e2",
+      "value_buffer_offset": 8035,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9277,
+      "instruction_offset": "000000f0",
+      "value_buffer_offset": 8069,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9277,
+      "instruction_offset": "00000143",
+      "value_buffer_offset": 8177,
+      "field": "er",
+      "decompiler_unsigned": 4294967268,
+      "signed_int32": -28
+    },
+    {
+      "function": 9277,
+      "instruction_offset": "00000143",
+      "value_buffer_offset": 8177,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9277,
+      "instruction_offset": "00000157",
+      "value_buffer_offset": 8190,
+      "field": "rear",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9277,
+      "instruction_offset": "00000157",
+      "value_buffer_offset": 8190,
+      "field": "center",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9278,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 8839,
+      "field": "gain",
+      "decompiler_unsigned": 4294967287,
+      "signed_int32": -9
+    },
+    {
+      "function": 9278,
+      "instruction_offset": "000000da",
+      "value_buffer_offset": 8867,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9278,
+      "instruction_offset": "000000e8",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9278,
+      "instruction_offset": "00000131",
+      "value_buffer_offset": 8936,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9278,
+      "instruction_offset": "00000131",
+      "value_buffer_offset": 8936,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9279,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 8839,
+      "field": "gain",
+      "decompiler_unsigned": 4294967287,
+      "signed_int32": -9
+    },
+    {
+      "function": 9279,
+      "instruction_offset": "000000da",
+      "value_buffer_offset": 8867,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9279,
+      "instruction_offset": "000000e8",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9279,
+      "instruction_offset": "00000131",
+      "value_buffer_offset": 7524,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9279,
+      "instruction_offset": "00000131",
+      "value_buffer_offset": 7524,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967269,
+      "signed_int32": -27
+    },
+    {
+      "function": 9280,
+      "instruction_offset": "000000c6",
+      "value_buffer_offset": 8839,
+      "field": "gain",
+      "decompiler_unsigned": 4294967287,
+      "signed_int32": -9
+    },
+    {
+      "function": 9280,
+      "instruction_offset": "000000d4",
+      "value_buffer_offset": 8867,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9280,
+      "instruction_offset": "000000e2",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9280,
+      "instruction_offset": "0000012b",
+      "value_buffer_offset": 8936,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9280,
+      "instruction_offset": "0000012b",
+      "value_buffer_offset": 8936,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9281,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 8839,
+      "field": "gain",
+      "decompiler_unsigned": 4294967287,
+      "signed_int32": -9
+    },
+    {
+      "function": 9281,
+      "instruction_offset": "000000da",
+      "value_buffer_offset": 8867,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9281,
+      "instruction_offset": "000000e8",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9281,
+      "instruction_offset": "00000131",
+      "value_buffer_offset": 8936,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9281,
+      "instruction_offset": "00000131",
+      "value_buffer_offset": 8936,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9282,
+      "instruction_offset": "00000066",
+      "value_buffer_offset": 9062,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9282,
+      "instruction_offset": "000000aa",
+      "value_buffer_offset": 9115,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9282,
+      "instruction_offset": "000000c4",
+      "value_buffer_offset": 9122,
+      "field": "gain",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9282,
+      "instruction_offset": "000000d2",
+      "value_buffer_offset": 8867,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9282,
+      "instruction_offset": "000000e0",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9282,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 8936,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9282,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 8936,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9283,
+      "instruction_offset": "0000004a",
+      "value_buffer_offset": 9226,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9283,
+      "instruction_offset": "00000066",
+      "value_buffer_offset": 9062,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9283,
+      "instruction_offset": "000000a6",
+      "value_buffer_offset": 9115,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9283,
+      "instruction_offset": "000000c0",
+      "value_buffer_offset": 9122,
+      "field": "gain",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9283,
+      "instruction_offset": "000000ce",
+      "value_buffer_offset": 8867,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9283,
+      "instruction_offset": "000000dc",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9283,
+      "instruction_offset": "0000012f",
+      "value_buffer_offset": 7524,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9283,
+      "instruction_offset": "0000012f",
+      "value_buffer_offset": 7524,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967269,
+      "signed_int32": -27
+    },
+    {
+      "function": 9284,
+      "instruction_offset": "00000058",
+      "value_buffer_offset": 9296,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9284,
+      "instruction_offset": "00000066",
+      "value_buffer_offset": 9062,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9284,
+      "instruction_offset": "000000a6",
+      "value_buffer_offset": 9115,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9284,
+      "instruction_offset": "000000c0",
+      "value_buffer_offset": 9122,
+      "field": "gain",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9284,
+      "instruction_offset": "000000ce",
+      "value_buffer_offset": 8867,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9284,
+      "instruction_offset": "000000dc",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9284,
+      "instruction_offset": "0000012f",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9284,
+      "instruction_offset": "0000012f",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9285,
+      "instruction_offset": "00000058",
+      "value_buffer_offset": 9296,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9285,
+      "instruction_offset": "00000066",
+      "value_buffer_offset": 9062,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9285,
+      "instruction_offset": "000000aa",
+      "value_buffer_offset": 9115,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9285,
+      "instruction_offset": "000000c4",
+      "value_buffer_offset": 9122,
+      "field": "gain",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9285,
+      "instruction_offset": "000000d2",
+      "value_buffer_offset": 8867,
+      "field": "gain",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9285,
+      "instruction_offset": "000000e0",
+      "value_buffer_offset": 7449,
+      "field": "gain",
+      "decompiler_unsigned": 4294967292,
+      "signed_int32": -4
+    },
+    {
+      "function": 9285,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 9383,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9285,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 9383,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9290,
+      "instruction_offset": "00000129",
+      "value_buffer_offset": 9910,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9291,
+      "instruction_offset": "00000104",
+      "value_buffer_offset": 9994,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9291,
+      "instruction_offset": "00000104",
+      "value_buffer_offset": 9994,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967273,
+      "signed_int32": -23
+    },
+    {
+      "function": 9292,
+      "instruction_offset": "00000104",
+      "value_buffer_offset": 10189,
+      "field": "er",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9292,
+      "instruction_offset": "00000104",
+      "value_buffer_offset": 10189,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    },
+    {
+      "function": 9293,
+      "instruction_offset": "00000111",
+      "value_buffer_offset": 7867,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9293,
+      "instruction_offset": "00000111",
+      "value_buffer_offset": 7867,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967268,
+      "signed_int32": -28
+    },
+    {
+      "function": 9294,
+      "instruction_offset": "000000b7",
+      "value_buffer_offset": 9115,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9294,
+      "instruction_offset": "0000010b",
+      "value_buffer_offset": 7524,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9294,
+      "instruction_offset": "0000010b",
+      "value_buffer_offset": 7524,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967269,
+      "signed_int32": -27
+    },
+    {
+      "function": 9295,
+      "instruction_offset": "000000a8",
+      "value_buffer_offset": 9115,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9295,
+      "instruction_offset": "000000fe",
+      "value_buffer_offset": 7626,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9295,
+      "instruction_offset": "000000fe",
+      "value_buffer_offset": 7626,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967272,
+      "signed_int32": -24
+    },
+    {
+      "function": 9296,
+      "instruction_offset": "000000a8",
+      "value_buffer_offset": 9115,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9296,
+      "instruction_offset": "000000fe",
+      "value_buffer_offset": 7833,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9296,
+      "instruction_offset": "000000fe",
+      "value_buffer_offset": 7833,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    },
+    {
+      "function": 9297,
+      "instruction_offset": "000000b7",
+      "value_buffer_offset": 9115,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9297,
+      "instruction_offset": "0000010b",
+      "value_buffer_offset": 7524,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9297,
+      "instruction_offset": "0000010b",
+      "value_buffer_offset": 7524,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967269,
+      "signed_int32": -27
+    },
+    {
+      "function": 9298,
+      "instruction_offset": "000000c4",
+      "value_buffer_offset": 10801,
+      "field": "threshold",
+      "decompiler_unsigned": 4294967284,
+      "signed_int32": -12
+    },
+    {
+      "function": 9299,
+      "instruction_offset": "000000e6",
+      "value_buffer_offset": 10865,
+      "field": "threshold",
+      "decompiler_unsigned": 4294967288,
+      "signed_int32": -8
+    },
+    {
+      "function": 9300,
+      "instruction_offset": "000000cb",
+      "value_buffer_offset": 10929,
+      "field": "threshold",
+      "decompiler_unsigned": 4294967281,
+      "signed_int32": -15
+    },
+    {
+      "function": 9301,
+      "instruction_offset": "000000e6",
+      "value_buffer_offset": 10993,
+      "field": "threshold",
+      "decompiler_unsigned": 4294967278,
+      "signed_int32": -18
+    },
+    {
+      "function": 9302,
+      "instruction_offset": "000000a1",
+      "value_buffer_offset": 11211,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9302,
+      "instruction_offset": "00000103",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9302,
+      "instruction_offset": "00000103",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9303,
+      "instruction_offset": "00000098",
+      "value_buffer_offset": 11526,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9303,
+      "instruction_offset": "000000fc",
+      "value_buffer_offset": 9994,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9303,
+      "instruction_offset": "000000fc",
+      "value_buffer_offset": 9994,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967273,
+      "signed_int32": -23
+    },
+    {
+      "function": 9304,
+      "instruction_offset": "00000098",
+      "value_buffer_offset": 11211,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9304,
+      "instruction_offset": "000000fc",
+      "value_buffer_offset": 7626,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9304,
+      "instruction_offset": "000000fc",
+      "value_buffer_offset": 7626,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967272,
+      "signed_int32": -24
+    },
+    {
+      "function": 9305,
+      "instruction_offset": "00000092",
+      "value_buffer_offset": 11727,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9305,
+      "instruction_offset": "000000f6",
+      "value_buffer_offset": 7833,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9305,
+      "instruction_offset": "000000f6",
+      "value_buffer_offset": 7833,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    },
+    {
+      "function": 9306,
+      "instruction_offset": "0000005d",
+      "value_buffer_offset": 11795,
+      "field": "gain",
+      "decompiler_unsigned": 4294967290,
+      "signed_int32": -6
+    },
+    {
+      "function": 9306,
+      "instruction_offset": "0000006b",
+      "value_buffer_offset": 11823,
+      "field": "gain",
+      "decompiler_unsigned": 4294967290,
+      "signed_int32": -6
+    },
+    {
+      "function": 9306,
+      "instruction_offset": "000000ca",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9306,
+      "instruction_offset": "000000ca",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9306,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 11933,
+      "field": "threshold",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9307,
+      "instruction_offset": "0000005d",
+      "value_buffer_offset": 11795,
+      "field": "gain",
+      "decompiler_unsigned": 4294967290,
+      "signed_int32": -6
+    },
+    {
+      "function": 9307,
+      "instruction_offset": "0000006b",
+      "value_buffer_offset": 11823,
+      "field": "gain",
+      "decompiler_unsigned": 4294967290,
+      "signed_int32": -6
+    },
+    {
+      "function": 9307,
+      "instruction_offset": "000000ca",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9307,
+      "instruction_offset": "000000ca",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9307,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 11933,
+      "field": "threshold",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9308,
+      "instruction_offset": "0000005d",
+      "value_buffer_offset": 11795,
+      "field": "gain",
+      "decompiler_unsigned": 4294967290,
+      "signed_int32": -6
+    },
+    {
+      "function": 9308,
+      "instruction_offset": "0000006b",
+      "value_buffer_offset": 11823,
+      "field": "gain",
+      "decompiler_unsigned": 4294967290,
+      "signed_int32": -6
+    },
+    {
+      "function": 9308,
+      "instruction_offset": "000000ca",
+      "value_buffer_offset": 9994,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9308,
+      "instruction_offset": "000000ca",
+      "value_buffer_offset": 9994,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967273,
+      "signed_int32": -23
+    },
+    {
+      "function": 9308,
+      "instruction_offset": "00000133",
+      "value_buffer_offset": 11933,
+      "field": "threshold",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9309,
+      "instruction_offset": "00000063",
+      "value_buffer_offset": 11795,
+      "field": "gain",
+      "decompiler_unsigned": 4294967290,
+      "signed_int32": -6
+    },
+    {
+      "function": 9309,
+      "instruction_offset": "00000071",
+      "value_buffer_offset": 11823,
+      "field": "gain",
+      "decompiler_unsigned": 4294967290,
+      "signed_int32": -6
+    },
+    {
+      "function": 9309,
+      "instruction_offset": "000000d0",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9309,
+      "instruction_offset": "000000d0",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9309,
+      "instruction_offset": "00000139",
+      "value_buffer_offset": 11933,
+      "field": "threshold",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9310,
+      "instruction_offset": "0000011e",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9310,
+      "instruction_offset": "0000011e",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9318,
+      "instruction_offset": "000000ff",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9318,
+      "instruction_offset": "000000ff",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9320,
+      "instruction_offset": "000000ff",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9320,
+      "instruction_offset": "000000ff",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9321,
+      "instruction_offset": "00000104",
+      "value_buffer_offset": 9318,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9321,
+      "instruction_offset": "00000104",
+      "value_buffer_offset": 9318,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967271,
+      "signed_int32": -25
+    },
+    {
+      "function": 9322,
+      "instruction_offset": "00000004",
+      "value_buffer_offset": 12487,
+      "field": "gain",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9322,
+      "instruction_offset": "00000012",
+      "value_buffer_offset": 8035,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9322,
+      "instruction_offset": "00000020",
+      "value_buffer_offset": 12521,
+      "field": "gain",
+      "decompiler_unsigned": 4294967293,
+      "signed_int32": -3
+    },
+    {
+      "function": 9322,
+      "instruction_offset": "00000073",
+      "value_buffer_offset": 9994,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9322,
+      "instruction_offset": "00000073",
+      "value_buffer_offset": 9994,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967273,
+      "signed_int32": -23
+    },
+    {
+      "function": 9322,
+      "instruction_offset": "00000087",
+      "value_buffer_offset": 12605,
+      "field": "rear",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9322,
+      "instruction_offset": "00000087",
+      "value_buffer_offset": 12605,
+      "field": "center",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9322,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 12705,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9323,
+      "instruction_offset": "00000004",
+      "value_buffer_offset": 12487,
+      "field": "gain",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9323,
+      "instruction_offset": "00000012",
+      "value_buffer_offset": 8035,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9323,
+      "instruction_offset": "00000020",
+      "value_buffer_offset": 12521,
+      "field": "gain",
+      "decompiler_unsigned": 4294967293,
+      "signed_int32": -3
+    },
+    {
+      "function": 9323,
+      "instruction_offset": "00000073",
+      "value_buffer_offset": 9994,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9323,
+      "instruction_offset": "00000073",
+      "value_buffer_offset": 9994,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967273,
+      "signed_int32": -23
+    },
+    {
+      "function": 9323,
+      "instruction_offset": "00000087",
+      "value_buffer_offset": 12605,
+      "field": "rear",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9323,
+      "instruction_offset": "00000087",
+      "value_buffer_offset": 12605,
+      "field": "center",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9323,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 12705,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9324,
+      "instruction_offset": "00000004",
+      "value_buffer_offset": 12487,
+      "field": "gain",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9324,
+      "instruction_offset": "00000012",
+      "value_buffer_offset": 8035,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9324,
+      "instruction_offset": "00000020",
+      "value_buffer_offset": 12521,
+      "field": "gain",
+      "decompiler_unsigned": 4294967293,
+      "signed_int32": -3
+    },
+    {
+      "function": 9324,
+      "instruction_offset": "00000073",
+      "value_buffer_offset": 9994,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9324,
+      "instruction_offset": "00000073",
+      "value_buffer_offset": 9994,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967273,
+      "signed_int32": -23
+    },
+    {
+      "function": 9324,
+      "instruction_offset": "00000087",
+      "value_buffer_offset": 12605,
+      "field": "rear",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9324,
+      "instruction_offset": "00000087",
+      "value_buffer_offset": 12605,
+      "field": "center",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9324,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 12705,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9325,
+      "instruction_offset": "00000004",
+      "value_buffer_offset": 12487,
+      "field": "gain",
+      "decompiler_unsigned": 4294967291,
+      "signed_int32": -5
+    },
+    {
+      "function": 9325,
+      "instruction_offset": "00000012",
+      "value_buffer_offset": 8035,
+      "field": "gain",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9325,
+      "instruction_offset": "00000020",
+      "value_buffer_offset": 12521,
+      "field": "gain",
+      "decompiler_unsigned": 4294967293,
+      "signed_int32": -3
+    },
+    {
+      "function": 9325,
+      "instruction_offset": "00000073",
+      "value_buffer_offset": 7833,
+      "field": "er",
+      "decompiler_unsigned": 4294967266,
+      "signed_int32": -30
+    },
+    {
+      "function": 9325,
+      "instruction_offset": "00000073",
+      "value_buffer_offset": 7833,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    },
+    {
+      "function": 9325,
+      "instruction_offset": "00000087",
+      "value_buffer_offset": 12605,
+      "field": "rear",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9325,
+      "instruction_offset": "00000087",
+      "value_buffer_offset": 12605,
+      "field": "center",
+      "decompiler_unsigned": 4294967295,
+      "signed_int32": -1
+    },
+    {
+      "function": 9325,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 12705,
+      "field": "gain",
+      "decompiler_unsigned": 4294967294,
+      "signed_int32": -2
+    },
+    {
+      "function": 9326,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 10189,
+      "field": "er",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9326,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 10189,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    },
+    {
+      "function": 9327,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 10189,
+      "field": "er",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9327,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 10189,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    },
+    {
+      "function": 9328,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 10189,
+      "field": "er",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9328,
+      "instruction_offset": "000000cc",
+      "value_buffer_offset": 10189,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    },
+    {
+      "function": 9329,
+      "instruction_offset": "000000fc",
+      "value_buffer_offset": 10189,
+      "field": "er",
+      "decompiler_unsigned": 4294967264,
+      "signed_int32": -32
+    },
+    {
+      "function": 9329,
+      "instruction_offset": "000000fc",
+      "value_buffer_offset": 10189,
+      "field": "rvb",
+      "decompiler_unsigned": 4294967270,
+      "signed_int32": -26
+    }
+  ],
+  "active_module_counts": {
+    "eq": 33,
+    "peq": 44,
+    "se": 44,
+    "spspatial": 7,
+    "limiter": 32,
+    "rvb": 43,
+    "bt": 8,
+    "cmp": 4,
+    "chorus": 4,
+    "alc": 3
+  },
+  "active_peq_type_counts": {
+    "6": 179,
+    "5": 26,
+    "1": 8,
+    "10": 4,
+    "8": 4
+  },
+  "source": "APK embedded rn_js-kernel Hermes; local offline REA extraction",
+  "warning": "Client bundle defaults; runtime remote config may differ.",
+  "resources_sha256": {
+    "templates.json": "0542f4a983b820d4a3aced7be303e314da165b43481fb2e0b2183604ab628364",
+    "config.json": "a05d70cfa622a15611bc44466bb04ea08e5b338dd515e53e7335305c8ee632c0",
+    "classification.json": "b6498d37c017457f2dbd42d752b81cffff954c1bbf91b3cdbaca1a95851e98f4",
+    "labels.json": "1ff8e9f4aa4f55e514fb9de5d698663a9265b7fc976e3ce9262bdbc73ed74ca9",
+    "multichannel.json": "cde7b46acfcb51ad0c5233b5718c9b8d6e2f9f3f882d747211a08fb5a12203a8"
+  },
+  "classification_source": {
+    "module": 958,
+    "function": 9464,
+    "literal_initializer_offset": "0x148"
+  },
+  "labels_source": {
+    "modules": [
+      945,
+      960,
+      961
+    ],
+    "chinese_mapping_function": 9505
+  },
+  "multichannel_source": {
+    "module": 943,
+    "function": 9375,
+    "literal_initializer_offset": "0x47"
+  }
+}
