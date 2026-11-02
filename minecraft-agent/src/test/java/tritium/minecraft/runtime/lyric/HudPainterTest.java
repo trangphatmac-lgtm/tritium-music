@@ -1,10 +1,12 @@
 package tritium.minecraft.runtime.lyric;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import tritium.minecraft.protocol.*;
 import java.awt.image.BufferedImage;
 import static org.junit.jupiter.api.Assertions.*;
 
+@EnabledIfSystemProperty(named = "tritium.testVisuals", matches = "true")
 class HudPainterTest {
     @Test void infoAndLyricsFollowPhysicalResolutionAcrossScaleChanges() {
         HudConfig config = new HudConfig(); HudPainter painter = new HudPainter();

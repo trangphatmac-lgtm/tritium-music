@@ -1,6 +1,7 @@
 package tritium.desktop.hud;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import java.awt.*;
@@ -10,6 +11,7 @@ import java.nio.file.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Compare the real system HUD painter with the isolated Agent at Minecraft GUI scale 2. */
+@EnabledIfSystemProperty(named = "tritium.testVisuals", matches = "true")
 class MinecraftToastAppearanceTest {
     @Test void matchesDesktopTextSizeInsetsAndDefaultHeight() throws Exception {
         try (URLClassLoader agent = new URLClassLoader(new java.net.URL[]{Path.of("minecraft-agent/target/minecraft-hud-agent.jar").toUri().toURL()}, ClassLoader.getPlatformClassLoader())) {

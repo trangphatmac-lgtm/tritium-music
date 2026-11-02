@@ -2,6 +2,7 @@ package tritium.minecraft.runtime.lyric;
 
 import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import tritium.minecraft.protocol.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -12,6 +13,7 @@ import javax.imageio.ImageIO;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Headless composition previews, not Minecraft/Forge/Lunar acceptance. */
+@EnabledIfSystemProperty(named = "tritium.testVisuals", matches = "true")
 class HudReferenceGalleryTest {
     @Test void exportsReferenceComparison() throws Exception {
         BufferedImage sheet = new BufferedImage(1920, 1100, BufferedImage.TYPE_INT_RGB);

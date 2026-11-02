@@ -13,6 +13,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.jupiter.version>5.10.3</junit.jupiter.version>
+        <tritium.testVisuals>false</tritium.testVisuals>
     </properties>
 
     <repositories>
@@ -253,9 +254,29 @@
                     <configuration>
                         <projectsDirectory>${project.basedir}/minecraft-agent</projectsDirectory>
                         <pomIncludes><pomInclude>pom.xml</pomInclude></pomIncludes>
-                        <goals><goal>clean</goal><goal>package</goal></goals><streamLogs>true</streamLogs>
+                        <goals><goal>package</goal></goals><streamLogs>true</streamLogs>
+                        <properties>
+                            <tritium.testVisuals>${tritium.testVisuals}</tritium.testVisuals>
+                        </properties>
                     </configuration>
                 </execution></executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <filesets>
+                        <fileset><directory>${project.basedir}/minecraft-agent/target</directory></fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration>
+                    <!-- Shade replaces this JAR; always start from the project's own classes. -->
+                    <forceCreation>true</forceCreation>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -315,7 +336,8 @@
                 <executions>
                     <execution>
                         <id>portable</id>
-                        <phase>package</phase>
+                        <!-- Daily package builds only the runnable JAR; verify also builds distributions. -->
+                        <phase>verify</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>

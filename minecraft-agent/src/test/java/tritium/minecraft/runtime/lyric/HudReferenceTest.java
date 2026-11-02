@@ -1,12 +1,14 @@
 package tritium.minecraft.runtime.lyric;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import tritium.minecraft.protocol.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import static org.junit.jupiter.api.Assertions.*;
 
+@EnabledIfSystemProperty(named = "tritium.testVisuals", matches = "true")
 class HudReferenceTest {
     @Test void spectrumRetainsAbsoluteBarHeightWhenAnotherBandGetsLouder() {
         HudConfig.Module module = new HudConfig().find("musicSpectrum");

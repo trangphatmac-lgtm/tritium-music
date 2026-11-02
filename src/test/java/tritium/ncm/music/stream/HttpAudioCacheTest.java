@@ -6,9 +6,12 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,21 +74,36 @@ class HttpAudioCacheTest {
     }
 
     @Test void truncatedOrCancelledDownloadsNeverPublishCache() throws Exception {
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/audio", exchange -> {
-            exchange.sendResponseHeaders(200, 200_000);
-            try (var out = exchange.getResponseBody()) { out.write(new byte[100]); }
-            catch (IOException ignored) { }
-        });
-        server.start();
         Path cache = directory.resolve("song.flac");
-        try (HttpAudioCache input = new HttpAudioCache(url(server), cache)) {
-            input.open();
-            assertThrows(IOException.class, input::readAllBytes);
-            input.cancel();
-            assertThrows(InterruptedIOException.class, input::commit);
-            assertFalse(Files.exists(cache));
-        } finally { server.stop(0); }
+        // HttpServer rejects a short fixed-length body on close and can leave the client
+        // waiting for its 10-second read timeout. Close a real socket to simulate truncation.
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor();
+             var server = new ServerSocket()) {
+            server.bind(new InetSocketAddress("127.0.0.1", 0));
+            var response = executor.submit(() -> {
+                try (var socket = server.accept()) {
+                    socket.setSoTimeout(5_000);
+                    var request = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII));
+                    String line;
+                    while ((line = request.readLine()) != null && !line.isEmpty()) { }
+                    var out = socket.getOutputStream();
+                    out.write("HTTP/1.1 200 OK\r\nContent-Length: 200000\r\nConnection: close\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
+                    out.write(new byte[100]);
+                    out.flush();
+                }
+                return null;
+            });
+            try (HttpAudioCache input = new HttpAudioCache("http://127.0.0.1:" + server.getLocalPort() + "/audio", cache)) {
+                input.open();
+                assertThrows(EOFException.class, input::readAllBytes);
+                assertThrows(EOFException.class, input::commit);
+                assertFalse(Files.exists(cache));
+                input.cancel();
+                assertThrows(InterruptedIOException.class, input::commit);
+                assertFalse(Files.exists(cache));
+            }
+            response.get(5, TimeUnit.SECONDS);
+        }
         try (var files = Files.list(directory)) { assertEquals(0, files.count()); }
     }
 
