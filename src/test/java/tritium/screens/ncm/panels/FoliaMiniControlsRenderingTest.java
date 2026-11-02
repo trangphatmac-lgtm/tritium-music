@@ -1,5 +1,7 @@
 package tritium.screens.ncm.panels;
 
+import tritium.rendering.ui.widgets.DropdownTestSupport;
+
 import com.google.gson.GsonBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -86,7 +88,7 @@ class FoliaMiniControlsRenderingTest {
                     }).findFirst().orElseThrow();
             scroll.actualScrollOffset = scroll.targetScrollOffset = choice.getY() - scroll.getY() - 90;
             settle(screen);
-            click(screen, choice);
+            DropdownTestSupport.select(settings, choice, prefs.playerControls(), "FoliaMini");
             settle(screen);
             assertInstanceOf(FoliaMiniControls.class, screen.getControlsBar());
             assertSame(settings, screen.getCurrentPanel());
@@ -179,7 +181,7 @@ class FoliaMiniControlsRenderingTest {
             save("folia-mini-idle", mini);
             scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + choice.getY() - scroll.getY() - 90;
             settle(screen);
-            click(screen, choice);
+            DropdownTestSupport.select(settings, choice, prefs.playerControls(), "BottomBar");
             settle(screen);
             assertEquals(ControlsBar.class, screen.getControlsBar().getClass());
             assertSame(settings, screen.getCurrentPanel());

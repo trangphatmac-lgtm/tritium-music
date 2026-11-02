@@ -130,8 +130,11 @@ public final class UiMaterials {
         if (!draw(x, y, w, h, radius, color, 0, 0)) flat(x, y, w, h, radius, color);
     }
 
-    public static void control(double x, double y, double w, double h, double radius, int color) {
-        if (!draw(x, y, w, h, radius, color, 1, 0)) flat(x, y, w, h, radius, color);
+    /** Returns true when the material supplies its own rounded edge. */
+    public static boolean control(double x, double y, double w, double h, double radius, int color) {
+        boolean material = draw(x, y, w, h, radius, color, 1, 0);
+        if (!material) flat(x, y, w, h, radius, color);
+        return material;
     }
 
     /** Icons acquire a tactile glass face only in glass modes; their glyphs remain sharp. */

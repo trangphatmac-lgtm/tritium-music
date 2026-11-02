@@ -12,6 +12,7 @@ import tritium.minecraft.protocol.ModuleCategory;
 import tritium.minecraft.protocol.OpenB4Settings;
 import tritium.rendering.material.UiMaterials;
 import tritium.rendering.ui.AbstractWidget;
+import tritium.rendering.ui.StrokeIcons;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.screens.ncm.NCMPanel;
 import java.util.*;
@@ -275,13 +276,16 @@ public final class MinecraftPanel extends NCMPanel {
                     if (id.equals("uninject")) connection.uninject();
                     else if (id.equals("editHud")) connection.setEditing(!connection.editing());
                     else preferences.update(c -> { var m = c.find(id); m.enabled = !m.enabled; });
-                } else expanded = !expanded;
+                } else if (expandable()) expanded = !expanded;
+                else return false;
                 return true;
             });
         }
+        private boolean expandable() { return !id.equals("uninject") || hiddenEnabled(); }
         private HudConfig.Module module() { return preferences.snapshot().find(id); }
         private void edit(Consumer<HudConfig.Module> edit) { preferences.update(c -> edit.accept(c.find(id))); }
         void measure(double width) {
+            if (!expandable()) expanded = false;
             double y = 64;
             for (AbstractWidget<?> row : getChildren()) {
                 boolean visible = expanded && (!conditions.containsKey(row) || conditions.get(row).getAsBoolean());
@@ -313,21 +317,15 @@ public final class MinecraftPanel extends NCMPanel {
                 drawToggle(id.equals("editHud") ? connection.editing() : config.find(id).enabled);
             }
             if (recording == this) FontManager.pf14bold.drawString(text("minecraft.keyHint"), getX() + 16, getY() + 46, reAlpha(AppTheme.accent(), getAlpha()));
-            double cx = getX() + getWidth() / 2, cy = getY() + 52, direction = expanded ? -1 : 1;
-            chevronStroke(cx - 4, cy - direction * 2, direction * 45);
-            chevronStroke(cx, cy + direction * 2, -direction * 45);
+            if (expandable()) {
+                StrokeIcons.chevron(getX() + getWidth() / 2, getY() + 52, 8, 4, expanded, 1.25,
+                        reAlpha(AppTheme.foreground(), getAlpha() * .6f));
+            }
         }
         private void drawToggle(boolean on) {
             double right = getX() + getWidth() - 48;
             UiMaterials.control(right, getY() + 22, 24, 10, 5, reAlpha(on ? AppTheme.accent() : AppTheme.foreground(), getAlpha() * .22f));
             UiMaterials.control(right + (on ? 15 : 1), getY() + 23, 8, 8, 4, reAlpha(on ? AppTheme.accent() : AppTheme.foreground(), getAlpha() * (on ? 1 : .5f)));
-        }
-        private void chevronStroke(double x, double y, double angle) {
-            org.lwjgl.opengl.GL11.glPushMatrix();
-            try {
-                org.lwjgl.opengl.GL11.glTranslated(x, y, 0); org.lwjgl.opengl.GL11.glRotated(angle, 0, 0, 1);
-                roundedRect(0, -.5, Math.sqrt(32), 1, .5, reAlpha(AppTheme.foreground(), getAlpha() * .6f));
-            } finally { org.lwjgl.opengl.GL11.glPopMatrix(); }
         }
         private void buildRows() {
             if (id.equals("editHud")) { addChild(new SettingsPanel.ActionRow("minecraft.reset", connection::resetLayout)); return; }

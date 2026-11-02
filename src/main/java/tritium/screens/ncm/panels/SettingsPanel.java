@@ -23,6 +23,7 @@ import tritium.rendering.ui.AbstractWidget;
 import tritium.rendering.ui.container.ScrollPanel;
 import tritium.rendering.ui.widgets.LabelWidget;
 import tritium.rendering.ui.widgets.ColorPickerWidget;
+import tritium.rendering.ui.widgets.DropdownWidget;
 import tritium.screens.ncm.NCMPanel;
 import tritium.screens.ncm.NCMScreen;
 import tritium.utils.other.multithreading.MultiThreadingUtil;
@@ -605,7 +606,8 @@ public class SettingsPanel extends NCMPanel {
 
     static final class ChoiceRow extends SettingsRow<ChoiceRow> {
         private final ModePreference preference;
-        private final Function<String, String> formatter;
+        private final DropdownWidget dropdown;
+        private double controlWidth = 112;
 
         ChoiceRow(String label, ModePreference preference) {
             this(label, preference, mode -> I18n.text("mode." + mode));
@@ -614,49 +616,25 @@ public class SettingsPanel extends NCMPanel {
         private ChoiceRow(String label, ModePreference preference, Function<String, String> formatter) {
             super(label, 52);
             this.preference = preference;
-            this.formatter = formatter;
+            dropdown = new DropdownWidget(preference, formatter);
+            addChild(dropdown);
             this.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
-                if (mouseButton == 0 || mouseButton == 1) {
-                    cycle(mouseButton == 0 ? 1 : -1);
-                }
-
+                if (mouseButton != 0) return false;
+                dropdown.open();
                 return true;
             });
         }
 
         @Override
         public void onRender(double mouseX, double mouseY) {
+            controlWidth = Math.min(dropdown.preferredWidth(), Math.min(260, Math.max(0, (getWidth() - 48) * .55)));
+            dropdown.setBounds(getWidth() - controlWidth - 16, 11, controlWidth, 30);
             super.onRender(mouseX, mouseY);
-
-            String value = formatter.apply(preference.getValue());
-            double valueWidth = Math.max(92, FontManager.pf14bold.getStringWidthD(value) + 28);
-            double valueHeight = 24;
-            double valueX = rightInset(valueWidth);
-            double valueY = this.getY() + this.getHeight() * .5 - valueHeight * .5;
-            UiMaterials.control(valueX, valueY, valueWidth, valueHeight, 5, RenderSystem.reAlpha(AppTheme.accentMuted(), this.getAlpha()));
-            FontManager.pf14bold.drawCenteredString(value, valueX + valueWidth * .5,
-                    valueY + valueHeight * .5 - FontManager.pf14bold.getHeight() * .5,
-                    RenderSystem.reAlpha(AppTheme.foreground(), this.getAlpha()));
         }
 
         @Override
         protected double labelWidth() {
-            return Math.max(24, getWidth() - 56 - Math.max(92,
-                    FontManager.pf14bold.getStringWidthD(formatter.apply(preference.getValue())) + 28));
-        }
-
-        private void cycle(int direction) {
-            List<String> modes = preference.getModes();
-            int index = modes.indexOf(preference.getValue());
-            if (index < 0) {
-                index = 0;
-            }
-
-            int next = (index + direction) % modes.size();
-            if (next < 0) {
-                next += modes.size();
-            }
-            preference.setValue(modes.get(next));
+            return Math.max(24, getWidth() - 48 - controlWidth);
         }
     }
 

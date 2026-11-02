@@ -1,5 +1,7 @@
 package tritium.desktop;
 
+import tritium.rendering.ui.widgets.DropdownTestSupport;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.lwjgl.BufferUtils;
@@ -100,7 +102,8 @@ class SettingsAppearanceRenderingTest {
             click(settings, bestLyrics.getX() + bestLyrics.getWidth() - 35, bestLyrics.getY() + 26);
             assertTrue(DesktopAppState.preferences().autoUseBestLyric().getValue());
             for (String source : new String[]{"amll", "qq", "kugou", "netease"}) {
-                click(settings, lyricPriority.getX() + 20, lyricPriority.getY() + 26);
+                DropdownTestSupport.select(settings, lyricPriority, DesktopAppState.preferences().preferredLyricSource(), source);
+                render(settings);
                 assertEquals(source, DesktopAppState.preferences().preferredLyricSource().getValue());
             }
             settings.setWidth(Math.min(440, RenderSystem.getWidth()));
@@ -113,25 +116,29 @@ class SettingsAppearanceRenderingTest {
             var title = (tritium.rendering.ui.widgets.LabelWidget) settings.getChildren().getFirst();
             assertEquals("设置", title.getLabel());
             savePreview("settings-locale-zh-CN");
-            click(settings, language.getX() + 20, language.getY() + 20);
+            DropdownTestSupport.select(settings, language, DesktopAppState.preferences().language(), "zh-TW");
+            render(settings);
             renderStable(settings);
             assertEquals("zh-TW", DesktopAppState.preferences().language().getValue());
             assertEquals("設定", title.getLabel());
             savePreview("settings-locale-zh-TW");
-            click(settings, language.getX() + 20, language.getY() + 20);
+            DropdownTestSupport.select(settings, language, DesktopAppState.preferences().language(), "en");
+            render(settings);
             settings.setWidth(Math.min(440, RenderSystem.getWidth()));
             renderStable(settings);
             assertEquals("en", DesktopAppState.preferences().language().getValue());
             assertEquals("Settings", title.getLabel());
             savePreview("settings-locale-en");
-            click(settings, language.getX() + 20, language.getY() + 20);
+            DropdownTestSupport.select(settings, language, DesktopAppState.preferences().language(), "zh-CN");
+            render(settings);
             settings.setWidth(Math.min(720, RenderSystem.getWidth()));
             renderStable(settings);
             assertEquals("zh-CN", DesktopAppState.preferences().language().getValue());
             AbstractWidget<?> mode = settingRow(scroll, "settings.displayMode");
             assertRgb(8, 8, 30, 30, 30, 1);
             savePreview("settings-dark");
-            click(settings, mode.getX() + 20, mode.getY() + 20);
+            DropdownTestSupport.select(settings, mode, DesktopAppState.preferences().appearance(), "Light");
+            render(settings);
             assertEquals("Light", DesktopAppState.preferences().appearance().getValue());
             Thread.sleep(90);
             render(settings);
@@ -169,7 +176,8 @@ class SettingsAppearanceRenderingTest {
             savePreview("settings-light-controls");
             verifyMainWindow();
 
-            click(settings, mode.getX() + 20, mode.getY() + 20);
+            DropdownTestSupport.select(settings, mode, DesktopAppState.preferences().appearance(), "Dark");
+            render(settings);
             renderStable(settings);
             assertEquals("Dark", DesktopAppState.preferences().appearance().getValue());
             assertRgb(8, 8, 30, 30, 30, 1);
@@ -381,22 +389,27 @@ class SettingsAppearanceRenderingTest {
             assertTrue(tone.isHidden());
             scroll.actualScrollOffset = scroll.targetScrollOffset = mode.getY() - scroll.getY() - 50;
             renderStable(settings);
-            click(settings, mode.getX() + 30, mode.getY() + 26);
+            DropdownTestSupport.select(settings, mode, effects.mode(), "Smart");
+            render(settings);
             assertEquals("Smart", effects.mode().getValue()); assertTrue(tone.isHidden());
             renderStable(settings); savePreview("settings-audio-effects-smart");
-            click(settings, mode.getX() + 30, mode.getY() + 26);
+            DropdownTestSupport.select(settings, mode, effects.mode(), "Master");
+            render(settings);
             assertEquals("Master", effects.mode().getValue()); assertFalse(tone.isHidden());
             renderStable(settings);
-            click(settings, tone.getX() + 30, tone.getY() + 26);
+            DropdownTestSupport.select(settings, tone, effects.masterTone(), "key_bright");
+            render(settings);
             assertEquals("key_bright", effects.masterTone().getValue());
             for (String key : java.util.List.of("Bass", "Treble", "Vocal", "Vibe", "Live")) {
                 assertTrue(settingRow(scroll, "settings.audioEffect" + key).isHidden());
             }
             savePreview("settings-audio-effects-master-zh-CN");
-            click(settings, mode.getX() + 30, mode.getY() + 26);
+            DropdownTestSupport.select(settings, mode, effects.mode(), "Emotion");
+            render(settings);
             assertEquals("Emotion", effects.mode().getValue()); assertTrue(tone.isHidden());
             renderStable(settings); savePreview("settings-audio-effects-emotion");
-            click(settings, mode.getX() + 30, mode.getY() + 26);
+            DropdownTestSupport.select(settings, mode, effects.mode(), "Manual");
+            render(settings);
             assertEquals("Manual", effects.mode().getValue()); assertTrue(tone.isHidden());
             for (String key : java.util.List.of("Bass", "Treble", "Vocal", "Vibe", "Live")) {
                 var row = settingRow(scroll, "settings.audioEffect" + key);
@@ -452,7 +465,8 @@ class SettingsAppearanceRenderingTest {
             renderStable(settings);
             ScrollPanel scroll = (ScrollPanel) settings.getChildren().get(2);
             var layout = settingRow(scroll, "settings.settingsLayout");
-            click(settings, layout.getX() + 20, layout.getY() + 26);
+            DropdownTestSupport.select(settings, layout, preferences.settingsLayout(), "TwoColumns");
+            render(settings);
             renderStable(settings);
             assertEquals("TwoColumns", preferences.settingsLayout().getValue());
             var general = scroll.getChildren().get(0);
@@ -464,7 +478,8 @@ class SettingsAppearanceRenderingTest {
 
             // Exercise real input dispatch in the right column, including an expanding row.
             var mode = settingRow(scroll, "settings.displayMode");
-            click(settings, mode.getX() + 20, mode.getY() + 26);
+            DropdownTestSupport.select(settings, mode, preferences.appearance(), "Light");
+            render(settings);
             assertEquals("Light", preferences.appearance().getValue());
             var accent = settingRow(scroll, "settings.accent");
             click(settings, accent.getX() + 20, accent.getY() + 20);
@@ -503,7 +518,8 @@ class SettingsAppearanceRenderingTest {
             settings.setWidth(1100);
             renderStable(settings);
             assertTrue(appearance.getRelativeX() > 0);
-            click(settings, layout.getX() + 20, layout.getY() + 26);
+            DropdownTestSupport.select(settings, layout, preferences.settingsLayout(), "SingleColumn");
+            render(settings);
             renderStable(settings);
             assertEquals("SingleColumn", preferences.settingsLayout().getValue());
             assertEquals(0, appearance.getRelativeX());

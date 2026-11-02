@@ -82,17 +82,34 @@ class AgentAttachFixtureTest {
                             installed = frame.type == Wire.PROGRESS && frame.text().equals("render");
                         }
                         assertTrue(installed);
+                        awaitTransformers(wire, stdin, stdout, reader, false);
+                        wire.send(Wire.CONFIG, "{}");
+                        assertHudOnlyHooks(stdin, stdout, reader);
                         AttachLoader.StartupException duplicate = assertThrows(AttachLoader.StartupException.class,
                                 () -> load(process.pid(), agent, "1:" + server.getLocalPort() + ":" + token));
                         assertTrue(duplicate.getMessage().contains("already attached"), duplicate.getMessage());
-                        stdin.write("openb4\nincoming\nbridgeassist\n"); stdin.flush();
-                        assertEquals("OPENB4 18 13 true", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "All OpenB4 hooks must be installed, including render exception cleanup");
-                        assertEquals("INCOMING 5", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "Every packet handler must intercept, including handlers without a thread handoff");
-                        assertEquals("BRIDGEASSIST 12 0.3 0 3 2 true 3 [RGBARGBA] [filtered:normal:0;filtered:system:1;]", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "Input precedes sneak scaling; synthetic clicks and only scroll changes cancel; rotations bracket every raycast; chat follows Forge filtering");
-                        wire.send(Wire.CONFIG,"{}"); wire.send(Wire.UNINJECT, "");
+                        for (int toggle = 0; toggle < cycle; toggle++) {
+                            wire.send(Wire.CONFIG, "{\"hidden\":true}");
+                            awaitTransformers(wire, stdin, stdout, reader, true);
+                            stdin.write("openb4\nincoming\nbridgeassist\n"); stdin.flush();
+                            assertEquals("OPENB4 18 13 true", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "All OpenB4 hooks must be installed, including render exception cleanup");
+                            assertEquals("INCOMING 5", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "Every packet handler must intercept, including handlers without a thread handoff");
+                            assertEquals("BRIDGEASSIST 12 0.3 0 3 2 true 3 [RGBARGBA] [filtered:normal:0;filtered:system:1;]", reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS), "Input precedes sneak scaling; synthetic clicks and only scroll changes cancel; rotations bracket every raycast; chat follows Forge filtering");
+                            // A repeated enabled config must not install duplicate transformations.
+                            wire.send(Wire.CONFIG, "{\"hidden\":true,\"accent\":123}");
+                            wire.send(Wire.CONFIG, "{\"hidden\":false}");
+                            awaitTransformers(wire, stdin, stdout, reader, false);
+                            assertHudOnlyHooks(stdin, stdout, reader);
+                        }
+                        if (cycle == 2) {
+                            wire.send(Wire.CONFIG, "{\"hidden\":true}");
+                            awaitTransformers(wire, stdin, stdout, reader, true);
+                        }
+                        wire.send(Wire.UNINJECT, "");
                         boolean stopped = false;
                         for (int i = 0; i < 30 && !stopped; i++) {
                             Wire.Frame frame = wire.read(); assertNotEquals(Wire.READY, frame.type);
+                            assertNotEquals(Wire.ERROR, frame.type, frame.text());
                             if (frame.type == Wire.STOPPED) { assertEquals("clean", frame.text()); stopped = true; }
                         }
                         assertTrue(stopped);
@@ -110,6 +127,33 @@ class AgentAttachFixtureTest {
         } finally {
             stdin.write("exit\n"); stdin.flush(); if (!process.waitFor(5,TimeUnit.SECONDS)) process.destroyForcibly(); reader.shutdownNow();
         }
+    }
+    private static void awaitTransformers(Wire wire, BufferedWriter stdin, BufferedReader stdout, ExecutorService reader, boolean hidden) throws Exception {
+        String expected = hidden ? "TRANSFORMERS 4 13" : "TRANSFORMERS 1 2";
+        String actual;
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        do {
+            wire.send(Wire.HEARTBEAT, "");
+            stdin.write("transformers\n"); stdin.flush();
+            actual = reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS);
+            if (expected.equals(actual)) return;
+            if ("TRANSFORMERS 0 0".equals(actual)) {
+                for (int i = 0; i < 30; i++) {
+                    Wire.Frame frame = wire.read();
+                    assertNotEquals(Wire.ERROR, frame.type, frame.text());
+                    assertNotEquals(Wire.STOPPED, frame.type, "Session stopped while updating Hidden: " + frame.text());
+                }
+            }
+            Thread.sleep(20);
+        } while (System.nanoTime() < deadline);
+        assertEquals(expected, actual, "Hidden must control transformer instances and the retransformation target set");
+    }
+    private static void assertHudOnlyHooks(BufferedWriter stdin, BufferedReader stdout, ExecutorService reader) throws Exception {
+        stdin.write("hud\ncombat\nmovement\nopenb4\nincoming\nbridgeassist\nmarker\n"); stdin.flush();
+        for (String expected : List.of("HUD 3", "COMBAT 0", "MOVEMENT 0", "OPENB4 0 0 true", "INCOMING 0",
+                "BRIDGEASSIST 0 1.0 1 5 3 true 3 [] []", "MARKER 31"))
+            assertEquals(expected, reader.submit(stdout::readLine).get(5, TimeUnit.SECONDS),
+                    "Hidden off must preserve HUD/world lyrics and other agents while removing every optional hook");
     }
     private static void load(long pid, Path agent, String options) throws Exception {
         VirtualMachine vm = VirtualMachine.attach(Long.toString(pid));

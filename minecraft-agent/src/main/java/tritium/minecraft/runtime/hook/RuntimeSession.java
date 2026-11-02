@@ -68,11 +68,11 @@ public final class RuntimeSession implements IntPredicate {
         port = Integer.parseInt(parts[1]); token = parts[2]; this.gameLoader = gameLoader;
     }
 
-    public void start(final Runnable install, final Runnable uninstall) {
-        Thread worker = new Thread(() -> run(install, uninstall), "Tritium HUD session");
+    public void start(final Runnable install, final Consumer<Boolean> hidden, final Runnable uninstall) {
+        Thread worker = new Thread(() -> run(install, hidden, uninstall), "Tritium HUD session");
         worker.setDaemon(true); worker.start();
     }
-    private void run(Runnable install, Runnable uninstall) {
+    private void run(Runnable install, Consumer<Boolean> hidden, Runnable uninstall) {
         ScheduledExecutorService io = Executors.newScheduledThreadPool(2, r -> {
             Thread t = new Thread(r, "Tritium HUD IPC"); t.setDaemon(true); return t;
         });
@@ -106,7 +106,9 @@ public final class RuntimeSession implements IntPredicate {
                 Wire.Frame f = wire.read(); lastReceive = System.nanoTime();
                 switch (f.type) {
                     case Wire.CONFIG:
-                        HudConfig next = json.fromJson(f.text(), HudConfig.class); next.normalize(); pendingConfig.set(next); break;
+                        HudConfig next = json.fromJson(f.text(), HudConfig.class); next.normalize();
+                        hidden.accept(next.hidden);
+                        pendingConfig.set(next); break;
                     case Wire.TRACK: track = json.fromJson(f.text(), PlaybackState.Track.class); break;
                     case Wire.STATE:
                         PlaybackState nextState = json.fromJson(f.text(), PlaybackState.class);

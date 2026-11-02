@@ -294,9 +294,13 @@ public final class MinecraftConnectionManager implements AutoCloseable {
     public void pushToast(String text) { if (text != null && connected) command(Wire.TOAST, text); }
     public synchronized void uninject() {
         Session s = session; if (s == null || s.stopping || !connected) return;
-        s.uninjectPlan = uninjectActions.requested(DesktopAppState.preferences().minecraft().uninject());
+        s.uninjectPlan = requestUninjectPlan();
         s.stopping = true; s.stopAt = System.nanoTime(); editing = false;
         update(s, Stage.STOPPING, 1, ""); command(Wire.UNINJECT, "");
+    }
+    private UninjectActions.Plan requestUninjectPlan() {
+        var preferences = DesktopAppState.preferences();
+        return uninjectActions.requested(preferences.minecraft().uninject(), preferences.minecrafthidden().getValue());
     }
     private void command(int type, String value) {
         Session s = session;
@@ -319,7 +323,7 @@ public final class MinecraftConnectionManager implements AutoCloseable {
         UninjectActions.Plan plan = null;
         if (error.isEmpty() && s.ready) {
             plan = s.uninjectPlan != null ? s.uninjectPlan
-                    : uninjectActions.requested(DesktopAppState.preferences().minecraft().uninject());
+                    : requestUninjectPlan();
         }
         finish(s, error);
         if (plan != null) {

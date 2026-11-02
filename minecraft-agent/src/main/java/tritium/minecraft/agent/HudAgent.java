@@ -6,7 +6,7 @@ import java.lang.reflect.Field;
 import java.net.*;
 import java.nio.file.*;
 import java.util.*;
-import java.util.function.IntPredicate;
+import java.util.function.Consumer;
 import java.util.jar.*;
 
 /** Loaded by Attach into the target JVM. The runtime itself lives under the game's loader. */
@@ -18,6 +18,7 @@ public final class HudAgent {
     private static MovementTransformer movementTransformer;
     private static OpenB4Transformer openB4Transformer;
     private static Class<?>[] targets;
+    private static Class<?>[] hudTargets;
     private static Field bridge;
     private static boolean dirty;
 
@@ -52,39 +53,78 @@ public final class HudAgent {
             Runnable install = () -> {
                 try {
                     synchronized (HudAgent.class) {
-                        LinkedHashSet<String> names = new LinkedHashSet<String>(Arrays.asList(HudTransformer.TARGETS));
-                        names.addAll(Arrays.asList(CombatTransformer.TARGETS));
-                        names.addAll(Arrays.asList(MovementTransformer.TARGETS));
-                        names.addAll(Arrays.asList(OpenB4Transformer.TARGETS));
-                        String[] targetNames = names.toArray(new String[0]);
-                        targets = new Class<?>[targetNames.length];
-                        for (int i = 0; i < targets.length; i++) {
-                            targets[i] = Class.forName(targetNames[i], false, chosen);
-                            if (!instrumentation.isModifiableClass(targets[i])) throw new IllegalStateException("Class is not modifiable: " + targets[i].getName());
-                        }
+                        targets = hudTargets = resolveTargets(instrumentation, chosen, Arrays.asList(HudTransformer.TARGETS));
                         transformer = new HudTransformer(chosen);
                         bridge.set(null, runtime);
-                        for (String field : new String[]{"packetCallback", "velocityCallback", "blockingCallback", "receiveCallback", "incomingCallback", "moduleCallback"}) bridge.getDeclaringClass().getField(field).set(null, runtime.getClass().getMethod(field).invoke(runtime));
-                        combatTransformer = new CombatTransformer(chosen);
-                        movementTransformer = new MovementTransformer(chosen);
-                        openB4Transformer = new OpenB4Transformer(chosen);
                         instrumentation.addTransformer(transformer, true);
-                        instrumentation.addTransformer(combatTransformer, true);
-                        instrumentation.addTransformer(movementTransformer, true);
-                        instrumentation.addTransformer(openB4Transformer, true);
                         instrumentation.retransformClasses(targets);
-                        if (!openB4Transformer.complete()) throw new IllegalStateException("OpenB4 hook installation failed: " + openB4Transformer.error());
-                        if (!movementTransformer.complete()) throw new IllegalStateException("Movement hook installation failed: " + movementTransformer.error());
-                        if (!combatTransformer.complete()) throw new IllegalStateException("Combat hook installation failed: " + combatTransformer.error());
                         if (!transformer.complete()) throw new IllegalStateException("Hook installation failed: " + transformer.error());
                     }
                 } catch (Exception failure) { throw new IllegalStateException(failure); }
             };
+            Consumer<Boolean> hidden = enabled -> configureHidden(instrumentation, chosen, runtime, enabled);
             Runnable uninstall = () -> uninstall(instrumentation);
-            runtime.getClass().getMethod("start", Runnable.class, Runnable.class).invoke(runtime, install, uninstall);
+            runtime.getClass().getMethod("start", Runnable.class, Consumer.class, Runnable.class).invoke(runtime, install, hidden, uninstall);
         } catch (Throwable failure) {
             uninstall(instrumentation);
             throw new IllegalStateException("Cannot initialize HUD agent", failure);
+        }
+    }
+
+    private static Class<?>[] resolveTargets(Instrumentation instrumentation, ClassLoader loader, Collection<String> names) throws Exception {
+        Class<?>[] resolved = new Class<?>[names.size()];
+        int i = 0;
+        for (String name : names) {
+            Class<?> type = Class.forName(name, false, loader);
+            if (!instrumentation.isModifiableClass(type)) throw new IllegalStateException("Class is not modifiable: " + name);
+            resolved[i++] = type;
+        }
+        return resolved;
+    }
+
+    /** Invoked by the IPC worker before publishing a config to the game thread. */
+    private static synchronized void configureHidden(Instrumentation instrumentation, ClassLoader loader, Object runtime, boolean enabled) {
+        if (enabled == (combatTransformer != null)) return;
+        try {
+            if (enabled) {
+                LinkedHashSet<String> names = new LinkedHashSet<String>(Arrays.asList(HudTransformer.TARGETS));
+                names.addAll(Arrays.asList(CombatTransformer.TARGETS));
+                names.addAll(Arrays.asList(MovementTransformer.TARGETS));
+                names.addAll(Arrays.asList(OpenB4Transformer.TARGETS));
+                targets = resolveTargets(instrumentation, loader, names);
+                for (String field : new String[]{"packetCallback", "velocityCallback", "blockingCallback", "receiveCallback", "incomingCallback", "moduleCallback"})
+                    bridge.getDeclaringClass().getField(field).set(null, runtime.getClass().getMethod(field).invoke(runtime));
+                combatTransformer = new CombatTransformer(loader);
+                movementTransformer = new MovementTransformer(loader);
+                openB4Transformer = new OpenB4Transformer(loader);
+                instrumentation.addTransformer(combatTransformer, true);
+                instrumentation.addTransformer(movementTransformer, true);
+                instrumentation.addTransformer(openB4Transformer, true);
+                instrumentation.retransformClasses(targets);
+                if (!openB4Transformer.complete()) throw new IllegalStateException("OpenB4 hook installation failed: " + openB4Transformer.error());
+                if (!movementTransformer.complete()) throw new IllegalStateException("Movement hook installation failed: " + movementTransformer.error());
+                if (!combatTransformer.complete()) throw new IllegalStateException("Combat hook installation failed: " + combatTransformer.error());
+                if (!transformer.complete()) throw new IllegalStateException("Hook installation failed: " + transformer.error());
+            } else {
+                removeHiddenTransformers(instrumentation);
+                // Keep HUD and other agents' transformations; retain callbacks for in-flight methods.
+                instrumentation.retransformClasses(targets);
+                if (!transformer.complete()) throw new IllegalStateException("Hook installation failed: " + transformer.error());
+                combatTransformer = null; movementTransformer = null; openB4Transformer = null;
+                targets = hudTargets;
+            }
+        } catch (Exception failure) { throw new IllegalStateException("Cannot update Hidden hooks", failure); }
+    }
+
+    private static void removeHiddenTransformers(Instrumentation instrumentation) {
+        if (openB4Transformer != null) {
+            openB4Transformer.deactivate(); instrumentation.removeTransformer(openB4Transformer);
+        }
+        if (movementTransformer != null) {
+            movementTransformer.deactivate(); instrumentation.removeTransformer(movementTransformer);
+        }
+        if (combatTransformer != null) {
+            combatTransformer.deactivate(); instrumentation.removeTransformer(combatTransformer);
         }
     }
 
@@ -95,15 +135,7 @@ public final class HudAgent {
                 bridge.set(null, null);
                 for (String field : new String[]{"packetCallback", "velocityCallback", "blockingCallback", "receiveCallback", "incomingCallback", "moduleCallback"}) bridge.getDeclaringClass().getField(field).set(null, null);
             }
-            if (openB4Transformer != null) {
-                openB4Transformer.deactivate(); instrumentation.removeTransformer(openB4Transformer);
-            }
-            if (movementTransformer != null) {
-                movementTransformer.deactivate(); instrumentation.removeTransformer(movementTransformer);
-            }
-            if (combatTransformer != null) {
-                combatTransformer.deactivate(); instrumentation.removeTransformer(combatTransformer);
-            }
+            removeHiddenTransformers(instrumentation);
             if (transformer != null) {
                 transformer.deactivate();
                 instrumentation.removeTransformer(transformer);
@@ -114,7 +146,7 @@ public final class HudAgent {
             dirty = true;
             throw new IllegalStateException("HUD stopped; hook rollback incomplete. Restart Minecraft.", failure);
         } finally {
-            transformer = null; combatTransformer = null; movementTransformer = null; openB4Transformer = null; targets = null; running = null;
+            transformer = null; combatTransformer = null; movementTransformer = null; openB4Transformer = null; targets = null; hudTargets = null; running = null;
             if (runtimeLoader != null) try { runtimeLoader.close(); } catch (IOException ignored) { }
             runtimeLoader = null;
         }

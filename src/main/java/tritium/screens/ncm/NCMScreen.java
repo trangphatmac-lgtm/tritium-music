@@ -608,6 +608,7 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
     }
 
     private void innerSetCurrentPanel(NCMPanel panel, boolean shouldCallInit) {
+        if (currentPanel != null) currentPanel.openDropdown(null);
         if (activeCoverNavigation != null) activeCoverNavigation.leave();
         this.prevAnimatingPanel = activeCoverNavigation == null ? this.currentPanel : null;
         this.prevAnimatingPanelAlpha = 1.0f;
@@ -622,6 +623,8 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
 
     @Override
     public void keyTyped(char typedChar, int keyCode) {
+        if (musicLyricsPanel == null && currentPanel != null && currentPanel.hasOpenDropdown()
+                && currentPanel.onKeyTypedReceived(typedChar, keyCode)) return;
         if (currentPanel instanceof tritium.screens.ncm.panels.MinecraftPanel minecraft && minecraft.captureKey(keyCode)) return;
         if (this.loginRenderer != null && this.loginRenderer.keyTyped(typedChar, keyCode)) {
             return;
@@ -666,6 +669,9 @@ public class NCMScreen extends DesktopScreen implements SharedConstants, SharedR
         if (this.loginRenderer != null && this.loginRenderer.mouseClicked(mouseX, mouseY, mouseButton)) {
             return;
         }
+
+        if (musicLyricsPanel == null && currentPanel != null
+                && currentPanel.clickDropdown(mouseX, mouseY, mouseButton)) return;
 
         if (overLyricsControls(mouseX, mouseY)) {
             if (mouseButton == 0) capturedPlayerControls = controlsBar;

@@ -1,5 +1,7 @@
 package tritium.desktop;
 
+import tritium.rendering.ui.widgets.DropdownTestSupport;
+
 import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -85,8 +87,7 @@ class UiMaterialRenderingTest {
             for (String expected : new String[]{"Blur", "LiquidGlass", "Static"}) {
                 double x = styleRow.getX() + 20, y = styleRow.getY() + 20;
                 render(x, y);
-                settings.onMouseClickReceived(x, y, 0);
-                settings.onMouseReleaseReceived(x, y, 0);
+                DropdownTestSupport.select(settings, styleRow, preferences.interfaceStyle(), expected);
                 assertEquals(expected, preferences.interfaceStyle().getValue());
                 settle();
                 assertFalse(UiMaterials.status().contains("不可用"), UiMaterials.status());

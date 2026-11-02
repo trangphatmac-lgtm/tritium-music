@@ -15,6 +15,7 @@ public final class Minecraft {
     public int rightClicks;
     public net.minecraft.entity.player.InventoryPlayer inventory = new net.minecraft.entity.player.InventoryPlayer();
     public static Minecraft getMinecraft() { return INSTANCE; }
+    public boolean isCallingFromMinecraftThread() { return true; }
     public void runTick() { org.lwjgl.input.Mouse.getEventButtonState(); new EntityRenderer().getMouseOver(1); inventory.changeCurrentItem(1); }
     public void rightClickMouse() { rightClicks++; }
     public boolean isUnicode() { return gameSettings.forceUnicodeFont; }
@@ -27,6 +28,31 @@ public final class Minecraft {
         while ((command = reader.readLine()) != null) {
             if (command.equals("exit")) return;
             if (command.equals("marker")) System.out.println("MARKER " + renderer.marker());
+            if (command.equals("transformers")) {
+                Class<?> agent = Class.forName("tritium.minecraft.agent.HudAgent");
+                synchronized (agent) {
+                    int count = 0;
+                    for (String name : new String[]{"transformer", "combatTransformer", "movementTransformer", "openB4Transformer"}) {
+                        java.lang.reflect.Field field = agent.getDeclaredField(name); field.setAccessible(true);
+                        if (field.get(null) != null) count++;
+                    }
+                    java.lang.reflect.Field targets = agent.getDeclaredField("targets"); targets.setAccessible(true);
+                    Class<?>[] classes = (Class<?>[]) targets.get(null);
+                    System.out.println("TRANSFORMERS " + count + " " + (classes == null ? 0 : classes.length));
+                }
+            }
+            if (command.equals("hud")) {
+                java.lang.reflect.Field callback = Class.forName("tritium.minecraft.bridge.HookBridge", true, null).getField("callback");
+                Object previous = callback.get(null);
+                java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+                callback.set(null, (java.util.function.IntPredicate) kind -> { if (kind == 0 || kind == 1 || kind == 3) calls.incrementAndGet(); return false; });
+                try {
+                    renderer.updateCameraAndRender(1, 0); INSTANCE.runTick();
+                    java.lang.reflect.Method world = EntityRenderer.class.getDeclaredMethod("renderWorldPass", int.class, float.class, long.class);
+                    world.setAccessible(true); world.invoke(renderer, 0, 1f, 0L);
+                } finally { callback.set(null, previous); }
+                System.out.println("HUD " + calls.get());
+            }
             if (command.equals("bridge")) {
                 Class<?> bridge = Class.forName("tritium.minecraft.bridge.HookBridge", true, null);
                 boolean cleared = true;
@@ -38,14 +64,16 @@ public final class Minecraft {
             if (command.equals("bridgeassist")) System.out.println(fixtures.BridgeAssistProbe.run());
             if (command.equals("combat")) {
                 java.lang.reflect.Field callback = Class.forName("tritium.minecraft.bridge.HookBridge", true, null).getField("callback");
+                Object previous = callback.get(null);
                 java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
                 callback.set(null, (java.util.function.IntPredicate) kind -> { calls.incrementAndGet(); return false; });
                 try { new net.minecraft.client.entity.EntityPlayerSP().onUpdateWalkingPlayer(); }
-                finally { callback.set(null, null); }
+                finally { callback.set(null, previous); }
                 System.out.println("COMBAT " + calls.get());
             }
             if (command.equals("movement")) {
                 Class<?> bridge = Class.forName("tritium.minecraft.bridge.HookBridge", true, null);
+                Object previousEvent = bridge.getField("callback").get(null), previousReceive = bridge.getField("receiveCallback").get(null);
                 java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
                 bridge.getField("callback").set(null, (java.util.function.IntPredicate) kind -> { calls.incrementAndGet(); return false; });
                 bridge.getField("receiveCallback").set(null, (java.util.function.Predicate<Object>) packet -> { calls.incrementAndGet(); return false; });
@@ -55,7 +83,7 @@ public final class Minecraft {
                     h.handleEntityVelocity(new net.minecraft.network.play.server.S12PacketEntityVelocity());
                     h.handlePlayerPosLook(new net.minecraft.network.play.server.S08PacketPlayerPosLook());
                     h.handleExplosion(new net.minecraft.network.play.server.S27PacketExplosion());
-                } finally { bridge.getField("callback").set(null,null); bridge.getField("receiveCallback").set(null,null); }
+                } finally { bridge.getField("callback").set(null,previousEvent); bridge.getField("receiveCallback").set(null,previousReceive); }
                 System.out.println("MOVEMENT " + calls.get());
             }
             System.out.flush();

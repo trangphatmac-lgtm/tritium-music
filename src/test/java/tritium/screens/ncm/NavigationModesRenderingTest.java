@@ -1,5 +1,7 @@
 package tritium.screens.ncm;
 
+import tritium.rendering.ui.widgets.DropdownTestSupport;
+
 import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -347,17 +349,13 @@ class NavigationModesRenderingTest {
         prefs.mode().setValue("List"); settle();
         scroll.actualScrollOffset=scroll.targetScrollOffset=scroll.actualScrollOffset+(mode.getY() - scroll.getY())-12;
         settle();
-        click(mode); settle(); assertEquals("Coverflow",prefs.mode().getValue());
+        DropdownTestSupport.select(settings, mode, prefs.mode(), "Coverflow"); settle(); assertEquals("Coverflow",prefs.mode().getValue());
         assertFalse(style.isHidden()); assertFalse(card.isHidden()); assertTrue(wall.isHidden());
         save("navigation-settings-card");
-        click(style); settle(); assertEquals("OldSchool",prefs.coverflow().getValue()); assertTrue(card.isHidden());
-        click(mode); settle(); assertEquals("Wall",prefs.mode().getValue());
+        DropdownTestSupport.select(settings, style, prefs.coverflow(), "OldSchool"); settle(); assertEquals("OldSchool",prefs.coverflow().getValue()); assertTrue(card.isHidden());
+        DropdownTestSupport.select(settings, mode, prefs.mode(), "Wall"); settle(); assertEquals("Wall",prefs.mode().getValue());
         assertTrue(style.isHidden()); assertFalse(wall.isHidden());
         save("navigation-settings-wall");
-    }
-    private void click(tritium.rendering.ui.AbstractWidget<?> widget) {
-        int x=(int)(widget.getX()+20), y=(int)(widget.getY()+widget.getHeight()/2);
-        screen.mouseClicked(x,y,0); screen.mouseReleased(x,y,0);
     }
     private static tritium.rendering.ui.AbstractWidget<?> settingRow(tritium.rendering.ui.container.ScrollPanel scroll,String key) {
         return scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).filter(row -> {

@@ -134,13 +134,22 @@ class MinecraftPanelRenderingTest {
                 uninjectOptions.autoClose().setValue(false); uninjectOptions.selfDestruct().setValue(false);
                 panel.onMouseClickReceived(uninject.getX()+uninject.getWidth()/2,uninject.getY()+52,0); settle(panel,120);
                 assertEquals(5, uninject.getChildren().size());
+                assertEquals(64, uninject.getHeight());
+                assertTrue(uninject.getChildren().stream().allMatch(AbstractWidget::isHidden));
+                preferences.minecrafthidden().setValue(true); settle(panel,120);
+                panel.onMouseClickReceived(uninject.getX()+uninject.getWidth()/2,uninject.getY()+52,0); settle(panel,120);
                 assertTrue(uninject.getChildren().stream().noneMatch(AbstractWidget::isHidden));
                 var hide = uninject.getChildren().getFirst();
-                hide.onMouseClicked(20, 20, 0);
+                grid.actualScrollOffset = grid.targetScrollOffset = grid.actualScrollOffset + hide.getY() - grid.getY() - 80;
+                settle(panel, 120);
+                tritium.rendering.ui.widgets.DropdownTestSupport.select(panel, hide, uninjectOptions.hideInjectButton(),
+                        tritium.desktop.MinecraftUninjectPreferences.NEXT_REBOOT);
                 assertEquals(tritium.desktop.MinecraftUninjectPreferences.NEXT_REBOOT, uninjectOptions.hideInjectButton().getValue());
-                hide.onMouseClicked(20, 20, 0);
+                tritium.rendering.ui.widgets.DropdownTestSupport.select(panel, hide, uninjectOptions.hideInjectButton(),
+                        tritium.desktop.MinecraftUninjectPreferences.OFF);
                 assertEquals(tritium.desktop.MinecraftUninjectPreferences.OFF, uninjectOptions.hideInjectButton().getValue());
-                hide.onMouseClicked(20, 20, 0);
+                tritium.rendering.ui.widgets.DropdownTestSupport.select(panel, hide, uninjectOptions.hideInjectButton(),
+                        tritium.desktop.MinecraftUninjectPreferences.NEXT_LAUNCH);
                 assertEquals(tritium.desktop.MinecraftUninjectPreferences.NEXT_LAUNCH, uninjectOptions.hideInjectButton().getValue());
                 uninject.getChildren().get(1).onMouseClicked(20, 20, 0);
                 uninject.getChildren().get(2).onMouseClicked(20, 20, 0);
@@ -155,13 +164,22 @@ class MinecraftPanelRenderingTest {
                 assertTrue(uninject.getHeight() > 300);
                 assertTrue(uninject.getY() >= grid.getY());
                 assertTrue(uninject.getY() + uninject.getHeight() <= grid.getY() + grid.getHeight());
+                preferences.minecrafthidden().setValue(false); settle(panel,120);
+                assertEquals(64, uninject.getHeight());
+                assertTrue(uninject.getChildren().stream().allMatch(AbstractWidget::isHidden));
+                assertTrue(uninjectOptions.autoClose().getValue()); assertTrue(uninjectOptions.selfDestruct().getValue());
+                save("minecraft-uninject-hidden-off");
+                preferences.minecrafthidden().setValue(true); settle(panel,120);
+                assertEquals(64, uninject.getHeight());
+                panel.onMouseClickReceived(uninject.getX()+uninject.getWidth()/2,uninject.getY()+52,0); settle(panel,120);
+                assertTrue(uninject.getChildren().stream().noneMatch(AbstractWidget::isHidden));
             } finally {
+                preferences.minecrafthidden().setValue(false);
                 uninjectOptions.hideInjectButton().setValue(hideMode);
                 uninjectOptions.autoClose().setValue(autoClose); uninjectOptions.selfDestruct().setValue(selfDestruct);
                 preferences.language().setValue("zh-CN"); panel.setWidth(RenderSystem.getWidth());
                 grid.actualScrollOffset = grid.targetScrollOffset = 0;
                 settle(panel,120);
-                panel.onMouseClickReceived(uninject.getX()+uninject.getWidth()/2,uninject.getY()+52,0); settle(panel,120);
             }
             AbstractWidget<?> world = cards.get(4);
             assertEquals(18, world.getChildren().size());

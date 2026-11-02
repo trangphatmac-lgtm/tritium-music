@@ -1,5 +1,7 @@
 package tritium.desktop;
 
+import tritium.rendering.ui.widgets.DropdownTestSupport;
+
 import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -103,13 +105,13 @@ class CoverRenderingTest {
             AbstractWidget<?> submode = row(scroll, bg.coverMode());
             scroll.actualScrollOffset = scroll.targetScrollOffset = (row(scroll, bg.mode()).getY() - scroll.getY()) - 8;
             frame();
-            click(settings, submode);
+            DropdownTestSupport.select(settings, submode, bg.coverMode(), "nomand");
             assertEquals("nomand", bg.coverMode().getValue());
             settle();
             assertFalse(row(scroll, bg.nomandEffect()).isHidden());
             assertTrue(row(scroll, bg.monetLayout()).isHidden());
             save("settings-nomand", capture());
-            click(settings, submode);
+            DropdownTestSupport.select(settings, submode, bg.coverMode(), "monet");
             assertEquals("monet", bg.coverMode().getValue());
             settle();
             assertTrue(row(scroll, bg.nomandEffect()).isHidden());
@@ -178,13 +180,6 @@ class CoverRenderingTest {
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         assertFalse(DesktopAppState.background().status().contains("失败"), DesktopAppState.background().status());
         Display.processMessages(); Thread.sleep(12);
-    }
-    private void click(SettingsPanel settings, AbstractWidget<?> row) throws Exception {
-        int x = (int) row.getX() + 20, y = (int) row.getY() + 20;
-        screen.drawScreen(x, y);
-        settings.onMouseClickReceived(x, y, 0);
-        settings.onMouseReleaseReceived(x, y, 0);
-        frame();
     }
     private static AbstractWidget<?> row(ScrollPanel scroll, PreferenceValue<?> preference) throws Exception {
         for (AbstractWidget<?> row : scroll.getChildren().stream().flatMap(section -> section.getChildren().stream()).toList()) {

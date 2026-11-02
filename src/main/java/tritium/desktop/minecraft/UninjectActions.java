@@ -12,9 +12,10 @@ final class UninjectActions {
     UninjectActions(InjectButtonVisibility visibility, Consumer<Boolean> exit) {
         this.visibility = visibility; this.exit = exit;
     }
-    Plan requested(MinecraftUninjectPreferences preferences) {
-        Plan plan = new Plan(preferences.hideInjectButton().getValue(), preferences.autoClose().getValue(),
-                preferences.selfDestruct().getValue());
+    Plan requested(MinecraftUninjectPreferences preferences, boolean hidden) {
+        Plan plan = hidden
+                ? new Plan(preferences.hideInjectButton().getValue(), preferences.autoClose().getValue(), preferences.selfDestruct().getValue())
+                : new Plan(MinecraftUninjectPreferences.OFF, false, false);
         visibility.onUninject(plan.hideMode());
         return plan;
     }

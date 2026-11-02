@@ -1,5 +1,7 @@
 package tritium.desktop;
 
+import tritium.rendering.ui.widgets.DropdownTestSupport;
+
 import com.google.gson.Gson;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -82,8 +84,7 @@ class BackgroundRenderingTest {
             scroll.actualScrollOffset = scroll.targetScrollOffset = (modeRow.getY() - scroll.getY()) - 8;
             render();
             render(modeRow.getX() + 20, modeRow.getY() + 20);
-            settings.onMouseClickReceived(modeRow.getX() + 20, modeRow.getY() + 20, 0);
-            settings.onMouseReleaseReceived(modeRow.getX() + 20, modeRow.getY() + 20, 0);
+            DropdownTestSupport.select(settings, modeRow, bg.mode(), "picture");
             assertEquals("picture", bg.mode().getValue(), "Background mode is reachable through settings input");
             render();
             assertFalse(lyricsToggle.isHidden());
