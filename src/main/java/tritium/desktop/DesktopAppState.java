@@ -15,6 +15,7 @@ public final class DesktopAppState {
     private static final DesktopPreferenceStore PREFERENCE_STORE = DesktopPreferenceStore.defaultStore();
     private static final ScreenManager SCREEN_MANAGER = new ScreenManager();
     private static final DownloadStatus DOWNLOAD_STATUS = new DownloadStatus();
+    private static final tritium.desktop.download.SongDownloads SONG_DOWNLOADS = new tritium.desktop.download.SongDownloads();
     private static final HudManager HUD_MANAGER = new HudManager();
     private static final tritium.desktop.minecraft.MinecraftConnectionManager MINECRAFT = new tritium.desktop.minecraft.MinecraftConnectionManager();
     private static final ConcurrentLinkedQueue<Runnable> MAIN_THREAD_TASKS = new ConcurrentLinkedQueue<>();
@@ -44,8 +45,10 @@ public final class DesktopAppState {
 
     public static void loadPreferences() {
         PREFERENCE_STORE.load(PREFERENCES);
+        DesktopCacheManager.setMusicCacheLimit(PREFERENCES.musicCacheLimitBytes());
         PREFERENCES.setChangeCallback(() -> {
             PREFERENCE_STORE.save(PREFERENCES);
+            DesktopCacheManager.setMusicCacheLimit(PREFERENCES.musicCacheLimitBytes());
             HUD_MANAGER.onPreferencesChanged();
         });
     }
@@ -61,6 +64,8 @@ public final class DesktopAppState {
     public static DownloadStatus downloadStatus() {
         return DOWNLOAD_STATUS;
     }
+
+    public static tritium.desktop.download.SongDownloads songDownloads() { return SONG_DOWNLOADS; }
 
     public static HudManager hudManager() {
         return HUD_MANAGER;

@@ -144,13 +144,27 @@ public class Music {
     }
 
     public Tuple<String, String> getPlayUrl(tritium.ncm.music.Quality selectedQuality) {
+        return getAudioUrl(selectedQuality, false);
+    }
+
+    public Tuple<String, String> getDownloadUrl(tritium.ncm.music.Quality selectedQuality) {
+        return getAudioUrl(selectedQuality, true);
+    }
+
+    private Tuple<String, String> getAudioUrl(tritium.ncm.music.Quality selectedQuality, boolean fullSongOnly) {
         JsonObject result = CloudMusicApi.songUrlV1(this.id, selectedQuality.getQuality().toLowerCase(java.util.Locale.ROOT)).toJsonObject();
         JsonObject music = result.get("data").getAsJsonArray().get(0).getAsJsonObject();
+        return audioUrl(music, fullSongOnly);
+    }
+
+    static Tuple<String, String> audioUrl(JsonObject music, boolean fullSongOnly) {
         if (music.get("code").getAsInt() != 200 || !music.has("url") || music.get("url").isJsonNull()) {
             return null;
         }
+        if (fullSongOnly && music.has("freeTrialInfo") && !music.get("freeTrialInfo").isJsonNull()) return null;
 
         String url = music.get("url").getAsString();
+        if (url.isBlank()) return null;
 
         String type = music.has("type") && !music.get("type").isJsonNull() ? music.get("type").getAsString() : "mp3";
 

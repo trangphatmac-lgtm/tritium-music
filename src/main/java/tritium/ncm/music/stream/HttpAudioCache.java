@@ -1,5 +1,7 @@
 package tritium.ncm.music.stream;
 
+import tritium.desktop.DesktopCacheManager;
+
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -14,6 +16,7 @@ final class HttpAudioCache extends InputStream {
     private static final Pattern RANGE = Pattern.compile("bytes (\\d+)-(\\d+)/(\\d+)");
     private final String url;
     private final Path destination, temporary;
+    private final DesktopCacheManager.CacheAccess temporaryAccess;
     private final RandomAccessFile file;
     private final BitSet blocks = new BitSet();
     private volatile HttpURLConnection connection;
@@ -29,9 +32,14 @@ final class HttpAudioCache extends InputStream {
     HttpAudioCache(String url, Path destination) throws IOException {
         this.url = url;
         this.destination = destination;
-        Files.createDirectories(destination.toAbsolutePath().getParent());
-        temporary = Files.createTempFile(destination.toAbsolutePath().getParent(), "stream-", ".part");
-        file = new RandomAccessFile(temporary.toFile(), "rw");
+        temporaryAccess = DesktopCacheManager.createTemporaryMusicCacheFile(destination.toAbsolutePath().getParent(), "stream-");
+        temporary = temporaryAccess.path();
+        try { file = new RandomAccessFile(temporary.toFile(), "rw"); }
+        catch (IOException e) {
+            try { Files.deleteIfExists(temporary); }
+            finally { temporaryAccess.close(); }
+            throw e;
+        }
     }
 
     void open() throws IOException { connect(0); }
@@ -162,13 +170,15 @@ final class HttpAudioCache extends InputStream {
         checkCancelled();
         disconnect();
         file.close();
-        if (Files.isRegularFile(destination) && Files.size(destination) > 0) {
-            // AutoMix may have completed the same quality while this decoder was running.
-            Files.deleteIfExists(temporary);
-        } else {
-            try { Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
-            catch (AtomicMoveNotSupportedException ignored) {
-                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
+        try (var access = DesktopCacheManager.useMusicCacheFile(destination)) {
+            if (Files.isRegularFile(destination) && Files.size(destination) > 0) {
+                // AutoMix may have completed the same quality while this decoder was running.
+                Files.deleteIfExists(temporary);
+            } else {
+                try { Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+                catch (AtomicMoveNotSupportedException ignored) {
+                    Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
+                }
             }
         }
         committed = true;
@@ -189,6 +199,12 @@ final class HttpAudioCache extends InputStream {
     }
     @Override public void close() throws IOException {
         try { disconnect(); }
-        finally { try { file.close(); } finally { Files.deleteIfExists(temporary); } }
+        finally {
+            try { file.close(); }
+            finally {
+                try { Files.deleteIfExists(temporary); }
+                finally { temporaryAccess.close(); }
+            }
+        }
     }
 }

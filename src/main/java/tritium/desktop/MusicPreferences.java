@@ -12,6 +12,10 @@ public class MusicPreferences {
     public static final int UNLIMITED_FPS = 241;
     static final String VERSION_KEY = "version";
     static final String QUALITY_KEY = "music.quality";
+    static final String MUSIC_CACHE_LIMIT_KEY = "cache.musicLimitGb";
+    static final String DOWNLOAD_QUALITY_KEY = "download.quality";
+    static final String DOWNLOAD_DIRECTORY_KEY = "download.directory";
+    static final String DOWNLOAD_DIRECTORY_VERSION_KEY = "download.directoryVersion";
     static final String MUSIC_TOAST_KEY = "music.toast";
     static final String SHOW_WIDGET_BOUNDARY_KEY = "ui.showWidgetBoundary";
     static final String SHOW_FPS_KEY = "ui.showFps";
@@ -44,6 +48,10 @@ public class MusicPreferences {
 
     private final ModePreference quality = new ModePreference("Music Quality", "Standard",
             new String[]{"Standard", "Higher", "ExHigh", "LossLess", "HiRes", "JyEffect", "Sky", "JyMaster"});
+    private final NumberPreference musicCacheLimitGb = new NumberPreference("Music Cache Limit (GB)", 2, 0, 20, .5);
+    private final ModePreference downloadQuality = new ModePreference("Download Quality", "Standard",
+            new String[]{"Standard", "Higher", "ExHigh", "LossLess", "HiRes", "JyEffect", "Sky", "JyMaster"});
+    private final PreferenceValue<String> downloadDirectory = new PreferenceValue<>("Download Directory", AppPaths.downloadDir().toString());
     private final PreferenceValue<Boolean> musicToast = new PreferenceValue<>("Music Toast", true);
     private final PreferenceValue<Boolean> showWidgetBoundary = new PreferenceValue<>("Show UI Widget Boundary", false);
     private final PreferenceValue<Boolean> showFps = new PreferenceValue<>("Show FPS", false);
@@ -95,7 +103,10 @@ public class MusicPreferences {
             applyQuality(str);
             fireChanged();
         });
+        downloadQuality.setValueCallback(value -> fireChanged());
+        downloadDirectory.setValueCallback(value -> fireChanged());
         musicToast.setValueCallback(value -> fireChanged());
+        musicCacheLimitGb.setValueCallback(value -> fireChanged());
         minecrafthidden.setValueCallback(value -> fireChanged());
         showFps.setValueCallback(value -> fireChanged());
         maxFps.setValueCallback(value -> fireChanged());
@@ -191,6 +202,10 @@ public class MusicPreferences {
         JsonObject json = new JsonObject();
         json.addProperty(VERSION_KEY, 1);
         json.addProperty(QUALITY_KEY, quality.getValue());
+        json.addProperty(MUSIC_CACHE_LIMIT_KEY, musicCacheLimitGb.getValue());
+        json.addProperty(DOWNLOAD_QUALITY_KEY, downloadQuality.getValue());
+        json.addProperty(DOWNLOAD_DIRECTORY_KEY, downloadDirectory.getValue());
+        json.addProperty(DOWNLOAD_DIRECTORY_VERSION_KEY, 1);
         json.addProperty(MUSIC_TOAST_KEY, musicToast.getValue());
         json.addProperty(SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary.getValue());
         json.addProperty(SHOW_FPS_KEY, showFps.getValue());
@@ -245,6 +260,21 @@ public class MusicPreferences {
             if (json.has("navigation") && json.get("navigation").isJsonObject())
                 navigation.loadFromJsonObject(json.getAsJsonObject("navigation"));
             applyMode(json, QUALITY_KEY, quality);
+            applyMusicCacheLimit(json);
+            applyMode(json, DOWNLOAD_QUALITY_KEY, downloadQuality);
+            JsonElement downloadPath = json.get(DOWNLOAD_DIRECTORY_KEY);
+            if (downloadPath != null && downloadPath.isJsonPrimitive()
+                    && downloadPath.getAsJsonPrimitive().isString() && !downloadPath.getAsString().isBlank()) {
+                String saved = downloadPath.getAsString();
+                try {
+                    // Migrate only the former default, once; keep all explicit choices after this version.
+                    boolean oldDefault = !json.has(DOWNLOAD_DIRECTORY_VERSION_KEY)
+                            && java.nio.file.Path.of(saved).normalize().equals(AppPaths.legacyDownloadDir());
+                    downloadDirectory.setValue(oldDefault ? AppPaths.downloadDir().toString() : saved);
+                } catch (java.nio.file.InvalidPathException ignored) {
+                    // Retain the usable default for a malformed stored path.
+                }
+            }
             applyBoolean(json, MUSIC_TOAST_KEY, musicToast);
             applyBoolean(json, "minecraftHidden", minecrafthidden);
             applyBoolean(json, SHOW_WIDGET_BOUNDARY_KEY, showWidgetBoundary);
@@ -303,6 +333,17 @@ public class MusicPreferences {
         }
     }
 
+    private void applyMusicCacheLimit(JsonObject json) {
+        JsonElement element = json.get(MUSIC_CACHE_LIMIT_KEY);
+        if (element == null || !element.isJsonPrimitive()) return;
+        try {
+            double value = element.getAsDouble();
+            if (Double.isFinite(value) && value >= 0) musicCacheLimitGb.setValue(value);
+        } catch (NumberFormatException ignored) {
+            // Keep the default when the limit is malformed and continue loading other settings.
+        }
+    }
+
     private void applyMode(JsonObject json, String key, ModePreference preference) {
         JsonElement element = json.get(key);
         if (element == null || !element.isJsonPrimitive()) {
@@ -346,6 +387,23 @@ public class MusicPreferences {
 
     public ModePreference quality() {
         return quality;
+    }
+
+    public NumberPreference musicCacheLimitGb() { return musicCacheLimitGb; }
+
+    public long musicCacheLimitBytes() {
+        return Math.round(musicCacheLimitGb.getValue() * 1024L * 1024L * 1024L);
+    }
+
+    public ModePreference downloadQuality() { return downloadQuality; }
+
+    public PreferenceValue<String> downloadDirectory() { return downloadDirectory; }
+
+    public Quality selectedDownloadQuality() {
+        for (Quality value : Quality.values()) {
+            if (value.getQuality().equalsIgnoreCase(downloadQuality.getValue())) return value;
+        }
+        return Quality.STANDARD;
     }
 
     public BackgroundPreferences background() {

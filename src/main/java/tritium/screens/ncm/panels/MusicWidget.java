@@ -40,6 +40,7 @@ public class MusicWidget extends RoundedRectWidget {
         super(0, 0, 0, 30);
         this.music = music;
         this.playList = playList;
+        DownloadButton downloadButton = new DownloadButton(ACTION_SIZE, this.music);
 
         RoundedRectWidget rrHoverIndicator = new RoundedRectWidget();
         this.addChild(rrHoverIndicator);
@@ -66,6 +67,7 @@ public class MusicWidget extends RoundedRectWidget {
                 .setRadius(this.getRadius()));
 
         this.setBeforeRenderCallback(() -> {
+            downloadButton.setHidden(!DesktopAppState.preferences().navigation().isList());
 
             // 只在这个 music 被渲染的时候才加载封面
             if (!coverLoaded) {
@@ -155,7 +157,8 @@ public class MusicWidget extends RoundedRectWidget {
         favoriteButton.setBeforeRenderCallback(() -> favoriteButton
                 .setMonochrome(isPlaying())
                 .setOnAccent(useAccentText())
-                .setPosition(lblMusicDuration.getRelativeX() - 2 * (ACTION_SIZE + ACTION_GAP),
+                .setPosition(lblMusicDuration.getRelativeX()
+                                - (DesktopAppState.preferences().navigation().isList() ? 3 : 2) * (ACTION_SIZE + ACTION_GAP),
                         (this.getHeight() - favoriteButton.getHeight()) * .5));
 
         // icomoon 'j': playlist-add, matching the neighboring favorite control.
@@ -175,6 +178,10 @@ public class MusicWidget extends RoundedRectWidget {
             nextFeedbackUntil = System.currentTimeMillis() + 500;
             return true;
         });
+
+        downloadButton.setBeforeRenderCallback(() -> downloadButton
+                .setOnAccent(useAccentText())
+                .setPosition(playNext.getRelativeX() + ACTION_SIZE + ACTION_GAP, (getHeight() - ACTION_SIZE) * .5));
 
         boolean musicDirty = music.isDirty();
         double dirtyIndicatorSize = 8;
@@ -234,6 +241,8 @@ public class MusicWidget extends RoundedRectWidget {
                 });
 
         lblMusicArtist.setClickable(false);
+        // Draw status over the row text, after the other children.
+        this.addChild(downloadButton);
     }
 
     @Override

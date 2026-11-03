@@ -105,7 +105,17 @@ public class SettingsPanel extends NCMPanel {
 
         addAudioEffectSettings(scrollPanel);
 
+        section = scrollPanel.addSection("settings.downloads");
+        section.addChild(new FileRow("settings.downloadDirectory", preferences.downloadDirectory(), true, false,
+                tritium.desktop.AppPaths.downloadDir().toString(), () -> {}));
+        section.addChild(new ChoiceRow("settings.downloadQuality", preferences.downloadQuality()));
+        section.addChild(new HintRow("settings.downloadHint"));
+        section.addChild(new BackgroundStatusRow(() -> DesktopAppState.songDownloads().statusText()));
+
         section = scrollPanel.addSection("settings.cache");
+        section.addChild(new SliderRow("settings.musicCacheLimit", preferences.musicCacheLimitGb(),
+                value -> value <= 0 ? I18n.text("common.unlimited") : String.format(Locale.ROOT, "%.1f GB", value)));
+        section.addChild(new HintRow("settings.musicCacheLimitHint"));
         section.addChild(new CacheRow());
 
         section = scrollPanel.addSection("歌单导出");
@@ -434,21 +444,28 @@ public class SettingsPanel extends NCMPanel {
         private static final double BUTTON_WIDTH = 56;
         private static final double BUTTON_HEIGHT = 26;
         private final PreferenceValue<String> path;
+        private final boolean resetToDefault;
         private String error = "";
 
         private FileRow(String label, PreferenceValue<String> path, boolean folder, boolean video) {
+            this(label, path, folder, video, "", () -> DesktopAppState.background().reload());
+        }
+
+        private FileRow(String label, PreferenceValue<String> path, boolean folder, boolean video,
+                        String defaultPath, Runnable changed) {
             super(label, 76);
             this.path = path;
+            this.resetToDefault = !defaultPath.isEmpty();
             setOnClickCallback((x, y, button) -> {
                 if (button != 0) return false;
                 if (x >= getWidth() - 130 && x < getWidth() - 80 && y <= 38) {
-                    path.setValue("");
+                    path.setValue(defaultPath);
                     error = "";
                 } else {
                     BackgroundFilePicker.choose(I18n.text(label), path.getValue(), folder, video, selected -> {
                         path.setValue(selected.toString());
                         error = "";
-                        DesktopAppState.background().reload();
+                        changed.run();
                     }, message -> error = message);
                 }
                 return true;
@@ -465,7 +482,7 @@ public class SettingsPanel extends NCMPanel {
             FontManager.pf14bold.drawCenteredString(BackgroundFilePicker.isOpen() ? I18n.text("common.choosing") : I18n.text("common.choose"),
                     buttonX + BUTTON_WIDTH * .5, centerY - FontManager.pf14bold.getFontHeight() * .5,
                     reAlpha(AppTheme.onAccent(), getAlpha()));
-            FontManager.pf12bold.drawCenteredStringVertical(I18n.text("common.clear"), rightInset(110), centerY,
+            FontManager.pf12bold.drawCenteredStringVertical(I18n.text(resetToDefault ? "download.reset" : "common.clear"), rightInset(110), centerY,
                     reAlpha(AppTheme.foreground(), getAlpha() * .65f));
             String value = !error.isEmpty() ? I18n.text(error) : path.getValue().isBlank() ? I18n.text("background.noSelection") : path.getValue();
             FontManager.pf12bold.drawString(shorten(value, getWidth() - 32), getX() + 16, getY() + 49,

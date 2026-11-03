@@ -10,6 +10,7 @@ import tritium.widget.impl.SpectrumVisualizer;
 import tritium.ncm.music.stream.StreamingAudioSample;
 import tritium.ncm.music.effects.AudioEffectDsp;
 import tritium.ncm.music.effects.AudioEffectTarget;
+import tritium.desktop.DesktopCacheManager;
 
 import java.io.File;
 import java.util.List;
@@ -34,6 +35,7 @@ public class AudioPlayer implements AutoMixTransition.Deck, AudioEffectTarget {
     @Getter private volatile AudioEnergy energy = AudioEnergy.SILENT;
     @Getter private FFT fft;
     private StreamingAudioSample stream;
+    private DesktopCacheManager.CacheAccess cacheAccess;
     private final Object audioEffectLock = new Object();
     private volatile AudioEffectDsp audioEffect;
 
@@ -54,21 +56,33 @@ public class AudioPlayer implements AutoMixTransition.Deck, AudioEffectTarget {
 
     /** A preloaded voice stays silent and does not overwrite the current song's spectrum. */
     AudioPlayer(File file, boolean analyze) {
-        player = new SoundFile(file.getAbsolutePath());
-        installAudioEffect();
-        setListeners();
-        setAnalysisEnabled(analyze);
+        initializeCachedAudio(file, analyze);
+    }
+
+    private void initializeCachedAudio(File file, boolean analyze) {
+        cacheAccess = DesktopCacheManager.useMusicCacheFile(file.toPath());
+        boolean initialized = false;
+        try {
+            player = new SoundFile(file.getAbsolutePath());
+            installAudioEffect();
+            setListeners();
+            setAnalysisEnabled(analyze);
+            initialized = true;
+        } finally {
+            if (!initialized) {
+                cacheAccess.close();
+                cacheAccess = null;
+            }
+        }
     }
 
     public synchronized void setAudio(File file) {
         close();
         stream = null;
-        player = new SoundFile(file.getAbsolutePath());
-        installAudioEffect();
+        initializeCachedAudio(file, false);
         closed = false;
         finished = false;
         mixGain = 1;
-        setListeners();
         setAnalysisEnabled(true);
     }
 
@@ -189,6 +203,8 @@ public class AudioPlayer implements AutoMixTransition.Deck, AudioEffectTarget {
         sourceOutputGain(0);
         afterPlayed = null;
         SoundFile source = player;
+        DesktopCacheManager.CacheAccess sourceAccess = cacheAccess;
+        cacheAccess = null;
         source.setOnFinished(null);
         var synth = source.getUnitGenerator().getSynthesizer();
         source.stop();
@@ -197,7 +213,8 @@ public class AudioPlayer implements AutoMixTransition.Deck, AudioEffectTarget {
         Runnable dispose = () -> {
             // stop() may still see the queued analyzer/output disconnects and retain the circuit.
             owner.remove(source.getUnitGenerator());
-            source.cleanUp();
+            try { source.cleanUp(); }
+            finally { if (sourceAccess != null) sourceAccess.close(); }
         };
         if (synth != null && synth.isRunning()) synth.queueCommand(dispose::run);
         else dispose.run();

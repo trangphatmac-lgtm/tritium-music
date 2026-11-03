@@ -1412,10 +1412,15 @@ public class CloudMusic implements SharedConstants {
                 if (request.cancelled) return;
                 if (url == null) { request.stage = NO_URL; return; }
                 request.stage = AUDIO;
-                File file = getPreloadedMusicFile(url, request.song, request.quality, request);
-                if (request.cancelled) return;
-                request.stage = DECODING;
-                incoming = new AudioPlayer(file, false);
+                String type = url.getB().toLowerCase(Locale.ROOT);
+                if (!SampleLoader.isSupportedFileType(type)) throw new IOException("Unsupported audio format");
+                var cache = AppPaths.musicCacheDir().resolve(request.song.getId() + "_" + request.quality.getQuality() + "." + type);
+                try (var access = DesktopCacheManager.useMusicCacheFile(cache)) {
+                    File file = getPreloadedMusicFile(url.getA(), cache, request);
+                    if (request.cancelled) return;
+                    request.stage = DECODING;
+                    incoming = new AudioPlayer(file, false);
+                }
                 registerAudioEffects(incoming, request.song.getId());
                 request.stage = PLANNING;
                 request.featuresB = features.b().withDuration(incoming.getTotalTimeMillis()).summary();
@@ -1743,16 +1748,18 @@ public class CloudMusic implements SharedConstants {
                 if (!SampleLoader.isSupportedFileType(type)) throw new IOException("Unsupported audio format: " + type);
                 Quality selectedQuality = quality;
                 var cache = AppPaths.musicCacheDir().resolve(song.getId() + "_" + selectedQuality.getQuality() + "." + type);
-                if (Files.isRegularFile(cache) && Files.size(cache) > 0) {
-                    prepared = new AudioPlayer(cache.toFile());
-                } else {
-                    setDownloading(true);
-                    setDownloadProgress(0);
-                    setDownloadSpeed("0 B/s");
-                    StreamingAudioSample stream = StreamingAudioSample.open(playUrl.getA(), cache, song.getDuration(),
-                            () -> doBreak || isInterrupted() || dontAdd || curIdx != songIndex);
-                    try { prepared = new AudioPlayer(stream); }
-                    catch (RuntimeException | LinkageError e) { stream.cleanUp(); throw e; }
+                try (var access = DesktopCacheManager.useMusicCacheFile(cache)) {
+                    if (Files.isRegularFile(cache) && Files.size(cache) > 0) {
+                        prepared = new AudioPlayer(cache.toFile());
+                    } else {
+                        setDownloading(true);
+                        setDownloadProgress(0);
+                        setDownloadSpeed("0 B/s");
+                        StreamingAudioSample stream = StreamingAudioSample.open(playUrl.getA(), cache, song.getDuration(),
+                                () -> doBreak || isInterrupted() || dontAdd || curIdx != songIndex);
+                        try { prepared = new AudioPlayer(stream); }
+                        catch (RuntimeException | LinkageError e) { stream.cleanUp(); throw e; }
+                    }
                 }
                 synchronized (this) {
                     if (doBreak || isInterrupted() || dontAdd || curIdx != songIndex) {
@@ -1878,32 +1885,28 @@ public class CloudMusic implements SharedConstants {
             updateCurIdx();
         }
 
-        private File getPreloadedMusicFile(Tuple<String, String> url, Music song, Quality selectedQuality,
-                                          Preparation request) throws IOException {
-            String type = url.getB().toLowerCase(Locale.ROOT);
-            if (!SampleLoader.isSupportedFileType(type)) throw new IOException("Unsupported audio format");
-            var directory = AppPaths.musicCacheDir();
-            Files.createDirectories(directory);
-            var destination = directory.resolve(song.getId() + "_" + selectedQuality.getQuality() + "." + type);
+        private File getPreloadedMusicFile(String url, java.nio.file.Path destination, Preparation request) throws IOException {
             if (Files.isRegularFile(destination) && Files.size(destination) > 0) return destination.toFile();
-            var temporary = Files.createTempFile(directory, "automix-", ".part");
-            try {
-                try (InputStream input = HttpUtils.get(url.getA(), null);
-                     OutputStream output = Files.newOutputStream(temporary)) {
-                    byte[] buffer = new byte[32 * 1024];
-                    int count;
-                    while ((count = input.read(buffer)) != -1) {
-                        if (request.cancelled) throw new java.io.InterruptedIOException("AutoMix cancelled");
-                        output.write(buffer, 0, count);
+            try (var temporaryAccess = DesktopCacheManager.createTemporaryMusicCacheFile(destination.getParent(), "automix-")) {
+                var temporary = temporaryAccess.path();
+                try {
+                    try (InputStream input = HttpUtils.get(url, null);
+                         OutputStream output = Files.newOutputStream(temporary)) {
+                        byte[] buffer = new byte[32 * 1024];
+                        int count;
+                        while ((count = input.read(buffer)) != -1) {
+                            if (request.cancelled) throw new java.io.InterruptedIOException("AutoMix cancelled");
+                            output.write(buffer, 0, count);
+                        }
                     }
-                }
-                if (request.cancelled || Files.size(temporary) == 0) throw new IOException("Empty/cancelled preload");
-                try { Files.move(temporary, destination, java.nio.file.StandardCopyOption.ATOMIC_MOVE); }
-                catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
-                    Files.move(temporary, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                }
-                return destination.toFile();
-            } finally { Files.deleteIfExists(temporary); }
+                    if (request.cancelled || Files.size(temporary) == 0) throw new IOException("Empty/cancelled preload");
+                    try { Files.move(temporary, destination, java.nio.file.StandardCopyOption.ATOMIC_MOVE); }
+                    catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                        Files.move(temporary, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    return destination.toFile();
+                } finally { Files.deleteIfExists(temporary); }
+            }
         }
 
         private void loadMusicCover(Music song) {

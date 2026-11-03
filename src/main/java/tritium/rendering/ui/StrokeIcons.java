@@ -32,6 +32,13 @@ public final class StrokeIcons implements SharedConstants {
                 x + width / 2, y - height / 2, thickness, color);
     }
 
+    public static void download(double x, double y, double thickness, int color) {
+        draw(x, y - 5, x, y - 1.5, x, y + 1.5, thickness, color);
+        draw(x - 3, y - 1, x, y + 2, x + 3, y - 1, thickness, color);
+        draw(x - 4.5, y + 3, x - 4.5, y + 5, x + 4.5, y + 5, thickness, color);
+        draw(x + 4.5, y + 5, x + 4.5, y + 4, x + 4.5, y + 3, thickness, color);
+    }
+
     private static void draw(double ax, double ay, double bx, double by, double cx, double cy,
                              double thickness, int color) {
         double padding = thickness / 2 + 2;

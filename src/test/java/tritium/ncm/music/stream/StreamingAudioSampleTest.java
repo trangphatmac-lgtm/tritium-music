@@ -9,6 +9,7 @@ import repackage.com.jsyn.engine.SynthesisEngine;
 import repackage.com.jsyn.ports.QueueDataEvent;
 import repackage.com.jsyn.ports.UnitDataQueueCallback;
 import repackage.com.jsyn.unitgen.VariableRateStereoReader;
+import tritium.desktop.CacheCleanupTestSupport;
 
 import javax.sound.sampled.*;
 import java.io.*;
@@ -52,6 +53,13 @@ class StreamingAudioSampleTest {
             assertEquals(.25, sample.readDouble(1), 1e-5);
             assertTrue(sample.downloading());
             assertFalse(Files.exists(cache), "Partial files cannot be mistaken for complete cached music");
+            Path oldCache = Files.write(directory.resolve("old.mp3"), new byte[128]);
+            CacheCleanupTestSupport.clearAtLimit(directory, 1);
+            assertFalse(Files.exists(oldCache));
+            try (var files = Files.list(directory)) {
+                assertEquals(2, files.filter(path -> path.toString().endsWith(".part")).count(),
+                        "Cleanup must preserve the compressed download and active PCM buffer");
+            }
 
             VariableRateStereoReader reader = new VariableRateStereoReader();
             synth.add(reader);
@@ -75,6 +83,8 @@ class StreamingAudioSampleTest {
             StreamingAudioSample active = sample;
             await(() -> active.isComplete() && Files.exists(cache));
             assertArrayEquals(audio, Files.readAllBytes(cache));
+            CacheCleanupTestSupport.clearAtLimit(directory, 1);
+            assertFalse(Files.exists(cache), "Completed compressed cache can be cleared while PCM plays");
             assertEquals(8 * 44_100, sample.getNumFrames());
             // Seek the sample window ahead and backward without doing disk I/O in the reader.
             await(() -> active.isFrameAvailable(7 * 44_100));

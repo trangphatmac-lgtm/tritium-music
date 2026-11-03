@@ -20,6 +20,7 @@ import repackage.com.jsyn.data.FloatSample;
 import tritium.ncm.music.stream.StreamingAudioSample;
 import com.sun.net.httpserver.HttpServer;
 import tritium.ncm.music.automix.AutoMixAutomation.FilterType;
+import tritium.desktop.CacheCleanupTestSupport;
 
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
@@ -108,6 +109,37 @@ class AudioPlayerMixTest {
         render(1);
         assertEquals(.1, outputs[0].peak, 1e-5);
         assertEquals(.05, outputs[1].peak, 1e-5);
+    }
+
+    @Test void cacheCleanupWaitsForPlaybackDisposal() throws Exception {
+        AudioPlayer deck = deck(false);
+        deck.startAt(0);
+        render(1);
+        CacheCleanupTestSupport.clearAtLimit(directory, 1);
+        assertTrue(file.exists(), "The WAV sample reads its cache throughout playback");
+        render(1);
+        assertTrue(outputs[0].peak > 0);
+        deck.close();
+        render(1);
+        CacheCleanupTestSupport.clearAtLimit(directory, 1);
+        assertFalse(file.exists(), "Disposed samples must release their cache protection");
+    }
+
+    @Test void replacingAudioReleasesOnlyThePreviousCache() throws Exception {
+        AudioPlayer deck = deck(false);
+        Path replacement = Files.copy(file.toPath(), directory.resolve("replacement.wav"));
+        deck.setAudio(replacement.toFile());
+        render(1);
+        CacheCleanupTestSupport.clearAtLimit(directory, 1);
+        assertFalse(file.exists());
+        assertTrue(Files.exists(replacement));
+        deck.startAt(0);
+        render(1);
+        assertTrue(outputs[0].peak > 0);
+        deck.close();
+        render(1);
+        CacheCleanupTestSupport.clearAtLimit(directory, 1);
+        assertFalse(Files.exists(replacement));
     }
 
     @Test void persistentEffectSurvivesPauseSeekAndAutoMixRemovalAndRunsBeforeVolume() {

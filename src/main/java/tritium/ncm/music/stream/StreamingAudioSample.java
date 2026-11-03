@@ -4,6 +4,7 @@ import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 import repackage.com.jsyn.data.FloatSample;
 import repackage.com.jsyn.data.ProgressiveData;
+import tritium.desktop.DesktopCacheManager;
 
 import java.io.*;
 import java.nio.*;
@@ -23,6 +24,7 @@ public final class StreamingAudioSample extends FloatSample implements Progressi
     }
     private final HttpAudioCache input;
     private final Path pcm;
+    private final DesktopCacheManager.CacheAccess pcmAccess;
     private final CompletableFuture<Void> ready = new CompletableFuture<>();
     private final CountDownLatch workers = new CountDownLatch(2);
     private volatile int decodedFrames, requestedFrame, estimatedFrames;
@@ -34,7 +36,10 @@ public final class StreamingAudioSample extends FloatSample implements Progressi
 
     private StreamingAudioSample(String url, Path cache, long durationMillis) throws IOException {
         input = new HttpAudioCache(url, cache);
-        try { pcm = Files.createTempFile(cache.toAbsolutePath().getParent(), "stream-pcm-", ".part"); }
+        try {
+            pcmAccess = DesktopCacheManager.createTemporaryMusicCacheFile(cache.toAbsolutePath().getParent(), "stream-pcm-");
+            pcm = pcmAccess.path();
+        }
         catch (IOException e) { input.close(); throw e; }
         decoder = Thread.ofPlatform().daemon().name("music-stream-decoder").unstarted(() -> decode(durationMillis));
         prefetch = Thread.ofPlatform().daemon().name("music-stream-buffer").unstarted(this::prefetch);
@@ -166,6 +171,7 @@ public final class StreamingAudioSample extends FloatSample implements Progressi
             try { workers.await(); Files.deleteIfExists(pcm); }
             catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             catch (IOException e) { System.err.println("Cannot remove streaming PCM: " + e.getMessage()); }
+            finally { pcmAccess.close(); }
             window = renderWindow = null;
         });
     }
