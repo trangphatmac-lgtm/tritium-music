@@ -1,6 +1,8 @@
 package tritium.desktop;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
@@ -35,12 +37,26 @@ class AppPathsTest {
         assertEquals(home.resolve("音乐/Tritium Music"),
                 AppPaths.downloadDirFor("Linux", home.toString(), null, "relative-config"));
         Path customConfig = Files.createDirectories(directory.resolve("custom-config"));
-        Files.writeString(customConfig.resolve("user-dirs.dirs"), "XDG_MUSIC_DIR=\"/media/音乐合集\"\n");
-        assertEquals(Path.of("/media/音乐合集/Tritium Music"),
+        // Use a host-absolute path; /media alone is not absolute on Windows.
+        Path relocatedMusic = directory.resolve("media/音乐合集");
+        Files.writeString(customConfig.resolve("user-dirs.dirs"),
+                "XDG_MUSIC_DIR=\"" + relocatedMusic.toString().replace('\\', '/') + "\"\n");
+        assertEquals(relocatedMusic.resolve("Tritium Music"),
                 AppPaths.downloadDirFor("Linux", home.toString(), null, customConfig.toString()));
-        Files.writeString(customConfig.resolve("user-dirs.dirs"), "XDG_MUSIC_DIR=\"${HOME}/My \\\"Music\\\"\"\n");
+        Files.writeString(customConfig.resolve("user-dirs.dirs"), "XDG_MUSIC_DIR=\"${HOME}/My \\$Music\\`\"\n");
+        assertEquals(home.resolve("My $Music`/Tritium Music"),
+                AppPaths.downloadDirFor("Linux", home.toString(), null, customConfig.toString()));
+    }
+
+    @Test
+    @EnabledOnOs({OS.LINUX, OS.MAC})
+    void followsLinuxMusicDirectoriesContainingEscapedQuotes() throws Exception {
+        // Double quotes are legal in Unix filenames, but not in Windows filenames.
+        Path home = directory.resolve("user home");
+        Path config = Files.createDirectories(home.resolve(".config"));
+        Files.writeString(config.resolve("user-dirs.dirs"), "XDG_MUSIC_DIR=\"${HOME}/My \\\"Music\\\"\"\n");
         assertEquals(home.resolve("My \"Music\"/Tritium Music"),
-                AppPaths.downloadDirFor("Linux", home.toString(), null, customConfig.toString()));
+                AppPaths.downloadDirFor("Linux", home.toString(), null, null));
     }
 
     @Test
