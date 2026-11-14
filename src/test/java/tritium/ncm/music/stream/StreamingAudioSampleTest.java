@@ -4,11 +4,14 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import repackage.com.jsyn.engine.SynthesisEngine;
 import repackage.com.jsyn.ports.QueueDataEvent;
 import repackage.com.jsyn.ports.UnitDataQueueCallback;
 import repackage.com.jsyn.unitgen.VariableRateStereoReader;
+import repackage.com.jsyn.util.SampleLoader;
 import tritium.desktop.CacheCleanupTestSupport;
 
 import javax.sound.sampled.*;
@@ -25,6 +28,8 @@ import java.util.function.BooleanSupplier;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_MP3;
 import static org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_ALAC;
+import static org.bytedeco.ffmpeg.global.avcodec.AV_CODEC_ID_FLAC;
+import static org.bytedeco.ffmpeg.global.avutil.AV_SAMPLE_FMT_S32;
 
 class StreamingAudioSampleTest {
     @TempDir Path directory;
@@ -187,6 +192,64 @@ class StreamingAudioSampleTest {
                 remainder.countDown();
                 server.stop(0);
             }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"regular.m4a", "fragmented.m4a", "fragmented.mp4"})
+    void flacInMp4ReplaysFromCompletedCache(String name) throws Exception {
+        Path fixture = directory.resolve("source-" + name);
+        float left = .5f + 1f / (1 << 20);
+        float right = -.25f - 1f / (1 << 20);
+        try (FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(fixture.toFile(), 2)) {
+            recorder.setFormat("mp4");
+            recorder.setAudioCodec(AV_CODEC_ID_FLAC);
+            recorder.setSampleFormat(AV_SAMPLE_FMT_S32);
+            recorder.setSampleRate(48_000);
+            recorder.setOption("strict", "experimental");
+            if (name.startsWith("fragmented"))
+                recorder.setOption("movflags", "empty_moov+default_base_moof");
+            recorder.start();
+            float[] pcm = new float[48_000 * 2];
+            for (int frame = 0; frame < 48_000; frame++) {
+                pcm[frame * 2] = left;
+                pcm[frame * 2 + 1] = right;
+            }
+            recorder.recordSamples(48_000, 2, FloatBuffer.wrap(pcm));
+            recorder.stop();
+        }
+        byte[] bytes = Files.readAllBytes(fixture);
+        AtomicInteger requests = new AtomicInteger();
+        HttpServer server = HttpAudioCacheTest.serve(bytes, true, false, requests);
+        Path cache = directory.resolve(name);
+        StreamingAudioSample streamed = null;
+        try {
+            streamed = StreamingAudioSample.open(HttpAudioCacheTest.url(server), cache, 1_000, () -> false);
+            StreamingAudioSample active = streamed;
+            await(active::isComplete);
+            assertNull(streamed.failure());
+            assertTrue(streamed.isFrameAvailable(0));
+            assertEquals(left, streamed.readDouble(0), 1e-7);
+            assertEquals(right, streamed.readDouble(1), 1e-7);
+            assertArrayEquals(bytes, Files.readAllBytes(cache));
+            server.stop(0);
+            int requestsAfterStreaming = requests.get();
+            var cached = SampleLoader.loadStreamedFloatSample(cache.toFile());
+            try {
+                assertEquals(48_000, cached.getFrameRate());
+                assertEquals(2, cached.getChannelsPerFrame());
+                assertEquals(streamed.getNumFrames(), cached.getNumFrames());
+                for (int frame : new int[] {0, 24_000, 47_999}) {
+                    assertEquals(left, cached.readDouble(frame * 2), 1e-7);
+                    assertEquals(right, cached.readDouble(frame * 2 + 1), 1e-7);
+                }
+                assertArrayEquals(bytes, Files.readAllBytes(cache));
+                assertEquals(requestsAfterStreaming, requests.get());
+            } finally { cached.cleanUp(); }
+            Files.delete(cache);
+        } finally {
+            if (streamed != null) streamed.cleanUp();
+            server.stop(0);
         }
     }
 

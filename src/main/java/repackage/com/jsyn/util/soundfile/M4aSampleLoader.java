@@ -4,6 +4,8 @@ import com.beatofthedrum.alacdecoder.AlacInputStream;
 import com.beatofthedrum.alacdecoder.spi.AlacAudioFileReader;
 import net.sourceforge.jaad.mp4.MP4InputStream;
 import net.sourceforge.jaad.spi.javasound.AACAudioFileReader;
+import org.bytedeco.javacv.FFmpegFrameGrabber;
+import org.bytedeco.javacv.Frame;
 import repackage.com.jsyn.data.FloatSample;
 
 import javax.sound.sampled.AudioFormat;
@@ -13,13 +15,31 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.FloatBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 
-/** Decodes AAC and Apple Lossless in MP4 containers into seekable JSyn samples. */
+import static org.bytedeco.ffmpeg.global.avutil.AV_SAMPLE_FMT_FLT;
+
+/** Decodes M4A/MP4 audio into seekable JSyn samples. */
 public final class M4aSampleLoader {
     public FloatSample loadFloatSample(File file) throws IOException {
+        try {
+            return loadWithJavaSound(file);
+        } catch (IOException | RuntimeException | AssertionError primaryFailure) {
+            // Cloud M4A files can contain FLAC and other codecs accepted by the streaming
+            // decoder. mp4parser also throws AssertionError for unsupported sample entries.
+            try {
+                return loadWithFFmpeg(file);
+            } catch (IOException fallbackFailure) {
+                fallbackFailure.addSuppressed(primaryFailure);
+                throw fallbackFailure;
+            }
+        }
+    }
+
+    private FloatSample loadWithJavaSound(File file) throws IOException {
         if (FragmentedMp4.isFragmented(file)) {
             // JAAD reads conventional sample tables, not samples stored in moof fragments.
             // Repackage the compressed audio without re-encoding or changing the cached original.
@@ -32,6 +52,40 @@ public final class M4aSampleLoader {
             }
         }
         return loadUnfragmented(file);
+    }
+
+    private FloatSample loadWithFFmpeg(File file) throws IOException {
+        try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(file)) {
+            grabber.setSampleFormat(AV_SAMPLE_FMT_FLT);
+            grabber.setAudioChannels(2);
+            grabber.setOption("protocol_whitelist", "file,pipe");
+            grabber.start();
+            int rate = grabber.getSampleRate();
+            if (!grabber.hasAudio() || rate <= 0 || rate > 384_000)
+                throw new IOException("Unsupported M4A audio stream");
+            float[] samples = new float[8192];
+            int size = 0;
+            Frame frame;
+            while ((frame = grabber.grabSamples()) != null) {
+                if (frame.samples == null) continue;
+                FloatBuffer values = ((FloatBuffer) frame.samples[0]).duplicate();
+                int count = values.remaining();
+                if (count % 2 != 0) throw new IOException("Incomplete PCM frame in M4A audio");
+                int needed = Math.addExact(size, count);
+                if (needed > samples.length)
+                    samples = Arrays.copyOf(samples, Math.max(needed, Math.addExact(samples.length, samples.length / 2)));
+                values.get(samples, size, count);
+                size = needed;
+            }
+            if (size == 0) throw new IOException("M4A audio contains no samples");
+            FloatSample sample = new FloatSample(size / 2, 2);
+            sample.write(0, samples, 0, size / 2);
+            sample.setFrameRate(rate);
+            sample.setPitch(60.0);
+            return sample;
+        } catch (FFmpegFrameGrabber.Exception | RuntimeException | LinkageError e) {
+            throw new IOException("Cannot decode M4A audio: " + file.getName(), e);
+        }
     }
 
     private FloatSample loadUnfragmented(File file) throws IOException {
