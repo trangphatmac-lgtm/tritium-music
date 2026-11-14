@@ -8,6 +8,7 @@ import org.junit.jupiter.api.io.TempDir;
 import tritium.ncm.music.CloudMusic.PlayMode;
 import tritium.ncm.music.PlaybackSession;
 import tritium.ncm.music.dto.Music;
+import tritium.ncm.music.dto.PlayList;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,6 +81,20 @@ class DesktopPlaybackStoreTest {
         Files.writeString(file, json.toString());
         assertEquals(PlayMode.Sequential, store.load().mode());
         assertEquals(59_999, store.load().positionMillis());
+    }
+
+    @Test void preservesPlaylistSourceAndLoadsOlderSessionsWithoutSource() throws Exception {
+        Path file = directory.resolve("playback.json");
+        var store = new DesktopPlaybackStore(file);
+        var source = new PlayList(42, "来源歌单", "", 1, 0, null, "", false, 0, 0);
+        var session = new PlaybackSession(List.of(song(1)), 0, 0, true, PlayMode.Sequential, List.of(), source);
+        store.save(session);
+        assertEquals(source, store.load().source());
+        JsonObject json = new JsonParser().parse(Files.readString(file)).getAsJsonObject();
+        json.remove("source");
+        Files.writeString(file, json.toString());
+        assertNull(store.load().source());
+        assertEquals(session.songs(), store.load().songs());
     }
 
     private static Music song(long id) {

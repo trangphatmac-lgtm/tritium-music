@@ -10,6 +10,7 @@ import java.util.Random;
 
 /** World-space scene and character animation, independent of Minecraft and OpenGL. */
 public final class WorldLyricScene {
+    private static final double TRANSLATION_SCALE = .72;
     public interface Metrics { double width(String text); }
     private final Metrics metrics;
     private final Random random;
@@ -85,23 +86,35 @@ public final class WorldLyricScene {
     }
 
     private Floating spawn(WorldLyricTimeline.Entry entry, long next, HudConfig.WorldLyrics settings, Camera camera) {
-        List<String> lines = wrap(entry.text);
+        List<String> lines = wrap(entry.text, 200);
         int chars = 0; for (String line : lines) chars += line.length();
         long lineDuration = Math.max(next - entry.startMs, 400);
         long reveal = Math.min(Math.max(chars * 55L, 250), (long) (lineDuration * .6));
-        double yaw = camera.yaw + (random.nextFloat() * 2 - 1) * settings.spread;
-        double pitch = clamp(camera.pitch - 3 - random.nextFloat() * 10, -60, 30);
-        double yr = Math.toRadians(yaw), pr = Math.toRadians(pitch), d = settings.distance;
-        return new Floating(lines, entry.startMs, reveal, WorldLyricTimeline.characterTimes(entry, next),
-                camera.eyeX - Math.sin(yr) * Math.cos(pr) * d, camera.eyeY - Math.sin(pr) * d,
-                camera.eyeZ + Math.cos(yr) * Math.cos(pr) * d, yaw, pitch);
+        Floating line = new Floating(lines, wrap(entry.translation, 230 / TRANSLATION_SCALE), entry.startMs, reveal,
+                WorldLyricTimeline.characterTimes(entry, next), random.nextFloat() * 2 - 1, random.nextFloat() * 2 - 1);
+        place(line, settings, camera);
+        return line;
     }
 
-    private List<String> wrap(String text) {
+    private void place(Floating line, HudConfig.WorldLyrics settings, Camera camera) {
+        line.distance = settings.distance; line.offsetX = settings.offsetX; line.offsetY = settings.offsetY; line.spread = settings.spread;
+        line.yaw = camera.yaw + line.spreadYaw * settings.spread;
+        line.pitch = clamp(camera.pitch + line.spreadPitch * settings.spread * .35, -90, 90);
+        double yr = Math.toRadians(line.yaw), pr = Math.toRadians(line.pitch);
+        double viewYaw = Math.toRadians(camera.yaw), viewPitch = Math.toRadians(camera.pitch);
+        // Camera right and up remain well-defined even when looking straight up or down.
+        double rightX = -Math.cos(viewYaw), rightZ = -Math.sin(viewYaw);
+        double upX = -Math.sin(viewYaw) * Math.sin(viewPitch), upZ = Math.cos(viewYaw) * Math.sin(viewPitch);
+        line.x = camera.eyeX - Math.sin(yr) * Math.cos(pr) * settings.distance + rightX * settings.offsetX + upX * settings.offsetY;
+        line.y = camera.eyeY - Math.sin(pr) * settings.distance + Math.cos(viewPitch) * settings.offsetY;
+        line.z = camera.eyeZ + Math.cos(yr) * Math.cos(pr) * settings.distance + rightZ * settings.offsetX + upZ * settings.offsetY;
+    }
+
+    private List<String> wrap(String text, double maxWidth) {
         List<String> result = new ArrayList<String>(); StringBuilder line = new StringBuilder(); int space = -1;
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i); line.append(c); if (c == ' ') space = line.length() - 1;
-            if (metrics.width(line.toString()) <= 200 || line.length() <= 1) continue;
+            if (metrics.width(line.toString()) <= maxWidth || line.length() <= 1) continue;
             if (space > 0) {
                 result.add(line.substring(0, space).trim()); String rest = line.substring(space + 1); line.setLength(0); line.append(rest);
             } else {
@@ -115,7 +128,9 @@ public final class WorldLyricScene {
 
     private Text frame(Floating line, HudConfig.Module module, HudConfig.WorldLyrics settings,
                        Camera camera, double scale, double k, double alpha, double lift, long now) {
-        if (settings.stayOnScreen) follow(line, camera, scale, k);
+        if (line == active && (line.distance != settings.distance || line.offsetX != settings.offsetX
+                || line.offsetY != settings.offsetY || line.spread != settings.spread)) place(line, settings, camera);
+        if (settings.stayOnScreen) follow(line, camera, scale, k, module.translation);
         double rx = line.x - camera.x, ry = line.y - camera.y, rz = line.z - camera.z;
         double len = Math.sqrt(rx * rx + ry * ry + rz * rz), minD = settings.distance * .6;
         if (settings.keepAway && len >= .0001 && len <= minD) {
@@ -127,10 +142,11 @@ public final class WorldLyricScene {
             yaw = Math.toDegrees(Math.atan2(-rx, rz)); pitch = Math.toDegrees(Math.atan2(-ry, Math.sqrt(rx * rx + rz * rz)));
         }
         return new Text(line.x, line.y + lift, line.z, yaw, pitch, scale,
-                glyphs(line, (long) songMillis - line.startMs, alpha * module.opacity, settings, now));
+                glyphs(line, (long) songMillis - line.startMs, alpha * module.opacity, module, now));
     }
 
-    private List<Glyph> glyphs(Floating floating, long elapsed, double alpha, HudConfig.WorldLyrics settings, long now) {
+    private List<Glyph> glyphs(Floating floating, long elapsed, double alpha, HudConfig.Module module, long now) {
+        HudConfig.WorldLyrics settings = module.world;
         List<String> lines = floating.lines; List<Glyph> result = new ArrayList<Glyph>();
         boolean pop = settings.wordPop && floating.times.length > 0;
         int total = 0; for (String line : lines) total += line.length(); total = Math.max(total, 1);
@@ -155,24 +171,54 @@ public final class WorldLyricScene {
                     double dx = wiggle ? hash(k, animationFrame, 2, seed) * .8 * amt : 0;
                     double dy = wiggle ? hash(k, animationFrame, 3, seed) * 1.6 * amt : 0;
                     double sc = (wiggle ? 1 + hash(k, animationFrame, 4, seed) * .12 * amt : 1) * popScale;
-                    result.add(new Glyph(c, x, sy, width, a, rot, sc, dx, dy));
+                    int color = settings.rainbow ? rainbow(k, total, now) : module.color;
+                    result.add(new Glyph(c, x, sy, width, a, rot, sc, dx, dy, 1, color));
                 }
                 x += width; k++;
             }
             y += 11;
         }
+        if (module.translation) addTranslation(result, floating, elapsed, alpha);
         return result;
     }
 
-    private void follow(Floating line, Camera camera, double scale, double k) {
+    private void addTranslation(List<Glyph> result, Floating floating, long elapsed, double alpha) {
+        double appear = clamp(elapsed / 400.0, 0, 1);
+        double opacity = alpha * appear * appear * (3 - 2 * appear) * .75;
+        if (opacity <= .02) return;
+        double y = floating.lines.size() * 11.0 / 2 + 2;
+        for (String row : floating.translation) {
+            double x = -metrics.width(row) * TRANSLATION_SCALE / 2;
+            for (int i = 0; i < row.length(); i++) {
+                char c = row.charAt(i);
+                double width = metrics.width(String.valueOf(c)) * TRANSLATION_SCALE;
+                if (!Character.isWhitespace(c)) result.add(new Glyph(c, x, y, width, opacity, 0, 1, 0, 0, TRANSLATION_SCALE, 0xffffffff));
+                x += width;
+            }
+            y += 11 * TRANSLATION_SCALE;
+        }
+    }
+
+    private static int rainbow(int index, int total, long now) {
+        double phase = now / 1e9 * .08 % 1;
+        float hue = (float) (index / (double) Math.max(1, total - 1) * .6 + phase);
+        return java.awt.Color.HSBtoRGB(hue, .55f, 1);
+    }
+
+    private void follow(Floating line, Camera camera, double scale, double k, boolean translation) {
         double rx = line.x - camera.x, ry = line.y - camera.y, rz = line.z - camera.z;
         double len = Math.sqrt(rx * rx + ry * ry + rz * rz);
         if (len < .0001 || line.lines.isEmpty()) return;
         double verticalHalf = camera.verticalFov / 2;
         double horizontalHalf = Math.toDegrees(Math.atan(Math.tan(Math.toRadians(verticalHalf)) * camera.aspect));
         double widest = 0; for (String text : line.lines) widest = Math.max(widest, metrics.width(text));
+        double height = line.lines.size() * 11.0 / 2;
+        if (translation && !line.translation.isEmpty()) {
+            for (String text : line.translation) widest = Math.max(widest, metrics.width(text) * TRANSLATION_SCALE);
+            height += 2 + line.translation.size() * 11 * TRANSLATION_SCALE;
+        }
         double halfWidth = Math.toDegrees(Math.atan2(widest * scale / 2, len));
-        double halfHeight = Math.toDegrees(Math.atan2(line.lines.size() * 11 * scale / 2, len));
+        double halfHeight = Math.toDegrees(Math.atan2(height * scale, len));
         double hLimit = Math.max(0, horizontalHalf - halfWidth - 2), vLimit = Math.max(0, verticalHalf - halfHeight - 2);
         double yaw = Math.toDegrees(Math.atan2(-rx, rz)), pitch = Math.toDegrees(Math.asin(clamp(-ry / len, -1, 1)));
         double dYaw = wrapDegrees(yaw - camera.yaw), dPitch = pitch - camera.pitch;
@@ -211,17 +257,23 @@ public final class WorldLyricScene {
     }
     public static final class Glyph {
         public final char character; public final double x, y, width, alpha, rotation, scale, dx, dy;
-        Glyph(char character, double x, double y, double width, double alpha, double rotation, double scale, double dx, double dy) {
+        public final double fontScale;
+        public final int color;
+        Glyph(char character, double x, double y, double width, double alpha, double rotation, double scale, double dx, double dy,
+              double fontScale, int color) {
             this.character = character; this.x = x; this.y = y; this.width = width; this.alpha = alpha;
             this.rotation = rotation; this.scale = scale; this.dx = dx; this.dy = dy;
+            this.fontScale = fontScale; this.color = color;
         }
     }
     private static final class Floating {
-        final List<String> lines; final long startMs, revealMs; final long[] times;
+        final List<String> lines, translation; final long startMs, revealMs; final long[] times;
+        final double spreadYaw, spreadPitch;
+        double distance, offsetX, offsetY, spread;
         double x, y, z, yaw, pitch; long fadeAt, resumedAt = Long.MIN_VALUE;
-        Floating(List<String> lines, long startMs, long revealMs, long[] times, double x, double y, double z, double yaw, double pitch) {
+        Floating(List<String> lines, List<String> translation, long startMs, long revealMs, long[] times, double spreadYaw, double spreadPitch) {
             this.lines = lines; this.startMs = startMs; this.revealMs = revealMs; this.times = times;
-            this.x = x; this.y = y; this.z = z; this.yaw = yaw; this.pitch = pitch;
+            this.translation = translation; this.spreadYaw = spreadYaw; this.spreadPitch = spreadPitch;
         }
     }
 }

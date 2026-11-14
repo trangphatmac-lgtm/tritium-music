@@ -49,17 +49,17 @@ public final class WorldLyricsRenderer implements AutoCloseable {
             if (module.world.glow && module.world.glowStrength > .01 && glow.available()) {
                 try {
                     if (glow.begin(width, height)) {
-                        drawText(frame, view, module.color, false);
+                        drawText(frame, view, false);
                         glow.end(module.world.glowColor, module.world.glowStrength, module.world.glowRadius);
                     }
                 } catch (RuntimeException failure) { glow.disable(failure); }
                 finally { glow.abort(); }
             }
-            drawText(frame, view, module.color, true);
+            drawText(frame, view, true);
         } finally { if (cached != null) cached.close(); }
     }
 
-    private void drawText(WorldLyricScene.Frame frame, WorldLyricScene.Camera view, int color, boolean shadow)
+    private void drawText(WorldLyricScene.Frame frame, WorldLyricScene.Camera view, boolean shadow)
             throws ReflectiveOperationException {
         WorldGlState.textBlend(); GL11.glDisable(GL11.GL_ALPHA_TEST);
         if (!smooth) nativeCache.prepare();
@@ -73,17 +73,19 @@ public final class WorldLyricsRenderer implements AutoCloseable {
                 for (WorldLyricScene.Glyph glyph : text.glyphs) {
                     GL11.glPushMatrix();
                     try {
-                        double cx = glyph.x + glyph.width / 2, cy = glyph.y + 3.5;
+                        double cx = glyph.x + glyph.width / 2, cy = glyph.y + 3.5 * glyph.fontScale;
                         GL11.glTranslated(cx + glyph.dx, cy + glyph.dy, 0);
                         GL11.glRotated(glyph.rotation, 0, 0, 1); GL11.glScaled(glyph.scale, glyph.scale, 1);
                         GL11.glTranslated(-cx, -cy, 0);
+                        GL11.glTranslated(glyph.x, glyph.y, 0);
+                        GL11.glScaled(glyph.fontScale, glyph.fontScale, 1);
                         if (smooth) {
-                            if (shadow) font.draw(glyph.character, glyph.x + .6, glyph.y + 8.2, 0, glyph.alpha * .45);
-                            font.draw(glyph.character, glyph.x, glyph.y + 7.6, color, glyph.alpha);
+                            if (shadow) font.draw(glyph.character, .6, 8.2, 0, glyph.alpha * .45);
+                            font.draw(glyph.character, 0, 7.6, glyph.color, glyph.alpha);
                         } else {
                             int alpha = (int)(glyph.alpha * 255);
-                            if (alpha >= 5) game.drawNative(String.valueOf(glyph.character), (float)glyph.x, (float)glyph.y,
-                                    alpha << 24 | color & 0xffffff, shadow);
+                            if (alpha >= 5) game.drawNative(String.valueOf(glyph.character), 0, 0,
+                                    alpha << 24 | glyph.color & 0xffffff, shadow);
                         }
                     } finally { GL11.glPopMatrix(); }
                 }

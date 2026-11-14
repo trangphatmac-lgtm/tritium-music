@@ -89,6 +89,8 @@ public class MusicPreferences {
     private final ModePreference lyricStyle = new ModePreference("Lyric Page Style", "Normal",
             tritium.screens.ncm.lyrics.LyricStyle.ids());
     private final PreferenceValue<Boolean> spectrumAbsoluteVolume = new PreferenceValue<>("Absolute Volume", true);
+    private final PreferenceValue<Boolean> mcpEnabled = new PreferenceValue<>("HTTP MCP", false);
+    private final NumberPreference mcpPort = new NumberPreference("HTTP MCP Port", 17863, 1024, 65535, 1);
     private final HudPreferences hud = new HudPreferences(spectrumAbsoluteVolume);
     private final MinecraftPreferences minecraft = new MinecraftPreferences();
     private final NavigationPreferences navigation = new NavigationPreferences();
@@ -151,6 +153,8 @@ public class MusicPreferences {
         lyricHeight.setValueCallback(value -> fireChanged());
         lyricStyle.setValueCallback(value -> fireChanged());
         spectrumAbsoluteVolume.setValueCallback(value -> fireChanged());
+        mcpEnabled.setValueCallback(value -> fireChanged());
+        mcpPort.setValueCallback(value -> fireChanged());
         hud.setChangeCallback(this::fireChanged);
         minecraft.setChangeCallback(this::fireChanged);
         background.setChangeCallback(this::fireChanged);
@@ -235,6 +239,8 @@ public class MusicPreferences {
         json.addProperty(LYRIC_HEIGHT_KEY, lyricHeight.getValue());
         json.addProperty(LYRIC_STYLE_KEY, lyricStyle.getValue());
         json.addProperty(SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume.getValue());
+        json.addProperty("mcp.enabled", mcpEnabled.getValue());
+        json.addProperty("mcp.port", mcpPort.getValue());
         json.add(HudPreferences.HUD_KEY, hud.toJsonObject());
         json.add("minecraft", minecraft.toJsonObject());
         json.addProperty("minecraftHidden", minecrafthidden.getValue());
@@ -309,6 +315,13 @@ public class MusicPreferences {
             applyNumber(json, LYRIC_HEIGHT_KEY, lyricHeight);
             applyMode(json, LYRIC_STYLE_KEY, lyricStyle);
             applyBoolean(json, SPECTRUM_ABSOLUTE_VOLUME_KEY, spectrumAbsoluteVolume);
+            applyBoolean(json, "mcp.enabled", mcpEnabled);
+            JsonElement port = json.get("mcp.port");
+            if (port != null && port.isJsonPrimitive() && port.getAsJsonPrimitive().isNumber()) {
+                double value = port.getAsDouble();
+                if (Double.isFinite(value) && value == Math.rint(value)
+                        && value >= mcpPort.getMin() && value <= mcpPort.getMax()) mcpPort.setValue(value);
+            }
             JsonElement hudElement = json.get(HudPreferences.HUD_KEY);
             if (hudElement != null && hudElement.isJsonObject()) {
                 hud.loadFromJsonObject(hudElement.getAsJsonObject());
@@ -527,4 +540,8 @@ public class MusicPreferences {
     }
 
     public MinecraftPreferences minecraft() { return minecraft; }
+
+    public PreferenceValue<Boolean> mcpEnabled() { return mcpEnabled; }
+
+    public NumberPreference mcpPort() { return mcpPort; }
 }

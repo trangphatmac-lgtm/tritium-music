@@ -8,6 +8,7 @@ import com.google.gson.JsonParser;
 import tritium.ncm.music.CloudMusic;
 import tritium.ncm.music.PlaybackSession;
 import tritium.ncm.music.dto.Music;
+import tritium.ncm.music.dto.PlayList;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -37,11 +38,19 @@ public final class DesktopPlaybackStore {
             catch (IllegalArgumentException e) { mode = CloudMusic.PlayMode.Sequential; }
             return new PlaybackSession(readSongs(json.get("songs")), json.get("index").getAsInt(),
                     json.get("positionMillis").getAsLong(), json.get("paused").getAsBoolean(), mode,
-                    json.has("nextSongs") ? readSongs(json.get("nextSongs")) : List.of());
+                    json.has("nextSongs") ? readSongs(json.get("nextSongs")) : List.of(), readSource(json.get("source")));
         } catch (IOException | RuntimeException e) {
             System.err.println("Failed to load playback state from " + file + ": " + e.getMessage());
             return null;
         }
+    }
+
+    private PlayList readSource(JsonElement json) {
+        if (json == null || !json.isJsonObject()) return null;
+        try {
+            PlayList source = gson.fromJson(json, PlayList.class);
+            return source.getId() > 0 && source.getName() != null ? source : null;
+        } catch (RuntimeException error) { return null; }
     }
 
     private List<Music> readSongs(JsonElement json) {
@@ -70,6 +79,7 @@ public final class DesktopPlaybackStore {
             json.addProperty("paused", session.paused());
             json.addProperty("mode", session.mode().name());
             json.add("nextSongs", gson.toJsonTree(session.nextSongs()));
+            json.add("source", gson.toJsonTree(session.source()));
             Files.createDirectories(file.getParent());
             temporary = Files.createTempFile(file.getParent(), "playback-", ".tmp");
             try (var writer = Files.newBufferedWriter(temporary, StandardCharsets.UTF_8)) {

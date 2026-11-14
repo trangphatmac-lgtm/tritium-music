@@ -405,7 +405,7 @@
                             <mainClass>tritium.desktop.TritiumMusicDesktopApp</mainClass>
                             <type>DMG</type>
                             <addModules>
-                                <module>java.se</module><module>jdk.attach</module><module>jdk.unsupported</module>
+                                <module>java.se</module><module>jdk.attach</module><module>jdk.unsupported</module><module>jdk.httpserver</module>
                                 <module>jdk.crypto.ec</module><module>jdk.security.auth</module><module>jdk.charsets</module><module>jdk.localedata</module><module>jdk.zipfs</module>
                             </addModules>
                             <javaOptions>
@@ -443,7 +443,7 @@
                             <mainClass>tritium.desktop.TritiumMusicDesktopApp</mainClass>
                             <type>EXE</type>
                             <addModules>
-                                <module>java.se</module><module>jdk.attach</module><module>jdk.unsupported</module>
+                                <module>java.se</module><module>jdk.attach</module><module>jdk.unsupported</module><module>jdk.httpserver</module>
                                 <module>jdk.crypto.ec</module><module>jdk.security.auth</module><module>jdk.charsets</module><module>jdk.localedata</module><module>jdk.zipfs</module>
                             </addModules>
                         </configuration>

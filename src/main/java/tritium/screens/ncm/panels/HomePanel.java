@@ -1,12 +1,8 @@
 package tritium.screens.ncm.panels;
 
 import tritium.i18n.I18n;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import lombok.Getter;
 import tritium.management.FontManager;
-import tritium.ncm.api.CloudMusicApi;
 import tritium.ncm.music.dto.PlayList;
 import tritium.rendering.TextureManager;
 import tritium.rendering.animation.Interpolations;
@@ -19,12 +15,9 @@ import tritium.rendering.ui.widgets.RoundedImageWidget;
 import tritium.screens.ncm.NCMPanel;
 import tritium.screens.ncm.NCMScreen;
 import tritium.utils.Location;
-import tritium.utils.json.JsonUtils;
 import tritium.utils.other.multithreading.MultiThreadingUtil;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author IzumiiKonata
@@ -37,7 +30,7 @@ public class HomePanel extends NCMPanel {
         navigationContent = tritium.screens.ncm.navigation.NavigationContent.playlists("explore", () -> I18n.text("home.recommended"), () -> playLists, () -> loading);
     }
 
-    static final List<PlayList> playLists = new CopyOnWriteArrayList<>();
+    static final List<PlayList> playLists = tritium.ncm.music.PlaylistDiscovery.recommendations;
     private int renderedPlaylistCount = -1;
     private static volatile boolean loading;
 
@@ -51,24 +44,10 @@ public class HomePanel extends NCMPanel {
         if (!playLists.isEmpty() || loading) return;
         loading = true;
         MultiThreadingUtil.runAsync(() -> {
-            List<PlayList> loaded = new ArrayList<>();
             try {
-                JsonObject response = CloudMusicApi.recommendResource().toJsonObject();
-                JsonElement code = response.get("code");
-                if (code == null || !code.isJsonPrimitive() || code.getAsInt() != 200) return;
-                JsonArray recommend = response.getAsJsonArray("recommend");
-                if (recommend == null) return;
-                for (JsonElement element : recommend) {
-                    if (!element.isJsonObject()) continue;
-                    JsonObject object = element.getAsJsonObject();
-                    // fix for missing @SerializedName(..., alternate = {})
-                    if (object.has("picUrl")) object.addProperty("coverImgUrl", object.get("picUrl").getAsString());
-                    if (object.has("playcount")) object.addProperty("playCount", object.get("playcount").getAsLong());
-                    loaded.add(JsonUtils.parse(object, PlayList.class));
-                }
+                tritium.ncm.music.PlaylistDiscovery.loadRecommendations();
             } finally {
                 MultiThreadingUtil.runOnMainThread(() -> {
-                    playLists.addAll(loaded);
                     loading = false;
                     layout();
                 });

@@ -203,6 +203,10 @@ public class CloudMusicApi {
         return RequestUtil.createRequest("/api/radio/like", data, OptionsUtil.createOptions("weapi"));
     }
 
+    public RequestUtil.RequestAnswer playlistDetail(long id) {
+        return RequestUtil.createRequest("/api/v6/playlist/detail", Map.of("id", id, "n", 0, "s", 0), OptionsUtil.createOptions());
+    }
+
     public RequestUtil.RequestAnswer playlistTrackAll(long id, int s) {
 
         Map<String, Object> data = new HashMap<>();

@@ -108,7 +108,7 @@ public class MusicWidget extends RoundedRectWidget {
         this.setOnClickCallback((x, y, i) -> {
 
             if (i == 0)
-                CloudMusic.play(playList.getMusics(), index);
+                CloudMusic.play(playList.getMusics(), index, playList);
 
             return true;
         });

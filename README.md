@@ -117,6 +117,21 @@ java -XstartOnFirstThread -jar target/tritium-music-1.0.3.jar
 | `--smoke-exit-after=3` | 启动约 3 秒后自动退出，用于冒烟检查 |
 | `--hud-smoke` | 使用合成内容预览歌曲信息、歌词与频谱 HUD |
 
+## HTTP MCP
+
+在 **设置 → HTTP MCP** 开启服务，点击「复制 MCP 客户端配置」，将 JSON 粘贴到支持 Streamable HTTP 的客户端。默认关闭，默认端口为 `17863`，服务地址为 `http://127.0.0.1:17863/mcp`。端口可输入后点击「应用」或按 Enter 保存，端口被占用时会在设置页显示启动失败信息。
+
+```json
+{
+  "mcpServers": {
+    "tritium-music": {
+      "type": "http",
+      "url": "http://127.0.0.1:17863/mcp"
+    }
+  }
+}
+```
+
 ## 数据与缓存
 
 配置和缓存存放在用户目录中：

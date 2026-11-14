@@ -173,6 +173,15 @@ public class SettingsPanel extends NCMPanel {
                 value -> String.format(Locale.ROOT, "%.1fx", value)));
         section.addChild(new ColorRow("settings.spectrumColor", preferences.hud().musicSpectrum().color(), true));
 
+        section = scrollPanel.addSection("settings.mcp");
+        section.addChild(new ToggleRow("settings.mcpEnabled", preferences.mcpEnabled()));
+        section.addChild(new McpPortRow(preferences.mcpPort()));
+        section.addChild(new HintRow("mcp.portHint"));
+        section.addChild(new BackgroundStatusRow(() -> DesktopAppState.mcp().status()));
+        section.addChild(new ActionRow("settings.mcpCopy", () -> DesktopAppState.mcp().copyConfiguration(preferences),
+                () -> I18n.text("mcp.copy")));
+        section.addChild(new HintRow(() -> DesktopAppState.mcp().clipboardStatus()));
+
         section = scrollPanel.addSection("settings.debug");
         section.addChild(new SliderRow("settings.maxFps", preferences.maxFps(),
                 value -> Math.round(value) >= MusicPreferences.UNLIMITED_FPS ? I18n.text("common.unlimited") : Math.round(value) + " FPS"));
@@ -724,13 +733,70 @@ public class SettingsPanel extends NCMPanel {
         }
     }
 
+    static final class McpPortRow extends SettingsRow<McpPortRow> {
+        private final NumberPreference preference;
+        private final tritium.rendering.ui.widgets.TextFieldWidget field =
+                new tritium.rendering.ui.widgets.TextFieldWidget(FontManager.pf16bold);
+        private boolean invalid;
+
+        McpPortRow(NumberPreference preference) {
+            super("settings.mcpPort", 82);
+            this.preference = preference;
+            field.getTextField().setMaxStringLength(5);
+            field.setText(String.valueOf(preference.getValue().intValue())).drawUnderline(false);
+            field.setBeforeRenderCallback(() -> {
+                field.setBounds(16, 36, Math.max(40, getWidth() - 124), 32)
+                        .setColor(invalid ? 0xFFFF6B6B : AppTheme.foreground());
+                field.setDisabledTextColor(invalid ? 0xFFFF6B6B : AppTheme.foreground());
+                if (!field.isFocused() && !invalid) field.setText(String.valueOf(preference.getValue().intValue()));
+            });
+            field.setOnKeyTypedCallback((character, key) -> {
+                if (!field.isFocused()) return false;
+                if (key == org.lwjgl.input.Keyboard.KEY_RETURN) applyPort();
+                if (key == org.lwjgl.input.Keyboard.KEY_ESCAPE) {
+                    invalid = false;
+                    field.setFocused(false);
+                }
+                return true;
+            });
+            addChild(field);
+            var apply = new tritium.rendering.ui.widgets.RoundedButtonWidget(() -> I18n.text("mcp.apply"), FontManager.pf14bold);
+            apply.setBeforeRenderCallback(() -> {
+                apply.setBounds(getWidth() - 94, 38, 78, 28).setRadius(5).setColor(AppTheme.accent());
+                apply.setTextColor(AppTheme.foreground());
+            });
+            apply.setOnClickCallback((x, y, button) -> {
+                if (button != 0) return false;
+                applyPort();
+                return true;
+            });
+            addChild(apply);
+        }
+
+        private void applyPort() {
+            try {
+                int port = Integer.parseInt(field.getText().strip());
+                invalid = port < preference.getMin() || port > preference.getMax();
+                if (invalid) return;
+                preference.setValue((double) port);
+                field.setFocused(false);
+            } catch (NumberFormatException error) { invalid = true; }
+        }
+    }
+
     static final class ActionRow extends SettingsRow<ActionRow> {
         private final Runnable action;
+        private final Supplier<String> buttonText;
         private float pressAnimation;
 
         ActionRow(String label, Runnable action) {
+            this(label, action, () -> I18n.text("common.run"));
+        }
+
+        ActionRow(String label, Runnable action, Supplier<String> buttonText) {
             super(label, 52);
             this.action = action;
+            this.buttonText = buttonText;
             this.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
                 if (mouseButton == 0) {
                     action.run();
@@ -744,7 +810,7 @@ public class SettingsPanel extends NCMPanel {
         public void onRender(double mouseX, double mouseY) {
             super.onRender(mouseX, mouseY);
             pressAnimation = Interpolations.interpolate(pressAnimation, 0f, .25f);
-            String label = I18n.text("common.run");
+            String label = buttonText.get();
             double width = 56;
             double height = 24;
             double x = rightInset(width);

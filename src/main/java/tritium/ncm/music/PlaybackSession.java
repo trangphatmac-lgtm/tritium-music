@@ -1,12 +1,18 @@
 package tritium.ncm.music;
 
 import tritium.ncm.music.dto.Music;
+import tritium.ncm.music.dto.PlayList;
 
 import java.util.List;
 
 /** Durable queue and resume point, independent of audio players and expiring playback URLs. */
 public record PlaybackSession(List<Music> songs, int index, long positionMillis, boolean paused,
-                              CloudMusic.PlayMode mode, List<Music> nextSongs) {
+                              CloudMusic.PlayMode mode, List<Music> nextSongs, PlayList source) {
+    public PlaybackSession(List<Music> songs, int index, long positionMillis, boolean paused,
+                           CloudMusic.PlayMode mode, List<Music> nextSongs) {
+        this(songs, index, positionMillis, paused, mode, nextSongs, null);
+    }
+
     public PlaybackSession {
         songs = List.copyOf(songs);
         nextSongs = List.copyOf(nextSongs);

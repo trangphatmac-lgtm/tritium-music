@@ -89,6 +89,64 @@ class WorldLyricSceneTest {
         assertTrue(Math.abs(first.rotation) <= 7.2); assertTrue(Math.abs(first.dx) <= .64); assertTrue(Math.abs(first.dy) <= 1.28);
     }
 
+    @Test void offsetsFollowCameraRightAndUpAndZeroSpreadCentersTheLine() {
+        module.world.spread = 0; module.world.keepAway = false;
+        for (double yaw : new double[]{0, 90, 180, 270}) {
+            for (double pitch : new double[]{-90, -40, 0, 40, 90}) {
+                scene.reset(); camera.yaw = yaw; camera.pitch = pitch;
+                module.world.offsetX = 0; module.world.offsetY = 0;
+                WorldLyricScene.Text centered = scene.update(track, 2000, true, module, camera, NOW).texts.get(0);
+                module.world.offsetX = 2; module.world.offsetY = 3;
+                WorldLyricScene.Text moved = scene.update(track, 2016, true, module, camera, NOW + 16_000_000L).texts.get(0);
+                double yr = Math.toRadians(yaw), pr = Math.toRadians(pitch);
+                assertEquals(-Math.cos(yr) * 2 - Math.sin(yr) * Math.sin(pr) * 3, moved.x - centered.x, 1e-9);
+                assertEquals(Math.cos(pr) * 3, moved.y - centered.y, 1e-9);
+                assertEquals(-Math.sin(yr) * 2 + Math.cos(yr) * Math.sin(pr) * 3, moved.z - centered.z, 1e-9);
+                assertEquals(10, distance(centered.x, centered.y, centered.z), 1e-9);
+            }
+        }
+        scene.reset(); camera.yaw = camera.pitch = 0;
+        module.world.offsetX = module.world.offsetY = 0;
+        WorldLyricScene.Text centered = scene.update(track, 2000, true, module, camera, NOW).texts.get(0);
+        assertEquals(0, centered.x); assertEquals(0, centered.y); assertEquals(10, centered.z);
+        module.scale = 2; module.world.distance = 20;
+        WorldLyricScene.Text resized = scene.update(track, 2016, true, module, camera, NOW + 16_000_000L).texts.get(0);
+        assertEquals(20, resized.z); assertEquals(centered.scale * 4, resized.scale, 1e-9);
+        assertEquals(1, scene.update(track, 2032, true, module, camera, NOW + 32_000_000L).texts.size());
+    }
+
+    @Test void rainbowIsPerCharacterAnimatedAndCanBeDisabledOnTheCurrentLine() {
+        module.world.rainbow = true;
+        WorldLyricScene.Text first = scene.update(track, 2000, true, module, camera, NOW).texts.get(0);
+        assertNotEquals(first.glyphs.get(0).color, first.glyphs.get(1).color);
+        WorldLyricScene.Text later = scene.update(track, 2100, true, module, camera, NOW + 100_000_000L).texts.get(0);
+        assertNotEquals(first.glyphs.get(0).color, later.glyphs.get(0).color);
+        module.world.rainbow = false; module.color = 0xff123456;
+        WorldLyricScene.Text plain = scene.update(track, 2116, true, module, camera, NOW + 116_000_000L).texts.get(0);
+        assertTrue(plain.glyphs.stream().allMatch(glyph -> glyph.color == module.color));
+    }
+
+    @Test void translationIsSmallerCenteredWrappedAndTogglesOnTheCurrentLine() {
+        track.lyrics.get(0).translation = "在夜空中闪耀的星";
+        module.world.rainbow = true; module.opacity = .4;
+        WorldLyricScene.Text text = scene.update(track, 2000, true, module, camera, NOW).texts.get(0);
+        java.util.List<WorldLyricScene.Glyph> translation = text.glyphs.stream().filter(glyph -> glyph.fontScale < 1)
+                .collect(java.util.stream.Collectors.toList());
+        assertEquals(8, translation.size());
+        assertEquals(-8 * 10 * .72 / 2, translation.get(0).x, 1e-9);
+        assertTrue(translation.stream().allMatch(glyph -> glyph.y > text.glyphs.get(0).y && glyph.color == 0xffffffff));
+        assertEquals(.4 * .75, translation.get(0).alpha, 1e-9);
+        module.translation = false;
+        assertTrue(scene.update(track, 2016, true, module, camera, NOW + 16_000_000L).texts.get(0).glyphs.stream()
+                .allMatch(glyph -> glyph.fontScale == 1));
+        module.translation = true;
+        assertTrue(scene.update(track, 2032, true, module, camera, NOW + 32_000_000L).texts.get(0).glyphs.stream()
+                .anyMatch(glyph -> glyph.fontScale < 1));
+        track.lyrics.get(0).translation = String.join("", java.util.Collections.nCopies(8, "很长的中文翻译")); scene.reset();
+        WorldLyricScene.Text wrapped = scene.update(track, 2000, true, module, camera, NOW).texts.get(0);
+        assertTrue(wrapped.glyphs.stream().filter(glyph -> glyph.fontScale < 1).map(glyph -> glyph.y).distinct().count() > 1);
+    }
+
     private static double distance(double x, double y, double z) { return Math.sqrt(x * x + y * y + z * z); }
     private static HudConfig.Module module() {
         HudConfig.Module module = new HudConfig.Module("worldLyrics", 0, 0, 200, 50);

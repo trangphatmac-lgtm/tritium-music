@@ -82,7 +82,7 @@ public class PlaylistPanel extends NCMPanel {
             btnPlay.setOnClickCallback((relativeX, relativeY, mouseButton) -> {
 
                 if (mouseButton == 0) {
-                    playList.loadMusicsWithCallback(musics -> CloudMusic.play(musics, 0));
+                    playList.loadMusicsWithCallback(musics -> CloudMusic.play(musics, 0, playList));
                 }
 
                 return true;
@@ -105,7 +105,7 @@ public class PlaylistPanel extends NCMPanel {
                     playList.loadMusicsWithCallback(musics -> {
                         ArrayList<Music> music = new ArrayList<>(musics);
                         Collections.shuffle(music);
-                        CloudMusic.play(music, 0);
+                        CloudMusic.play(music, 0, playList);
                     });
                 }
 

@@ -182,13 +182,23 @@ class MinecraftPanelRenderingTest {
                 settle(panel,120);
             }
             AbstractWidget<?> world = cards.get(4);
-            assertEquals(18, world.getChildren().size());
+            assertEquals(22, world.getChildren().size());
             panel.onMouseClickReceived(world.getX()+keyX.getDouble(world)+6,world.getY()+30,0);
             assertTrue(panel.captureKey(Keyboard.KEY_L));
             assertEquals(Keyboard.KEY_L,preferences.minecraft().snapshot().find("worldLyrics").key);
             panel.onMouseClickReceived(world.getX()+world.getWidth()/2,world.getY()+52,0); settle(panel,120);
             double allEffectsHeight = world.getHeight();
             assertTrue(allEffectsHeight > 1000); save("minecraft-world-lyrics-expanded");
+            var rainbow = world.getChildren().get(10);
+            rainbow.onMouseClicked(20, 20, 0);
+            assertTrue(preferences.minecraft().snapshot().find("worldLyrics").world.rainbow);
+            rainbow.onMouseClicked(20, 20, 0);
+            assertFalse(preferences.minecraft().snapshot().find("worldLyrics").world.rainbow);
+            var translation = world.getChildren().get(16);
+            translation.onMouseClicked(20, 20, 0);
+            assertFalse(preferences.minecraft().snapshot().find("worldLyrics").translation);
+            translation.onMouseClicked(20, 20, 0);
+            assertTrue(preferences.minecraft().snapshot().find("worldLyrics").translation);
             preferences.minecrafthidden().setValue(true);
             for (String style : List.of("Static", "Blur", "LiquidGlass")) {
                 preferences.interfaceStyle().setValue(style);
@@ -212,7 +222,7 @@ class MinecraftPanelRenderingTest {
             preferences.minecraft().update(c -> { c.find("worldLyrics").world.glow = false; c.find("worldLyrics").world.wiggle = false; });
             settle(panel,120);
             assertTrue(world.getHeight() < allEffectsHeight);
-            assertEquals(13,world.getChildren().stream().filter(row -> !row.isHidden()).count());
+            assertEquals(17,world.getChildren().stream().filter(row -> !row.isHidden()).count());
             preferences.minecraft().update(c -> { c.find("worldLyrics").world.glow = true; c.find("worldLyrics").world.wiggle = true; });
             panel.onMouseClickReceived(world.getX()+world.getWidth()/2,world.getY()+52,0); settle(panel,120);
             panel.onMouseClickReceived(card.getX()+card.getWidth()/2,card.getY()+52,0); settle(panel,120);

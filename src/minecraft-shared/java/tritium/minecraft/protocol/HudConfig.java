@@ -130,6 +130,9 @@ public final class HudConfig {
     public static final class WorldLyrics {
         public double offset;
         public double distance = 10;
+        /** Camera-relative offsets in blocks. Positive values move right and up. */
+        public double offsetX, offsetY;
+        public boolean rainbow;
         public boolean glow = true;
         public String glowColor = "Text";
         public double glowStrength = .3, glowRadius = .5;
@@ -144,6 +147,8 @@ public final class HudConfig {
         public void normalize() {
             offset = finite(offset, 0, -2000, 2000);
             distance = finite(distance, 10, 3, 40);
+            offsetX = finite(offsetX, 0, -20, 20);
+            offsetY = finite(offsetY, 0, -20, 20);
             glowStrength = finite(glowStrength, .3, 0, 3);
             glowRadius = finite(glowRadius, .5, 0, 1);
             wiggleFps = Math.rint(finite(wiggleFps, 8, 4, 24));

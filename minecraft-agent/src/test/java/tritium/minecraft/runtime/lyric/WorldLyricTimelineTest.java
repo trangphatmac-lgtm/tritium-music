@@ -55,6 +55,20 @@ class WorldLyricTimelineTest {
         assertTrue(new WorldLyricTimeline(null, true).lines.isEmpty());
     }
 
+    @Test void translationSurvivesPhraseSplittingAndIsCopiedFromTheSource() {
+        PlaybackState.Line line = line(1000, "你好 世界"); line.translation = "  Hello world  ";
+        WorldLyricTimeline timeline = new WorldLyricTimeline(Arrays.asList(line, line(5000, "last")), true);
+        line.translation = "changed";
+        assertEquals(3, timeline.lines.size());
+        assertEquals("Hello world", timeline.lines.get(0).translation);
+        assertEquals("Hello world", timeline.lines.get(1).translation);
+        assertEquals("", timeline.lines.get(2).translation);
+        line.translation = null;
+        assertEquals("", new WorldLyricTimeline(Collections.singletonList(line), false).lines.get(0).translation);
+        line.breakLine = true; line.translation = "hidden during a break";
+        assertEquals("", new WorldLyricTimeline(Collections.singletonList(line), false).lines.get(0).translation);
+    }
+
     static PlaybackState.Line line(long timestamp, String text) {
         PlaybackState.Line line = new PlaybackState.Line(); line.timestamp = timestamp; line.text = text; return line;
     }

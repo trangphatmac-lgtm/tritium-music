@@ -174,7 +174,7 @@ public class CloudMusic implements SharedConstants {
     }
 
     public static volatile User profile;
-    public static List<PlayList> playLists;
+    public static volatile List<PlayList> playLists;
     public static volatile List<Long> likeList;
     private static final Object favoritesLock = new Object();
     private static final Map<Long, Object> pendingFavorites = new HashMap<>();
@@ -194,8 +194,18 @@ public class CloudMusic implements SharedConstants {
         return toggleLike(song, CloudMusicApi::like, MultiThreadingUtil::runAsync);
     }
 
+    public static CompletableFuture<String> setLike(Music song, boolean liked) {
+        return updateLike(song, liked, CloudMusicApi::like, MultiThreadingUtil::runAsync);
+    }
+
     // Keep transport and scheduling injectable so failures and in-flight clicks can be tested offline.
     static CompletableFuture<String> toggleLike(Music song,
+                                                BiFunction<Long, Boolean, RequestUtil.RequestAnswer> request,
+                                                Executor executor) {
+        return updateLike(song, null, request, executor);
+    }
+
+    private static CompletableFuture<String> updateLike(Music song, Boolean desired,
                                                 BiFunction<Long, Boolean, RequestUtil.RequestAnswer> request,
                                                 Executor executor) {
         final User user;
@@ -216,7 +226,10 @@ public class CloudMusic implements SharedConstants {
             if (pendingFavorites.containsKey(songId)) {
                 return CompletableFuture.completedFuture(I18n.text("favorites.updating"));
             }
-            liked = !likeList.contains(songId);
+            if (desired != null && desired == likeList.contains(songId)) {
+                return CompletableFuture.completedFuture(I18n.text(desired ? "favorites.added" : "favorites.removed"));
+            }
+            liked = desired == null ? !likeList.contains(songId) : desired;
             pendingFavorites.put(songId, token);
         }
 
@@ -381,6 +394,21 @@ public class CloudMusic implements SharedConstants {
 
     public static CompletableFuture<String> cyclePlayMode() {
         return cyclePlayMode(CloudMusic::toggleHeartbeat);
+    }
+
+    public static CompletableFuture<String> setPlayMode(PlayMode mode) {
+        java.util.Objects.requireNonNull(mode);
+        synchronized (playbackLock) {
+            if (mode == PlayMode.Heartbeat) {
+                if (heartbeatLoading) return CompletableFuture.completedFuture(I18n.text("heartbeat.loading"));
+                if (playMode == mode)
+                    return CompletableFuture.completedFuture(I18n.text("playMode.changed", mode.getDisplayName()));
+                return toggleHeartbeat();
+            }
+            exitHeartbeat();
+            changePlayMode(mode);
+            return CompletableFuture.completedFuture(I18n.text("playMode.changed", mode.getDisplayName()));
+        }
     }
 
     static CompletableFuture<String> cyclePlayMode(Supplier<CompletableFuture<String>> startHeartbeat) {
@@ -1011,7 +1039,7 @@ public class CloudMusic implements SharedConstants {
                 }
                 PlayMode mode = playMode == PlayMode.Heartbeat ? modeBeforeHeartbeat : playMode;
                 return new PlaybackSession(queue, index, position, paused, mode,
-                        thread == null ? List.of() : new ArrayList<>(thread.nextSongs));
+                        thread == null ? List.of() : new ArrayList<>(thread.nextSongs), playedFrom);
             }
         }
     }
@@ -1029,7 +1057,7 @@ public class CloudMusic implements SharedConstants {
             playList = new ArrayList<>(session.songs());
             curIdx = session.index();
             currentlyPlaying = session.song();
-            playedFrom = null;
+            playedFrom = session.source();
             PlayThread thread = new PlayThread(playList, curIdx);
             thread.resumeSession = session;
             thread.nextSongs.addAll(session.nextSongs());
@@ -1053,7 +1081,7 @@ public class CloudMusic implements SharedConstants {
     /**
      * 播放来源, 用于记录播放时长
      */
-    public static PlayList playedFrom = null;
+    public static volatile PlayList playedFrom = null;
 
     /** Queue a song without touching the current audio, including while it is paused/loading. */
     public static String playNext(Music song) {
@@ -1079,10 +1107,15 @@ public class CloudMusic implements SharedConstants {
      */
     @SneakyThrows
     public static void play(List<Music> songs, int startIdx) {
+        play(songs, startIdx, null);
+    }
+
+    @SneakyThrows
+    public static void play(List<Music> songs, int startIdx, PlayList source) {
         if (songs == null || songs.isEmpty()) return;
         synchronized (playbackLock) {
             exitHeartbeat();
-            playedFrom = null;
+            playedFrom = source != null && source.getId() > 0 && !source.isSearchMode() ? source : null;
             playInternal(new ArrayList<>(songs), startIdx);
         }
     }

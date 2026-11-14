@@ -23,7 +23,7 @@ public final class WorldLyricTimeline {
             if (!source.breakLine && source.words != null) for (PlaybackState.Word w : source.words) {
                 if (w != null && w.text != null && !w.text.isEmpty()) words.add(new Word(w.timestamp, w.duration, w.text));
             }
-            kept.add(new Entry(source.timestamp, text, words));
+            kept.add(new Entry(source.timestamp, text, source.breakLine ? "" : safe(source.translation).trim(), words));
         }
         Collections.sort(kept, Comparator.comparingLong(e -> e.startMs));
         lines = Collections.unmodifiableList(splitLines ? split(kept) : kept);
@@ -103,7 +103,7 @@ public final class WorldLyricTimeline {
                 Segment last = merged.remove(merged.size() - 1); merged.get(merged.size() - 1).join(last);
             }
             if (merged.size() <= 1) result.add(line);
-            else for (Segment part : merged) result.add(new Entry(part.startMs, part.text, part.words));
+            else for (Segment part : merged) result.add(new Entry(part.startMs, part.text, line.translation, part.words));
         }
         Collections.sort(result, Comparator.comparingLong(e -> e.startMs)); return result;
     }
@@ -171,10 +171,11 @@ public final class WorldLyricTimeline {
 
     public static final class Entry {
         public final long startMs;
-        public final String text;
+        public final String text, translation;
         public final List<Word> words;
-        Entry(long startMs, String text, List<Word> words) {
-            this.startMs = startMs; this.text = text; this.words = Collections.unmodifiableList(new ArrayList<Word>(words));
+        Entry(long startMs, String text, String translation, List<Word> words) {
+            this.startMs = startMs; this.text = text; this.translation = translation;
+            this.words = Collections.unmodifiableList(new ArrayList<Word>(words));
         }
     }
     public static final class Word {

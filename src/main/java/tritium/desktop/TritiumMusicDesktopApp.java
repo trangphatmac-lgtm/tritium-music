@@ -51,6 +51,7 @@ public final class TritiumMusicDesktopApp {
             new FontManager().init();
             MultiThreadingUtil.runAsync(TritiumMusicDesktopApp::initializeMusicSession);
             DesktopAppState.api().displayScreen(NCMScreen.getInstance());
+            DesktopAppState.mcp().reconcile(DesktopAppState.preferences());
             DesktopAppState.hudManager().start(hasArg(args, "--hud-smoke"));
             runLoop(smokeExitAt);
         } finally {
@@ -253,6 +254,7 @@ public final class TritiumMusicDesktopApp {
     }
 
     private static void shutdown() {
+        DesktopAppState.mcp().close();
         DesktopAppState.minecraft().close();
         if (systemMediaControls != null) systemMediaControls.close();
         DesktopTextInput.close();

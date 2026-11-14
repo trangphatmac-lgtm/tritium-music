@@ -278,6 +278,7 @@ class SettingsAppearanceRenderingTest {
             verifyAudioEffects();
             verifyPlaylistExport(settings, scroll);
             verifySettingsLayout();
+            verifyMcpSettings();
             assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
         } finally {
             DesktopAppState.preferences().accentColor().setValue(originalAccent);
@@ -439,6 +440,77 @@ class SettingsAppearanceRenderingTest {
             preferences.audioEffects().loadFromJsonObject(saved);
             preferences.language().setValue(language);
             preferences.settingsLayout().setValue(layout);
+        }
+    }
+
+    private static void verifyMcpSettings() throws Exception {
+        var preferences = DesktopAppState.preferences();
+        double oldPort = preferences.mcpPort().getValue();
+        boolean oldEnabled = preferences.mcpEnabled().getValue();
+        String oldLanguage = preferences.language().getValue();
+        String oldLayout = preferences.settingsLayout().getValue();
+        String oldAppearance = preferences.appearance().getValue();
+        String oldScale = System.getProperty("tritium.uiScale");
+        DisplayMode oldDisplay = Display.getDisplayMode();
+        var clipboard = java.awt.Toolkit.getDefaultToolkit().getSystemClipboard();
+        var oldClipboard = clipboard.getContents(null);
+        Framebuffer target = null;
+        try {
+            System.setProperty("tritium.uiScale", "1");
+            Display.setDisplayMode(new DisplayMode(900, 700));
+            Display.update();
+            Framebuffer.updateMcFramebuffer();
+            Framebuffer.getMcFramebuffer().bindFramebuffer(true);
+            invokeApp("initializeOpenGL");
+            target = new Framebuffer(RenderSystem.getFramebufferWidth(), RenderSystem.getFramebufferHeight(), true);
+            target.bindFramebuffer(true);
+            preferences.settingsLayout().setValue("SingleColumn");
+            var settings = new SettingsPanel();
+            settings.setBounds(0, 0, Math.min(720, RenderSystem.getWidth()), RenderSystem.getHeight());
+            settings.onInit();
+            var scroll = (ScrollPanel) settings.getChildren().get(2);
+            renderStable(settings);
+            var toggle = settingRow(scroll, "settings.mcpEnabled");
+            scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + toggle.getY() - scroll.getY() - 30;
+            renderStable(settings);
+            var port = settingRow(scroll, "settings.mcpPort");
+            var field = (tritium.rendering.ui.widgets.TextFieldWidget) port.getChildren().getFirst();
+            field.setFocused(true).setText("80");
+            click(settings, port.getX() + port.getWidth() - 55, port.getY() + 52);
+            assertEquals(oldPort, preferences.mcpPort().getValue());
+            field.setFocused(true).setText("19000");
+            click(settings, port.getX() + port.getWidth() - 55, port.getY() + 52);
+            assertEquals(19000, preferences.mcpPort().getValue());
+            click(settings, toggle.getX() + toggle.getWidth() - 35, toggle.getY() + 26);
+            assertEquals(!oldEnabled, preferences.mcpEnabled().getValue());
+            var copy = settingRow(scroll, "settings.mcpCopy");
+            click(settings, copy.getX() + copy.getWidth() - 40, copy.getY() + 26);
+            assertTrue(tritium.utils.KeyboardUtils.getClipboardString().contains("127.0.0.1:19000/mcp"));
+            for (String language : java.util.List.of("zh-CN", "zh-TW", "en")) {
+                preferences.language().setValue(language);
+                preferences.appearance().setValue(language.equals("en") ? "Light" : "Dark");
+                settings.setWidth(language.equals("en") ? 440 : 720);
+                renderStable(settings);
+                scroll.actualScrollOffset = scroll.targetScrollOffset = scroll.actualScrollOffset + toggle.getY() - scroll.getY() - 30;
+                renderStable(settings);
+                assertSettingsDoNotOverlap(scroll);
+                if (language.equals("en")) assertContainsBlackText((int) field.getX(), (int) field.getY(), 90, 32);
+                savePreview("settings-mcp-" + language);
+            }
+        } finally {
+            preferences.mcpEnabled().setValue(oldEnabled);
+            preferences.mcpPort().setValue(oldPort);
+            preferences.language().setValue(oldLanguage);
+            preferences.settingsLayout().setValue(oldLayout);
+            preferences.appearance().setValue(oldAppearance);
+            if (target != null) target.deleteFramebuffer();
+            Framebuffer.getMcFramebuffer().bindFramebuffer(true);
+            if (oldScale == null) System.clearProperty("tritium.uiScale");
+            else System.setProperty("tritium.uiScale", oldScale);
+            Display.setDisplayMode(oldDisplay);
+            Display.update();
+            Framebuffer.updateMcFramebuffer();
+            if (oldClipboard != null) clipboard.setContents(oldClipboard, null);
         }
     }
 

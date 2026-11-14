@@ -139,6 +139,8 @@ class MinecraftPreferencesTest {
         assertNotNull(world); assertFalse(world.enabled); assertEquals(0, world.key);
         assertEquals(1, world.scale); assertEquals(0xfff7e1d7, world.color);
         assertEquals(10, world.world.distance); assertEquals(0, world.world.offset);
+        assertEquals(0, world.world.offsetX); assertEquals(0, world.world.offsetY);
+        assertFalse(world.world.rainbow); assertTrue(world.translation);
         assertEquals("Text", world.world.glowColor); assertEquals(.3, world.world.glowStrength);
         assertEquals(.5, world.world.glowRadius); assertEquals(8, world.world.wiggleFps);
         assertEquals(.8, world.world.wiggleAmount); assertEquals(30, world.world.spread);
@@ -147,11 +149,29 @@ class MinecraftPreferencesTest {
         assertFalse(world.world.stayOnScreen);
     }
 
+    @Test void existingWorldConfigurationReceivesNewOptionsWithoutLosingFontSize() {
+        MusicPreferences p = new MusicPreferences(); p.minecraft().ensureInitialized(p);
+        p.minecraft().update(c -> c.find("worldLyrics").scale = 1.75);
+        JsonObject saved = p.toJsonObject();
+        for (var element : saved.getAsJsonObject("minecraft").getAsJsonArray("modules")) {
+            JsonObject module = element.getAsJsonObject();
+            if (!"worldLyrics".equals(module.get("id").getAsString())) continue;
+            JsonObject world = module.getAsJsonObject("world");
+            world.remove("offsetX"); world.remove("offsetY"); world.remove("rainbow");
+        }
+        MusicPreferences restored = new MusicPreferences(); restored.loadFromJsonObject(saved);
+        var module = restored.minecraft().snapshot().find("worldLyrics");
+        assertEquals(1.75, module.scale); assertEquals(10, module.world.distance);
+        assertEquals(0, module.world.offsetX); assertEquals(0, module.world.offsetY);
+        assertFalse(module.world.rainbow);
+    }
+
     @Test void worldEffectsRoundTripAndRemainIndependentOfHudLayout() {
         MusicPreferences p = new MusicPreferences(); p.minecraft().ensureInitialized(p);
         p.minecraft().update(c -> {
             var m = c.find("worldLyrics"); m.enabled = true; m.key = 34; m.scale = 2.75; m.color = 0xff123456;
             var w = m.world; w.offset = -350; w.distance = 24.5; w.glow = false; w.glowColor = "Gold";
+            w.offsetX = 2.4; w.offsetY = -1.5; w.rainbow = true; m.translation = false;
             w.glowStrength = 1.2; w.glowRadius = .75; w.smoothFont = false; w.wiggle = false;
             w.wiggleFps = 12; w.wiggleAmount = 1.5; w.wordPop = false; w.facePlayer = false;
             w.keepAway = false; w.stayOnScreen = true; w.spread = 42; w.splitLines = false;
@@ -176,9 +196,13 @@ class MinecraftPreferencesTest {
         m.scale = 100; m.world.offset = Double.NaN; m.world.distance = Double.POSITIVE_INFINITY;
         m.world.glowStrength = -3; m.world.glowRadius = 9; m.world.wiggleFps = 200;
         m.world.wiggleAmount = -1; m.world.spread = 999; m.world.glowColor = "unknown";
+        m.world.offsetX = Double.NaN; m.world.offsetY = -100;
         config.find("musicLyrics").scale = 100; config.normalize();
         assertEquals(3, m.scale); assertEquals(2, config.find("musicLyrics").scale);
         assertEquals(0, m.world.offset); assertEquals(10, m.world.distance);
+        assertEquals(0, m.world.offsetX); assertEquals(-20, m.world.offsetY);
+        m.world.offsetX = 100; m.world.offsetY = Double.POSITIVE_INFINITY; config.normalize();
+        assertEquals(20, m.world.offsetX); assertEquals(0, m.world.offsetY);
         assertEquals(0, m.world.glowStrength); assertEquals(1, m.world.glowRadius);
         assertEquals(24, m.world.wiggleFps); assertEquals(0, m.world.wiggleAmount);
         assertEquals(60, m.world.spread); assertEquals("Text", m.world.glowColor);

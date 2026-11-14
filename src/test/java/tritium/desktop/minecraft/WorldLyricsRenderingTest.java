@@ -35,9 +35,10 @@ class WorldLyricsRenderingTest {
             Class<?> sceneType = loader.loadClass("tritium.minecraft.runtime.lyric.WorldLyricScene");
             Object scene = sceneType.getConstructor(metrics).newInstance(measure);
             HudConfig.Module module = new HudConfig().find("worldLyrics"); module.enabled = true;
-            module.world.wiggle = false; module.world.spread = 0; module.world.glow = false;
+            module.world.wiggle = false; module.world.spread = 0; module.world.glow = false; module.translation = false;
             PlaybackState.Track track = new PlaybackState.Track(); track.id = 42;
             PlaybackState.Line line = new PlaybackState.Line(); line.text = "世界中的歌词  Tritium Music"; line.timestamp = 0;
+            line.translation = "在世界中显示的中文翻译";
             track.lyrics.add(line);
             Method update = sceneType.getMethod("update", PlaybackState.Track.class, double.class, boolean.class, HudConfig.Module.class, cameraType, long.class);
             Object frame = update.invoke(scene, track, 2000.0, true, module, camera, 2_000_000_000L);
@@ -88,6 +89,23 @@ class WorldLyricsRenderingTest {
             Path folder = Paths.get("target/ui-preview"); Files.createDirectories(folder);
             ImageIO.write(plain, "png", folder.resolve("minecraft-world-lyrics-plain.png").toFile());
             ImageIO.write(glowing, "png", folder.resolve("minecraft-world-lyrics-glow.png").toFile());
+            module.world.glow = false; module.translation = true;
+            frame = update.invoke(scene, track, 2016.0, true, module, camera, 2_016_000_000L);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST); GL11.glClear(GL11.GL_COLOR_BUFFER_BIT); GL11.glEnable(GL11.GL_SCISSOR_TEST);
+            draw.invoke(renderer, frame, camera, module, 960, 540);
+            verifyState(target, readTarget, gameTexture, buffer, gameProgram, projection, modelview, lightmap);
+            BufferedImage translated = capture(target, readTarget);
+            assertTrue(pixels(translated) > plainPixels, "Translation must add visible glyphs below the main line");
+            module.world.rainbow = true;
+            frame = update.invoke(scene, track, 2032.0, true, module, camera, 2_032_000_000L);
+            GL11.glDisable(GL11.GL_SCISSOR_TEST); GL11.glClear(GL11.GL_COLOR_BUFFER_BIT); GL11.glEnable(GL11.GL_SCISSOR_TEST);
+            draw.invoke(renderer, frame, camera, module, 960, 540);
+            verifyState(target, readTarget, gameTexture, buffer, gameProgram, projection, modelview, lightmap);
+            BufferedImage rainbow = capture(target, readTarget);
+            long colorfulPixels = java.util.Arrays.stream(rainbow.getRGB(0, 0, 960, 540, null, 0, 960))
+                    .filter(pixel -> Math.abs((pixel >> 16 & 255) - (pixel >> 8 & 255)) > 60).count();
+            assertTrue(colorfulPixels > 100, "Rainbow colors must reach the rendered glyphs");
+            ImageIO.write(rainbow, "png", folder.resolve("minecraft-world-lyrics-rainbow-translation.png").toFile());
             draw.invoke(renderer, frame, camera, module, 640, 360);
             verifyState(target, readTarget, gameTexture, buffer, gameProgram, projection, modelview, lightmap);
             Method close = rendererType.getDeclaredMethod("close"); close.setAccessible(true); close.invoke(renderer);

@@ -18,6 +18,7 @@ public final class DesktopAppState {
     private static final tritium.desktop.download.SongDownloads SONG_DOWNLOADS = new tritium.desktop.download.SongDownloads();
     private static final HudManager HUD_MANAGER = new HudManager();
     private static final tritium.desktop.minecraft.MinecraftConnectionManager MINECRAFT = new tritium.desktop.minecraft.MinecraftConnectionManager();
+    private static final tritium.desktop.mcp.McpService MCP = new tritium.desktop.mcp.McpService();
     private static final ConcurrentLinkedQueue<Runnable> MAIN_THREAD_TASKS = new ConcurrentLinkedQueue<>();
 
     private static volatile Thread mainThread;
@@ -50,6 +51,7 @@ public final class DesktopAppState {
             PREFERENCE_STORE.save(PREFERENCES);
             DesktopCacheManager.setMusicCacheLimit(PREFERENCES.musicCacheLimitBytes());
             HUD_MANAGER.onPreferencesChanged();
+            MCP.reconcile(PREFERENCES);
         });
     }
 
@@ -72,6 +74,8 @@ public final class DesktopAppState {
     }
 
     public static tritium.desktop.minecraft.MinecraftConnectionManager minecraft() { return MINECRAFT; }
+
+    public static tritium.desktop.mcp.McpService mcp() { return MCP; }
 
     public static void markMainThread() {
         mainThread = Thread.currentThread();

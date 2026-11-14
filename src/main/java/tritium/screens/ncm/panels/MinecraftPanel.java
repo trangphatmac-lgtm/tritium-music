@@ -452,8 +452,10 @@ public final class MinecraftPanel extends NCMPanel {
 
         private void buildWorldRows() {
             slider("minecraft.world.offset", m -> m.world.offset, (m,v) -> m.world.offset=v, -2000, 2000, 50);
-            slider("minecraft.scale", m -> m.scale, (m,v) -> m.scale=v, .5, 3, .05);
+            slider("minecraft.world.fontSize", m -> m.scale, (m,v) -> m.scale=v, .5, 3, .05);
             slider("minecraft.world.distance", m -> m.world.distance, (m,v) -> m.world.distance=v, 3, 40, .5);
+            slider("minecraft.world.offsetX", m -> m.world.offsetX, (m,v) -> m.world.offsetX=v, -20, 20, .1);
+            slider("minecraft.world.offsetY", m -> m.world.offsetY, (m,v) -> m.world.offsetY=v, -20, 20, .1);
             toggle("minecraft.world.glow", m -> m.world.glow, (m,v) -> m.world.glow=v);
             choice("minecraft.world.glowColor", m -> m.world.glowColor, (m,v) -> m.world.glowColor=v, "Text", "Pink", "Blue", "Gold");
             when(() -> module().world.glow);
@@ -462,6 +464,7 @@ public final class MinecraftPanel extends NCMPanel {
             slider("minecraft.world.glowRadius", m -> m.world.glowRadius, (m,v) -> m.world.glowRadius=v, 0, 1, .05);
             when(() -> module().world.glow);
             toggle("minecraft.world.smoothFont", m -> m.world.smoothFont, (m,v) -> m.world.smoothFont=v);
+            toggle("minecraft.world.rainbow", m -> m.world.rainbow, (m,v) -> m.world.rainbow=v);
             addChild(new SettingsPanel.ColorRow("minecraft.world.color", preference(m -> m.color, (m,v) -> m.color=v), false));
             toggle("minecraft.world.wiggle", m -> m.world.wiggle, (m,v) -> m.world.wiggle=v);
             slider("minecraft.world.wiggleFps", m -> m.world.wiggleFps, (m,v) -> m.world.wiggleFps=v, 4, 24, 1);
@@ -469,6 +472,7 @@ public final class MinecraftPanel extends NCMPanel {
             slider("minecraft.world.wiggleAmount", m -> m.world.wiggleAmount, (m,v) -> m.world.wiggleAmount=v, 0, 2, .05);
             when(() -> module().world.wiggle);
             toggle("minecraft.world.wordPop", m -> m.world.wordPop, (m,v) -> m.world.wordPop=v);
+            toggle("minecraft.world.translation", m -> m.translation, (m,v) -> m.translation=v);
             toggle("minecraft.world.facePlayer", m -> m.world.facePlayer, (m,v) -> m.world.facePlayer=v);
             toggle("minecraft.world.keepAway", m -> m.world.keepAway, (m,v) -> m.world.keepAway=v);
             toggle("minecraft.world.stayOnScreen", m -> m.world.stayOnScreen, (m,v) -> m.world.stayOnScreen=v);

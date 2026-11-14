@@ -41,7 +41,7 @@ public final class NavigationContent {
         return new NavigationContent(key, title, source, loading, false);
     }
     public static NavigationContent tracks(PlayList playlist) {
-        return tracks(playlist, CloudMusic::play);
+        return tracks(playlist, (songs, index) -> CloudMusic.play(songs, index, playlist));
     }
     static NavigationContent tracks(PlayList playlist, BiConsumer<List<Music>, Integer> play) {
         var content = new NavigationContent("playlist:" + playlist.getId(), () -> safe(playlist.getName(), "nav.playlists"),
