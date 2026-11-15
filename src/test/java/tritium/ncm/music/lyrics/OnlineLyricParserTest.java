@@ -50,6 +50,13 @@ class OnlineLyricParserTest {
         assertTrue(document.usable()); assertEquals("翻译", document.lines().getFirst().translation());
         json.addProperty("nolyric", true); assertTrue(OnlineLyricParser.netease(json).pureMusic());
     }
+    @Test void neteaseUncollectedNoticeIsMissingLyrics() {
+        var json = new JsonParser().parse("{\"code\":200,\"uncollected\":true,\"lrc\":{\"version\":1,\"lyric\":\"[00:00.00]暂无歌词\"}}").getAsJsonObject();
+        var document = OnlineLyricParser.netease(json);
+        assertEquals(LyricDocument.EMPTY, document);
+        assertFalse(document.usable());
+        assertTrue(document.toLines().isEmpty());
+    }
     @Test void yrcCanExistWithoutLrcAndSkipsBrokenLines() throws Exception {
         var json = new JsonParser().parse("{\"yrc\":{\"lyric\":\"[ar:Artist]\\n[1000,1000](1000,500,0)Hello (1500,500,0)world\"}}").getAsJsonObject();
         var result = OnlineLyricParser.netease(json);

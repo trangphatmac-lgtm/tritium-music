@@ -21,6 +21,8 @@ public final class OnlineLyricParser {
     private OnlineLyricParser() {}
 
     public static LyricDocument netease(JsonObject json) {
+        // NetEase can wrap its missing-lyrics notice in a timestamped LRC line.
+        if (bool(json, "uncollected")) return LyricDocument.EMPTY;
         String lrc = track(json, "lrc"), yrc = track(json, "yrc");
         boolean pure = bool(json, "nolyric") || lrc.contains("纯音乐，请欣赏") || lrc.contains("純音樂，請欣賞");
         var lines = timed(yrc, "yrc");

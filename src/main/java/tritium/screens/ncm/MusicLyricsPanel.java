@@ -63,6 +63,7 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     float alpha = 0f;
     private float focusBlurAlpha = 0f;
     private boolean hoveringLyrics;
+    private double addLyricsX, addLyricsY, addLyricsWidth, addLyricsHeight;
     boolean closing = false;
 
     Framebuffer baseFb, stencilFb;
@@ -291,12 +292,17 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     }
 
     public void onRender(double mouseX, double mouseY, double posX, double posY, double width, double height, int dWheel) {
-
+        addLyricsWidth = 0;
         if (usesPlayerControls()) {
             alpha = Interpolations.interpolate(alpha, closing ? 0f : 1f, .3f);
             double bottomInset = DesktopAppState.preferences().playerControls().getValue().equals("FoliaMini") ? 64 : height * .07;
             foliaLyrics.render(tritium.screens.ncm.lyrics.LyricStyle.from(DesktopAppState.preferences().lyricStyle().getValue()),
                     posX, posY, width, height, mouseX, mouseY, alpha, bottomInset);
+            if (lyricsMissing()) {
+                renderMissingLyrics(mouseX, mouseY, posX + width * .5,
+                        posY + (height - bottomInset) * .48 + 52 * height / 720, alpha, 1,
+                        posX + width * .5, posY + height * .5);
+            }
             return;
         }
         foliaLyrics.close();
@@ -322,7 +328,10 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         }
         UiMaterials.captureBackdrop(true);
         UiMaterials.withoutMaterials(() -> this.renderControlsPart(mouseX, mouseY, posX, posY, width, height, alpha));
-        if (!CloudMusic.lyrics.isEmpty()) {
+        if (lyricsMissing()) {
+            renderMissingLyrics(mouseX, mouseY, posX + width * .74, posY + height * .25,
+                    alpha, 1.1 - alpha * .1, posX + width * .5, posY + height * .5);
+        } else {
             List<Runnable> blurRects = new ArrayList<>();
             // Blur a transparent lyric layer so the background is never sampled a second time.
             blurShader.runLayer(() ->
@@ -330,6 +339,40 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
         }
         this.renderTranslationButton(mouseX, mouseY, posX, posY, width, height, alpha);
         api.getGLStateManager().popMatrix();
+    }
+
+    private boolean lyricsMissing() {
+        return CloudMusic.lyrics.stream().noneMatch(line -> !line.isPlaceholder() && !line.isBreakLine && !line.lyric.isBlank());
+    }
+
+    private void renderMissingLyrics(double mouseX, double mouseY, double centerX, double centerY,
+                                     float opacity, double scale, double pivotX, double pivotY) {
+        var font = FontManager.pf34bold;
+        String label = I18n.text("lyrics.empty") + " ";
+        String action = I18n.text("lyrics.add");
+        font.prepareGlyphs(label + action);
+        double labelWidth = font.getStringWidthD(label);
+        double actionWidth = font.getStringWidthD(action);
+        double left = centerX - (labelWidth + actionWidth) * .5;
+        double top = centerY - font.getHeight() * .5;
+        addLyricsX = pivotX + (left + labelWidth - pivotX) * scale;
+        addLyricsY = pivotY + (top - pivotY) * scale;
+        addLyricsWidth = actionWidth * scale;
+        addLyricsHeight = font.getHeight() * scale;
+        boolean hovered = addLyricsAt(mouseX, mouseY);
+        font.drawString(label, left, top, hexColor(1, 1, 1, opacity * .6f));
+        if (CloudMusic.currentlyPlaying == null) {
+            addLyricsWidth = 0;
+            return;
+        }
+        int color = hexColor(1, 1, 1, opacity * (hovered ? 1f : .75f));
+        font.drawString(action, left + labelWidth, top, color);
+        Rect.draw(left + labelWidth, top + font.getHeight() - 1, actionWidth, 1, color);
+        if (hovered) CursorUtils.setOverride(CursorUtils.HAND);
+    }
+
+    private boolean addLyricsAt(double mouseX, double mouseY) {
+        return addLyricsWidth > 0 && isHovered(mouseX, mouseY, addLyricsX, addLyricsY, addLyricsWidth, addLyricsHeight);
     }
 
     private void renderTranslationButton(double mouseX, double mouseY, double posX, double posY, double width, double height, float alpha) {
@@ -937,6 +980,10 @@ public class MusicLyricsPanel implements SharedRenderingConstants, SharedConstan
     }
 
     public void mouseClicked(double mouseX, double mouseY, int mouseButton) {
+        if (mouseButton == 0 && !closing && lyricsMissing() && addLyricsAt(mouseX, mouseY)) {
+            tritium.desktop.LyricFilePicker.choose(CloudMusic.currentlyPlaying);
+            return;
+        }
         if (usesPlayerControls()) {
             if (mouseButton == 0) {
                 if (foliaLyrics.backAt(mouseX, mouseY)) close();

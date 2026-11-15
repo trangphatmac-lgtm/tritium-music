@@ -26,6 +26,7 @@ import repackage.javazoom.jl.converter.Converter;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Locale;
 
@@ -76,21 +77,34 @@ public class SampleLoader {
 
     @SneakyThrows
     public static FloatSample loadStreamedFloatSample(File fileIn) {
-
-        String name = fileIn.getName().toLowerCase(Locale.ROOT);
-        if (name.endsWith(".flac")) {
+        String type = detectFileType(fileIn);
+        if (type.equals("flac")) {
             return new BufferedSampleLoader().loadFromFlacStream(new BufferedInputStream(Files.newInputStream(fileIn.toPath())));
-        } else if (name.endsWith(".wav")) {
+        } else if (type.equals("wav")) {
             return new RafSampleLoader().loadFloatSample(new RandomAccessFile(fileIn, "r"));
-        } else if (name.endsWith(".mp3")) {
+        } else if (type.equals("mp3")) {
             Converter converter = new Converter();
-            return loadFloatSample(new ByteArrayInputStream(converter.convert(Files.newInputStream(fileIn.toPath()), null, null)));
-        } else if (name.endsWith(".m4a") || name.endsWith(".mp4")) {
+            try (InputStream input = Files.newInputStream(fileIn.toPath())) {
+                return loadFloatSample(new ByteArrayInputStream(converter.convert(input, null, null)));
+            }
+        } else if (type.equals("m4a") || type.equals("mp4")) {
             return new M4aSampleLoader().loadFloatSample(fileIn);
         } else {
-            throw new IllegalArgumentException("Unsupported audio file: " + name);
+            throw new IllegalArgumentException("Unsupported audio file: " + fileIn.getName());
         }
+    }
 
+    private static String detectFileType(File file) throws IOException {
+        // Cloud uploads and existing caches can have an extension that differs from their content.
+        String header;
+        try (InputStream input = Files.newInputStream(file.toPath())) {
+            header = new String(input.readNBytes(12), StandardCharsets.US_ASCII);
+        }
+        if (header.startsWith("fLaC")) return "flac";
+        if (header.length() == 12 && header.startsWith("RIFF") && header.endsWith("WAVE")) return "wav";
+        if (header.length() >= 8 && header.substring(4, 8).equals("ftyp")) return "m4a";
+        String name = file.getName().toLowerCase(Locale.ROOT);
+        return name.substring(name.lastIndexOf('.') + 1);
     }
 
     public static boolean isSupportedFileType(String type) {

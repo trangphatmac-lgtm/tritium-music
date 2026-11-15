@@ -61,8 +61,6 @@ public final class FoliaLyrics implements AutoCloseable {
                 if (timeline.lines().isEmpty()) {
                     canvas.centered(song == null ? I18n.text("player.idle") : song.getName(),
                             frame.width() / 2, frame.contentHeight() * .48, 34, 0xDFFFFFFF, true);
-                    canvas.centered(I18n.text("lyrics.empty"), frame.width() / 2,
-                            frame.contentHeight() * .48 + 52, 19, 0x99FFFFFF, false);
                 }
                 backHovered = mouseX >= x + 8 && mouseX <= x + 44 && mouseY >= y + 8 && mouseY <= y + 44;
                 canvas.circle(30 / scale, 28 / scale, 15 / scale, backHovered ? 0x66000000 : 0x30000000);

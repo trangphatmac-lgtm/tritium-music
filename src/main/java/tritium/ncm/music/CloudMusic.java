@@ -46,6 +46,8 @@ import tritium.rendering.texture.Textures;
 import tritium.screens.ncm.LyricLine;
 import tritium.ncm.music.lyrics.BestLyricService;
 import tritium.ncm.music.lyrics.LyricLoader;
+import tritium.ncm.music.lyrics.LyricDocument;
+import tritium.ncm.music.lyrics.LocalLyricStore;
 import tritium.ncm.music.lyrics.LyricSong;
 import tritium.ncm.music.lyrics.LyricSource;
 import tritium.ncm.music.lyrics.OnlineLyricProviders;
@@ -65,8 +67,10 @@ import java.awt.image.Kernel;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -2163,7 +2167,16 @@ public class CloudMusic implements SharedConstants {
 
     private static final LyricLoader LYRIC_LOADER = new LyricLoader(
             new BestLyricService(new OnlineLyricProviders()), DesktopAppState::runOnMainThread);
+    private static final LocalLyricStore LOCAL_LYRICS = new LocalLyricStore(AppPaths.appDataDir().resolve("lyrics"));
     private static Music lyricOwner;
+
+    public static void importLyrics(Music music, Path file) throws IOException {
+        LOCAL_LYRICS.importFile(LyricSong.fromMusic(music), file);
+        DesktopAppState.runOnMainThread(() -> {
+            Music active = currentlyPlaying;
+            if (active != null && active.getId() == music.getId()) loadLyric(active);
+        });
+    }
 
     public static void reloadLyrics() {
         Music music = currentlyPlaying;
@@ -2186,17 +2199,19 @@ public class CloudMusic implements SharedConstants {
                 }
             }
             var preferences = DesktopAppState.preferences();
-            LYRIC_LOADER.load(LyricSong.fromMusic(music), preferences.autoUseBestLyric().getValue(),
-                    LyricSource.fromId(preferences.preferredLyricSource().getValue()),
-                    () -> currentlyPlaying == music,
-                    result -> {
-                        synchronized (playThread == null ? playbackLock : playThread) {
-                            if (currentlyPlaying != music) return;
-                            initLyrics(new JsonObject(), music, result.document().toLines());
-                            AudioPlayer active = player;
-                            if (active != null) setLyricsProgress(active.getCurrentTimeMillis());
-                        }
-                    });
+            Consumer<LyricDocument> publish = document -> {
+                synchronized (playThread == null ? playbackLock : playThread) {
+                    if (currentlyPlaying != music) return;
+                    initLyrics(new JsonObject(), music, document.toLines());
+                    AudioPlayer active = player;
+                    if (active != null) setLyricsProgress(active.getCurrentTimeMillis());
+                }
+            };
+            LYRIC_LOADER.loadSaved(LyricSong.fromMusic(music), LOCAL_LYRICS,
+                    () -> currentlyPlaying == music, publish,
+                    () -> LYRIC_LOADER.load(LyricSong.fromMusic(music), preferences.autoUseBestLyric().getValue(),
+                            LyricSource.fromId(preferences.preferredLyricSource().getValue()),
+                            () -> currentlyPlaying == music, result -> publish.accept(result.document())));
         });
     }
 

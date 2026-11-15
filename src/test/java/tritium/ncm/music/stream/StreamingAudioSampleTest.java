@@ -187,6 +187,14 @@ class StreamingAudioSampleTest {
                 await(active::isComplete);
                 assertEquals(30, sample.getNumFrames() / sample.getFrameRate(), .1);
                 assertArrayEquals(audio, Files.readAllBytes(cache));
+                var cached = SampleLoader.loadStreamedFloatSample(cache.toFile());
+                try {
+                    assertEquals(44_100, cached.getFrameRate());
+                    assertEquals(30, cached.getNumFrames() / cached.getFrameRate(), .1);
+                    double cachedEnergy = 0;
+                    for (int frame = 0; frame < 5_000; frame++) cachedEnergy += Math.abs(cached.readDouble(frame));
+                    assertTrue(cachedEnergy > 1, extension);
+                } finally { cached.cleanUp(); }
             } finally {
                 if (sample != null) sample.cleanUp();
                 remainder.countDown();
@@ -275,6 +283,59 @@ class StreamingAudioSampleTest {
                 assertArrayEquals(bytes, Files.readAllBytes(directory.resolve(fixture)));
             } finally { if (sample != null) sample.cleanUp(); server.stop(0); }
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"automix-entry-stereo.flac", "tone.m4a", "tone-fragmented.m4a"})
+    void mislabeledMp3ReplaysFromCompletedCache(String fixture) throws Exception {
+        byte[] bytes;
+        try (var resource = getClass().getResourceAsStream("/audio/" + fixture)) {
+            bytes = resource.readAllBytes();
+        }
+        Path source = Files.write(directory.resolve(fixture), bytes);
+        HttpServer server = HttpAudioCacheTest.serve(bytes, true, false, new AtomicInteger());
+        Path cache = directory.resolve("cloud.mp3");
+        StreamingAudioSample streamed = null;
+        try {
+            streamed = StreamingAudioSample.open(HttpAudioCacheTest.url(server), cache, 0, () -> false);
+            StreamingAudioSample active = streamed;
+            await(active::isComplete);
+            assertNull(streamed.failure());
+            assertTrue(streamed.getNumFrames() > 0);
+            server.stop(0);
+            var expected = SampleLoader.loadStreamedFloatSample(source.toFile());
+            var cached = SampleLoader.loadStreamedFloatSample(cache.toFile());
+            try {
+                assertEquals(expected.getFrameRate(), cached.getFrameRate());
+                assertEquals(expected.getChannelsPerFrame(), cached.getChannelsPerFrame());
+                assertEquals(expected.getNumFrames(), cached.getNumFrames());
+                for (int frame : new int[] {0, cached.getNumFrames() / 2, cached.getNumFrames() - 4096}) {
+                    assertEquals(expected.readDouble(frame * 2), cached.readDouble(frame * 2), 1e-4);
+                    assertEquals(expected.readDouble(frame * 2 + 1), cached.readDouble(frame * 2 + 1), 1e-4);
+                }
+                double energy = 0;
+                for (int frame = 0; frame < 5_000; frame++) energy += Math.abs(cached.readDouble(frame * 2));
+                assertTrue(energy > 1, fixture);
+                assertArrayEquals(bytes, Files.readAllBytes(cache));
+            } finally { expected.cleanUp(); cached.cleanUp(); }
+            Files.delete(cache);
+        } finally {
+            if (streamed != null) streamed.cleanUp();
+            server.stop(0);
+        }
+    }
+
+    @Test void wavContentOverridesMp3Extension() throws Exception {
+        Path cache = Files.write(directory.resolve("cloud.MP3"), wav(1));
+        var sample = SampleLoader.loadStreamedFloatSample(cache.toFile());
+        try {
+            assertEquals(44_100, sample.getFrameRate());
+            assertEquals(44_100, sample.getNumFrames());
+            assertEquals(2, sample.getChannelsPerFrame());
+            assertEquals(.5, sample.readDouble(0), 1e-5);
+            assertEquals(.25, sample.readDouble(1), 1e-5);
+        } finally { sample.cleanUp(); }
+        Files.delete(cache);
     }
 
     static void await(BooleanSupplier predicate) throws InterruptedException {

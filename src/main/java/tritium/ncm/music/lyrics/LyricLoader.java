@@ -15,6 +15,23 @@ public final class LyricLoader implements AutoCloseable {
         this.service = service; this.dispatch = dispatch;
     }
 
+    /** Saved lyrics precede online requests and share their stale-publication protection. */
+    public synchronized void loadSaved(LyricSong song, LocalLyricStore store, BooleanSupplier current,
+                                       Consumer<LyricDocument> publish, Runnable onlineFallback) {
+        long request = ++generation;
+        if (pending != null) pending.cancel(true);
+        pending = executor.submit(() -> {
+            LyricDocument document = store.load(song);
+            dispatch.accept(() -> {
+                synchronized (this) {
+                    if (request != generation || !current.getAsBoolean()) return;
+                    if (document.usable()) publish.accept(document);
+                    else onlineFallback.run();
+                }
+            });
+        });
+    }
+
     public synchronized void load(LyricSong song, boolean automatic, LyricSource preferred,
                                   BooleanSupplier current, Consumer<BestLyricService.Result> publish) {
         long request = ++generation;
