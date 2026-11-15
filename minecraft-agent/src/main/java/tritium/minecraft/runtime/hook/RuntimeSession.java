@@ -44,7 +44,7 @@ public final class RuntimeSession implements IntPredicate {
     private volatile PlayerRuntime playerModules;
     private volatile RenderRuntime renderModules;
     private volatile AntiBotRuntime antiBot;
-    private RuntimeHooksAccess hooks;
+    private volatile RuntimeHooksAccess hooks;
     private float[] playerRotation;
     private float[] bridgeRotation;
     private boolean bridgeRotationPrepared;
@@ -331,18 +331,29 @@ public final class RuntimeSession implements IntPredicate {
     }
     public Predicate<Object> receiveCallback() { return this::receive; }
     public BiPredicate<Object,Object> incomingCallback() { return this::incoming; }
-    public synchronized boolean receive(Object packet) { return incoming(hooks == null ? null : hooks.handler(), packet); }
-    public synchronized boolean incoming(final Object handler, final Object packet) {
+    public boolean receive(Object packet) {
+        RuntimeHooksAccess current = hooks;
+        return incoming(current == null ? null : current.handler(), packet);
+    }
+    public boolean incoming(final Object handler, final Object packet) {
         try {
-            if (stop || hooks == null) return false;
-            if (!hooks.gameThread()) {
+            final RuntimeHooksAccess current;
+            synchronized (this) {
+                if (stop || hooks == null) return false;
+                current = hooks;
+                if (current.gameThread()) {
+                    if (movement != null && movement.receive(packet)) return true;
+                    if (extended != null && extended.receive(handler, packet)) return true;
+                    return renderModules != null && renderModules.receive(packet);
+                }
                 if (extended == null || !extended.needsReceive()) return false;
-                hooks.execute(() -> { if (!stop && hooks.handler() == handler) hooks.process(handler, packet); });
-                return true;
             }
-            if (movement != null && movement.receive(packet)) return true;
-            if (extended != null && extended.receive(handler, packet)) return true;
-            return renderModules != null && renderModules.receive(packet);
+            // Minecraft runs tasks under its queue monitor. Release the session monitor before
+            // scheduling so a queued game-thread callback can enter this session while Netty waits.
+            current.execute(() -> {
+                if (!stop && hooks == current && current.handler() == handler) current.process(handler, packet);
+            });
+            return true;
         } catch (Throwable failure) { send(Wire.ERROR, describe(failure)); stop = true; return false; }
     }
     public boolean packet(Object manager, Object packet) {
